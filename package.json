@@ -21,7 +21,8 @@
     "lint:fix": "tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
     "prettier": "prettier --check \"**/*.{js,ts}\"",
     "prettier:fix": "prettier --write \"**/*.{js,ts}\"",
-    "test": "ava"
+    "test": "ava",
+    "postinstall": "tsc"
   },
   "dependencies": {
     "@streamparser/json": "^0.0.14",
