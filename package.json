@@ -1,0 +1,83 @@
+{
+  "name": "hpt-validator",
+  "version": "0.1.0",
+  "author": "CMS Open Source <opensource@cms.hhs.gov>",
+  "license": "CC0-1.0",
+  "description": "Validation library for CMS Hospital Price Transparency machine-readable files",
+  "type": "module",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./lib/index.js",
+      "import": "./lib/index.js"
+    },
+    "./lib/*": "./lib/*.js",
+    "./src/*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc && eslint \"**/*.{js,ts}\"",
+    "lint:fix": "tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
+    "prettier": "prettier --check \"**/*.{js,ts}\"",
+    "prettier:fix": "prettier --write \"**/*.{js,ts}\"",
+    "test": "ava"
+  },
+  "dependencies": {
+    "@streamparser/json": "^0.0.14",
+    "ajv": "^8.12.0",
+    "ajv-formats": "^2.1.1",
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.2.3",
+    "@types/papaparse": "^5.3.7",
+    "@typescript-eslint/eslint-plugin": "^5.57.0",
+    "@typescript-eslint/parser": "^5.57.0",
+    "ava": "^5.2.0",
+    "eslint": "^8.37.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "esm": "^3.2.25",
+    "prettier": "^2.8.7",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.2"
+  },
+  "ava": {
+    "files": [
+      "test/**/*.spec.*"
+    ],
+    "extensions": {
+      "ts": "module"
+    },
+    "nodeArguments": [
+      "--loader=ts-node/esm",
+      "--experimental-specifier-resolution=node"
+    ]
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "extends": [
+      "plugin:@typescript-eslint/recommended",
+      "prettier"
+    ],
+    "plugins": [
+      "prettier"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2018,
+      "sourceType": "module"
+    },
+    "ignorePatterns": [
+      "node_modules/",
+      "lib/"
+    ]
+  },
+  "prettier": {
+    "endOfLine": "lf",
+    "semi": false,
+    "singleQuote": false,
+    "tabWidth": 2,
+    "trailingComma": "es5"
+  }
+}

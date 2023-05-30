@@ -1,0 +1,66 @@
+{
+  "hospital_name": "Example Hospital",
+  "last_updated_on": "2023-01-01",
+  "license_information": { "license_number": "123456789", "state": "MD" },
+  "version": "1.0.0",
+  "financial_aid_policy": "https://example.com",
+  "standard_charge_information": [
+    {
+      "description": "MED 20MCG 1DOSE",
+      "billing_code_information": [
+        { "code": "001A", "type": "CPT" },
+        { "code": "1234", "type": "RC" }
+      ],
+      "standard_charges": [
+        {
+          "minimum": 52.5,
+          "maximum": 125.2,
+          "gross_charge": 200.5,
+          "discounted_cash": 150.5,
+          "setting": "outpatient",
+          "payers_information": [
+            {
+              "payer_name": "Payer 1",
+              "plan_name": "Plan | All Plans",
+              "standard_charge": 125.2,
+              "contracting_method": "fee schedule"
+            },
+            {
+              "payer_name": "Payer 2",
+              "plan_name": "Commercial | All Plans",
+              "standard_charge": 52.5,
+              "contracting_method": "case rate"
+            }
+          ],
+          "billing_class": "facility"
+        }
+      ]
+    },
+    {
+      "description": "HEART TRANSPLANT",
+      "billing_code_information": [{ "code": "999", "type": "MS-DRG" }],
+      "standard_charges": [
+        {
+          "minimum": 200000.25,
+          "maximum": 500000.75,
+          "setting": "inpatient",
+          "payers_information": [
+            {
+              "payer_name": "Payer 1",
+              "plan_name": "Plan | All Plans",
+              "standard_charge_percent": 70,
+              "contracting_method": "percent of total billed charge"
+            },
+            {
+              "payer_name": "Payer 2",
+              "plan_name": "Commercial | All Plans",
+              "standard_charge": 500000.75,
+              "contracting_method": "case rate"
+            }
+          ],
+          "billing_class": "facility"
+        }
+      ]
+    }
+  ]
+}
