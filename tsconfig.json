@@ -1,5 +1,5 @@
 {
-  "exclude": ["lib"],
+  "exclude": ["lib", "node_modules"],
   "include": ["src"],
   "compilerOptions": {
     "target": "ES2020",

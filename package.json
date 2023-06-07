@@ -1,6 +1,6 @@
 {
   "name": "hpt-validator",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "author": "CMS Open Source <opensource@cms.hhs.gov>",
   "license": "CC0-1.0",
   "description": "Validation library for CMS Hospital Price Transparency machine-readable files",
@@ -16,23 +16,24 @@
     "./src/*": "./src/*.ts"
   },
   "scripts": {
-    "build": "tsc",
-    "lint": "tsc && eslint \"**/*.{js,ts}\"",
-    "lint:fix": "tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
+    "build": "npx tsc",
+    "lint": "npx tsc && eslint \"**/*.{js,ts}\"",
+    "lint:fix": "npx tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
     "prettier": "prettier --check \"**/*.{js,ts}\"",
     "prettier:fix": "prettier --write \"**/*.{js,ts}\"",
     "test": "ava",
-    "postinstall": "tsc"
+    "prepublish": "npx tsc",
+    "postinstall": "npx tsc"
   },
   "dependencies": {
     "@streamparser/json": "^0.0.14",
+    "@types/node": "^20.2.5",
+    "@types/papaparse": "^5.3.7",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "papaparse": "^5.4.1"
   },
   "devDependencies": {
-    "@types/node": "^20.2.3",
-    "@types/papaparse": "^5.3.7",
     "@typescript-eslint/eslint-plugin": "^5.57.0",
     "@typescript-eslint/parser": "^5.57.0",
     "ava": "^5.2.0",
