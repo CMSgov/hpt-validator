@@ -1,6 +1,6 @@
 # Hospital Price Transparency Validator
 
-Validation library for CMS Hospital Price Transparency machine-readable files.
+Validation library for CMS Hospital Price Transparency machine-readable files
 
 ## Resources
 
@@ -15,6 +15,23 @@ Validation library for CMS Hospital Price Transparency machine-readable files.
 ```
 npm install hpt-validator
 ```
+
+### Testing
+
+```
+npm run test
+```
+
+## Contributing
+
+Thank you for considering contributing to an Open Source project of the US
+Government! For more information about our contribution guidelines, see
+[CONTRIBUTING.md](CONTRIBUTING.md)
+
+## Security
+
+For more information about our Security, Vulnerability, and Responsible
+Disclosure Policies, see [SECURITY.md](SECURITY.md).
 
 ## Public domain
 

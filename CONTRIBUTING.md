@@ -11,13 +11,13 @@ We encourage you to read this project's CONTRIBUTING policy (you are here), its
 
 ## Getting Started
 
-<!--- ### TODO: If you have 'good-first-issue' or 'easy' labels for newcomers, mention them here.-->
-
-### Team Specific Guidelines
+Looking for a starting place to contribute? Check out our issues labeled ["good first issue"](https://github.com/CMSgov/hpt-validator/labels/good%20first%20issue) or ["help wanted"](https://github.com/CMSgov/hpt-validator/labels/help%20wanted).
 
 ### Building the Project
 
-<!--- ### TODO -->
+```sh
+npm install
+```
 
 ### Workflow and Branching
 
@@ -38,7 +38,7 @@ We use [ava](https://github.com/avajs/ava) for tests, and any PRs should include
 
 ### Coding Style and Linters
 
-We're using [prettier]() and [eslint]() to format and lint our code. You can run the following commands to automatically fix issues
+We're using prettier and eslint to format and lint our code. You can run the following commands to automatically fix issues
 
 ```
 npm run prettier:fix
@@ -47,69 +47,16 @@ npm run lint:fix
 
 ### Issues
 
-<!---
-TODO: Example Issue Guides
-
-When creating an issue please try to adhere to the following format:
-
-    module-name: One line summary of the issue (less than 72 characters)
-
-    ### Expected behavior
-
-    As concisely as possible, describe the expected behavior.
-
-    ### Actual behavior
-
-    As concisely as possible, describe the observed behavior.
-
-    ### Steps to reproduce the behavior
-
-    List all relevant steps to reproduce the observed behavior.
-
-    see our .github/ISSUE_TEMPLATE.md for more examples.
--->
+See a bug or have a suggestion for a feature? File an issue, filling out the items in our issue template.
 
 ### Pull Requests
 
-<!---
-### TODO: Confirm
+Generally pull requests should link to existing issues, but if you have a small change feel free to submit it without creating an issue in advance.
 
-Comments should be formatted to a width no greater than 80 columns.
+## Documentation
 
-Files should be exempt of trailing spaces.
-
-We adhere to a specific format for commit messages. Please write your commit
-messages along these guidelines. Please keep the line width no greater than 80
-columns (You can use `fmt -n -p -w 80` to accomplish this).
-
-    module-name: One line description of your change (less than 72 characters)
-
-    Problem
-
-    Explain the context and why you're making that change.  What is the problem
-    you're trying to solve? In some cases there is not a problem and this can be
-    thought of being the motivation for your change.
-
-    Solution
-
-    Describe the modifications you've done.
-
-    Result
-
-    What will change as a result of your pull request? Note that sometimes this
-    section is unnecessary because it is self-explanatory based on the solution.
-
-Some important notes regarding the summary line:
-
-* Describe what was done; not the result
-* Use the active voice
-* Use the present tense
-* Capitalize properly
-* Do not end in a period — this is a title/subject
-* Prefix the subject with its scope
-
-    see our .github/PULL_REQUEST_TEMPLATE.md for more examples.
--->
+We welcome improvements to the project documentation or to the existing
+docs. Please file an [issue](https://github.com/CMSGov/hpt-validator/issues).
 
 ## Policies
 
