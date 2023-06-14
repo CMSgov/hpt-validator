@@ -45,6 +45,10 @@ npm run prettier:fix
 npm run lint:fix
 ```
 
+### Publishing New Releases
+
+GitHub Actions is configured to publish to NPM whenever a new release is created in the [publish workflow](./.github/workflows/publish.yml).
+
 ### Issues
 
 See a bug or have a suggestion for a feature? File an issue, filling out the items in our issue template.
