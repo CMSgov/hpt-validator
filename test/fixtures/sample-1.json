@@ -49,7 +49,7 @@
               "payer_name": "Payer 1",
               "plan_name": "Plan | All Plans",
               "standard_charge_percent": 70,
-              "contracting_method": "percent of total billed charge"
+              "contracting_method": "percent of total billed charges"
             },
             {
               "payer_name": "Payer 2",

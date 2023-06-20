@@ -160,8 +160,8 @@ test("validateTallFields", (t) => {
       {
         payer_name: "Payer",
         plan_name: "Plan",
-        standard_charge: "1.0",
-        "standard_charge | percent": "",
+        "standard_charge | negotiated_dollar": "1.0",
+        "standard_charge | negotiated_percent": "",
         "standard_charge | contracting_method": CONTRACTING_METHODS[0],
         additional_generic_notes: "",
       },
@@ -174,8 +174,8 @@ test("validateTallFields", (t) => {
       {
         payer_name: "Payer",
         plan_name: "Plan",
-        standard_charge: "",
-        "standard_charge | percent": "",
+        "standard_charge | negotiated_dollar": "",
+        "standard_charge | negotiated_percent": "",
         "standard_charge | contracting_method": CONTRACTING_METHODS[0],
         additional_generic_notes: "",
       },

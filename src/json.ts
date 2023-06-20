@@ -59,7 +59,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
       },
       additional_generic_notes: { type: "string" },
     },
-    required: ["setting", "minimum", "maximum"],
+    required: ["setting"],
   },
   standard_charge_information: {
     type: "object",
@@ -95,7 +95,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
     required: ["payer_name", "plan_name", "contracting_method"],
     if: {
       properties: {
-        contracting_method: { const: "percent of total billed charge" },
+        contracting_method: { const: "percent of total billed charges" },
       },
     },
     then: { required: ["standard_charge_percent"] },

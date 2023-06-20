@@ -42,12 +42,7 @@ export const DRUG_UNITS = ["GR", "ME", "ML", "UN"]
 type DrugUnitTuple = typeof DRUG_UNITS
 export type DrugUnit = DrugUnitTuple[number]
 
-export const CHARGE_SETTINGS = [
-  "inpatient",
-  "outpatient",
-  "both",
-  "-1",
-] as const
+export const CHARGE_SETTINGS = ["inpatient", "outpatient", "both"] as const
 type ChargeSettingTuple = typeof CHARGE_SETTINGS
 export type ChargeSetting = ChargeSettingTuple[number]
 
@@ -56,10 +51,9 @@ type ChargeBillingClassTuple = typeof CHARGE_BILLING_CLASSES
 export type ChargeBillingClass = ChargeBillingClassTuple[number]
 
 export const CONTRACTING_METHODS = [
-  "capitation",
   "case rate",
   "fee schedule",
-  "percent of total billed charge",
+  "percent of total billed charges",
   "per diem",
   "other",
 ] as const

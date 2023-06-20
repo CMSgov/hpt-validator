@@ -5,10 +5,6 @@ import { loadFixture, loadFixtureStream } from "./utils.js"
 test("sample-1", async (t) => {
   t.deepEqual((await validateCsv(loadFixtureStream("sample-1.csv"))).errors, [
     {
-      message: '"code | 2" is required',
-      path: "D4",
-    },
-    {
       message:
         '"code | 1 | type" value "C" is not in "CPT", "HCPCS", "ICD", "MS-DRG", "R-DRG", "S-DRG", "APS-DRG", "AP-DRG", "APR-DRG", "APC", "NDC", "HIPPS", "LOCAL", "EAPG", "CDT", "RC", "CDM"',
       path: "C4",
@@ -21,7 +17,7 @@ test("sample-1", async (t) => {
     },
     {
       message:
-        '"setting" value "ipatient" is not in "inpatient", "outpatient", "both", "-1"',
+        '"setting" value "ipatient" is not in "inpatient", "outpatient", "both"',
       path: "G4",
     },
   ])
@@ -30,10 +26,6 @@ test("sample-1", async (t) => {
 test("sample-1 sync", (t) => {
   t.deepEqual(validateCsvSync(loadFixture("sample-1.csv")).errors, [
     {
-      message: '"code | 2" is required',
-      path: "D4",
-    },
-    {
       message:
         '"code | 1 | type" value "C" is not in "CPT", "HCPCS", "ICD", "MS-DRG", "R-DRG", "S-DRG", "APS-DRG", "AP-DRG", "APR-DRG", "APC", "NDC", "HIPPS", "LOCAL", "EAPG", "CDT", "RC", "CDM"',
       path: "C4",
@@ -46,7 +38,7 @@ test("sample-1 sync", (t) => {
     },
     {
       message:
-        '"setting" value "ipatient" is not in "inpatient", "outpatient", "both", "-1"',
+        '"setting" value "ipatient" is not in "inpatient", "outpatient", "both"',
       path: "G4",
     },
   ])
@@ -60,17 +52,13 @@ test("sample-2", async (t) => {
       warning: true,
     },
     {
-      message: '"code | 2" is required',
-      path: "D4",
-    },
-    {
       message:
         '"billing_class" value "Facility" is not in "professional", "facility"',
       path: "F4",
     },
     {
       message:
-        '"setting" value "ipatient" is not in "inpatient", "outpatient", "both", "-1"',
+        '"setting" value "ipatient" is not in "inpatient", "outpatient", "both"',
       path: "G4",
     },
   ])
@@ -84,17 +72,13 @@ test("sample-2 sync", (t) => {
       warning: true,
     },
     {
-      message: '"code | 2" is required',
-      path: "D4",
-    },
-    {
       message:
         '"billing_class" value "Facility" is not in "professional", "facility"',
       path: "F4",
     },
     {
       message:
-        '"setting" value "ipatient" is not in "inpatient", "outpatient", "both", "-1"',
+        '"setting" value "ipatient" is not in "inpatient", "outpatient", "both"',
       path: "G4",
     },
   ])

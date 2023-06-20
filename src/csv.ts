@@ -45,8 +45,8 @@ export const MIN_MAX_COLUMNS = [
 export const TALL_COLUMNS = [
   "payer_name",
   "plan_name",
-  "standard_charge",
-  "standard_charge | percent",
+  "standard_charge | negotiated_dollar",
+  "standard_charge | negotiated_percent",
   "standard_charge | contracting_method",
   "additional_generic_notes",
 ]
@@ -326,7 +326,7 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
   }
 
   totalColumns.forEach((column, index) => {
-    if (columns[index] !== column) {
+    if (!sepColumnsEqual(columns[index], column)) {
       errors.push(
         csvErr(
           rowIndex,
@@ -381,8 +381,7 @@ export function validateRow(
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
 
-  // code | 2 is required because it must have "-1" if empty
-  const requiredFields = ["description", "code | 1", "code | 2"]
+  const requiredFields = ["description", "code | 1"]
   requiredFields.forEach((field) =>
     errors.push(
       ...validateRequiredField(row, field, index, columns.indexOf(field))
@@ -552,7 +551,10 @@ export function validateTallFields(
   )
 
   // TODO: Only one of these has to be filled, clarify error
-  const floatFields = ["standard_charge", "standard_charge | percent"]
+  const floatFields = [
+    "standard_charge | negotiated_dollar",
+    "standard_charge | negotiated_percent",
+  ]
   const floatErrors = floatFields.flatMap((field) =>
     validateRequiredFloatField(
       row,
@@ -636,8 +638,8 @@ export function getTallColumns(columns: string[]): string[] {
   return [
     "payer_name",
     "plan_name",
-    "standard_charge",
-    "standard_charge | percent",
+    "standard_charge | negotiated_dollar",
+    "standard_charge | negotiated_percent",
     "standard_charge | min",
     "standard_charge | max",
     "standard_charge | contracting_method",
@@ -703,14 +705,12 @@ function validateRequiredFloatField(
   columnIndex: number,
   suffix = ``
 ): CsvValidationError[] {
-  // TODO: right way to handle?
-  if (row[field] === "-1") return []
   if (!/\d+(\.\d+)?/g.test(row[field] || "")) {
     return [
       csvErr(
         rowIndex,
         columnIndex,
-        `"${field}" is required to be a positive number or "-1"${suffix}`
+        `"${field}" is required to be a positive number${suffix}`
       ),
     ]
   }
