@@ -54,10 +54,12 @@ export const TALL_COLUMNS = [
 /**
  *
  * @param input Browser File or ReadableStream for streaming file content
+ * @param onValueCallback Callback function to process streamed CSV row object
  * @returns Promise that resolves with the result of validation
  */
 export async function validateCsv(
-  input: File | NodeJS.ReadableStream
+  input: File | NodeJS.ReadableStream,
+  onValueCallback?: (value: { [key: string]: string }) => void
 ): Promise<ValidationResult> {
   let index = 0
   const errors: CsvValidationError[] = []
@@ -89,14 +91,11 @@ export async function validateCsv(
         tall = isTall(dataColumns)
       }
     } else {
-      errors.push(
-        ...validateRow(
-          cleanRowFields(objectFromKeysValues(dataColumns, row)),
-          index,
-          dataColumns,
-          !tall
-        )
-      )
+      const cleanRow = cleanRowFields(objectFromKeysValues(dataColumns, row))
+      errors.push(...validateRow(cleanRow, index, dataColumns, !tall))
+      if (onValueCallback) {
+        onValueCallback(cleanRow)
+      }
     }
 
     ++index

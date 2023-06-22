@@ -1,4 +1,4 @@
-import { JSONParser } from "@streamparser/json"
+import { JSONParser, JsonTypes } from "@streamparser/json"
 import Ajv, { ErrorObject } from "ajv"
 import addFormats from "ajv-formats"
 import {
@@ -187,10 +187,14 @@ export const JSON_SCHEMA = {
 /**
  *
  * @param jsonInput Browser File or ReadableStream to stream content from
+ * @param onValueCallback Callback function to process streamed standard charge items
  * @returns Promise with validation result
  */
 export async function validateJson(
-  jsonInput: File | NodeJS.ReadableStream
+  jsonInput: File | NodeJS.ReadableStream,
+  onValueCallback?: (
+    val: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct
+  ) => void
 ): Promise<ValidationResult> {
   const validator = new Ajv({ allErrors: true })
   addFormats(validator)
@@ -213,7 +217,6 @@ export async function validateJson(
         metadata[key] = value
       } else {
         hasCharges = true
-        // TODO: Can this be array?
         if (!validator.validate(STANDARD_CHARGE_SCHEMA, value)) {
           valid = false
           errors.push(
@@ -224,6 +227,9 @@ export async function validateJson(
                 path: error.path.replace(/\/0\//gi, `/${key}/`),
               }))
           )
+        }
+        if (onValueCallback) {
+          onValueCallback(value)
         }
       }
     }
