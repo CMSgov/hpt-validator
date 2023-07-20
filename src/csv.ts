@@ -72,6 +72,11 @@ export async function validateCsv(
     resolve: (result: ValidationResult | PromiseLike<ValidationResult>) => void
   ) => {
     const row: string[] = step.data
+    // Ignore empty lines
+    if (rowIsEmpty(row)) {
+      ++index
+      return
+    }
     if (index === 0) {
       headerColumns = row
     } else if (index === 1) {
@@ -178,6 +183,7 @@ export function validateCsvSync(csvString: string): ValidationResult {
   const indexOffset = 3
   errors.push(
     ...dataRows
+      .filter((r) => !rowIsEmpty(r))
       .map((r) => cleanRowFields(objectFromKeysValues(dataColumns, r)))
       .flatMap((row: { [key: string]: string }, idx: number) =>
         validateRow(cleanRowFields(row), idx + indexOffset, dataColumns, !tall)
@@ -781,4 +787,8 @@ function objectFromKeysValues(
   values: string[]
 ): { [key: string]: string } {
   return Object.fromEntries(keys.map((key, index) => [key, values[index]]))
+}
+
+function rowIsEmpty(row: string[]): boolean {
+  return row.every((value) => !value.trim())
 }
