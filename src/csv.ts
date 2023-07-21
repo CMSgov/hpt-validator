@@ -207,11 +207,12 @@ export function validateHeaderColumns(columns: string[]): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   HEADER_COLUMNS.forEach((headerColumn, index) => {
     if (index < columns.length) {
-      if (headerColumn === "license_number | state") {
+      const LICENSE_STATE = "license_number | state"
+      if (headerColumn === LICENSE_STATE) {
         const invalidMessage = `Header column is "${columns[index]}", it should be "license_number | <state>"`
         const splitColumn = columns[index].split("|").map((v) => v.trim())
         if (splitColumn.length !== 2) {
-          errors.push(csvErr(rowIndex, index, invalidMessage))
+          errors.push(csvErr(rowIndex, index, LICENSE_STATE, invalidMessage))
           return
         }
         const stateCode = columns[index].split("|").slice(-1)[0].trim()
@@ -220,13 +221,14 @@ export function validateHeaderColumns(columns: string[]): CsvValidationError[] {
             csvErr(
               rowIndex,
               index,
+              LICENSE_STATE,
               `Header column "${columns[index]}" includes an invalid state code "${stateCode}"`
             )
           )
         } else if (
           !sepColumnsEqual(columns[index], `license_number | ${stateCode}`)
         ) {
-          errors.push(csvErr(rowIndex, index, invalidMessage))
+          errors.push(csvErr(rowIndex, index, LICENSE_STATE, invalidMessage))
         }
         return
       }
@@ -235,6 +237,7 @@ export function validateHeaderColumns(columns: string[]): CsvValidationError[] {
           csvErr(
             rowIndex,
             index,
+            headerColumn,
             `Header column is "${columns[index]}", it should be "${headerColumn}"`,
             false
           )
@@ -245,6 +248,7 @@ export function validateHeaderColumns(columns: string[]): CsvValidationError[] {
         csvErr(
           rowIndex,
           index,
+          headerColumn,
           `Header column should be "${headerColumn}", but it is not present`
         )
       )
@@ -283,6 +287,7 @@ export function validateHeaderRow(row: string[]): CsvValidationError[] {
         csvErr(
           rowIndex,
           headerIndex,
+          checkBlankColumn,
           `"${checkBlankColumn}" is blank`,
           !requiredColumns.includes(row[headerIndex].trim())
         )
@@ -298,6 +303,7 @@ export function validateHeaderRow(row: string[]): CsvValidationError[] {
       csvErr(
         rowIndex,
         licenseStateIndex,
+        HEADER_COLUMNS[licenseStateIndex],
         `"${HEADER_COLUMNS[licenseStateIndex]}" is blank`,
         true
       )
@@ -325,6 +331,7 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
       csvErr(
         rowIndex,
         0,
+        undefined,
         `Received ${columns.length} columns, less than the required number ${baseColumns.length}`
       ),
     ]
@@ -336,6 +343,7 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
         csvErr(
           rowIndex,
           index,
+          column,
           `Column is "${columns[index]}" and should be "${column}" for ${schemaFormat} format`
         )
       )
@@ -358,7 +366,7 @@ export function validateWideColumns(columns: string[]): CsvValidationError[] {
   // TODO: incorporate order later on?
   wideColumns.forEach((column) => {
     if (!columns.some((c) => sepColumnsEqual(column, c))) {
-      errors.push(csvErr(rowIndex, 0, `Missing column ${column}`))
+      errors.push(csvErr(rowIndex, 0, column, `Missing column ${column}`))
     }
   })
 
@@ -367,6 +375,7 @@ export function validateWideColumns(columns: string[]): CsvValidationError[] {
       csvErr(
         rowIndex,
         columns.length - 1,
+        "additional_generic_notes",
         `The last column should be "additional_generic_notes", is "${
           columns[columns.length - 1]
         }"`
@@ -398,9 +407,12 @@ export function validateRow(
       csvErr(
         index,
         columns.indexOf("code | 1 | type"),
+        "code | 1 | type",
         `"code | 1 | type" value "${
           row["code | 1 | type"]
-        }" is not in ${BILLING_CODE_TYPES.map((t) => `"${t}"`).join(", ")}`,
+        }" is not one of the allowed values: ${BILLING_CODE_TYPES.map(
+          (t) => `"${t}"`
+        ).join(", ")}`,
         true
       )
     )
@@ -415,9 +427,12 @@ export function validateRow(
       csvErr(
         index,
         columns.indexOf("code | 2 | type"),
+        "code | 2 | type",
         `"code | 2 | type" value "${
           row["code | 2 | type"]
-        }" is not in ${BILLING_CODE_TYPES.map((t) => `"${t}"`).join(", ")}`
+        }" is not one of the allowed values: ${BILLING_CODE_TYPES.map(
+          (t) => `"${t}"`
+        ).join(", ")}`
       )
     )
   }
@@ -429,9 +444,12 @@ export function validateRow(
       csvErr(
         index,
         columns.indexOf("billing_class"),
+        "billing_class",
         `"billing_class" value "${
           row["billing_class"]
-        }" is not in ${CHARGE_BILLING_CLASSES.map((t) => `"${t}"`).join(", ")}`
+        }" is not one of the allowed values: ${CHARGE_BILLING_CLASSES.map(
+          (t) => `"${t}"`
+        ).join(", ")}`
       )
     )
   }
@@ -441,7 +459,10 @@ export function validateRow(
       csvErr(
         index,
         columns.indexOf("setting"),
-        `"setting" value "${row["setting"]}" is not in ${CHARGE_SETTINGS.map(
+        "setting",
+        `"setting" value "${
+          row["setting"]
+        }" is not one of the allowed values: ${CHARGE_SETTINGS.map(
           (t) => `"${t}"`
         ).join(", ")}`
       )
@@ -454,6 +475,7 @@ export function validateRow(
         csvErr(
           index,
           columns.indexOf("drug_unit_of_measurement"),
+          "drug_unit_of_measurement",
           `"drug_unit_of_measurement" value "${row["drug_unit_of_measurement"]}" is not a valid number`
         )
       )
@@ -463,9 +485,12 @@ export function validateRow(
         csvErr(
           index,
           columns.indexOf("drug_type_of_measurement"),
+          "drug_type_of_measurement",
           `"drug_type_of_measurement" value "${
             row["drug_type_of_measurement"]
-          }" is not in ${DRUG_UNITS.map((t) => `"${t}"`).join(", ")}`
+          }" is not one of the allowed values: ${DRUG_UNITS.map(
+            (t) => `"${t}"`
+          ).join(", ")}`
         )
       )
     }
@@ -509,7 +534,8 @@ export function validateWideFields(
         csvErr(
           index,
           BASE_COLUMNS.length + columnIndex,
-          `"${field}" value "${value}" is not in ${CONTRACTING_METHODS.map(
+          field,
+          `"${field}" value "${value}" is not one of the allowed values: ${CONTRACTING_METHODS.map(
             (t) => `"${t}"`
           ).join(", ")}`
         )
@@ -524,6 +550,7 @@ export function validateWideFields(
           csvErr(
             index,
             BASE_COLUMNS.length + columnIndex,
+            field, // TODO: Might be different?
             `One of "${field.replace(
               " | percent",
               ""
@@ -584,9 +611,13 @@ export function validateTallFields(
       csvErr(
         index,
         BASE_COLUMNS.indexOf("standard_charge | contracting_method"),
+        // TODO: Change to constants
+        "standard_charge | contracting_method",
         `"standard_charge | contracting_method" value "${
           row["standard_charge | contracting_method"]
-        }" is not in ${CONTRACTING_METHODS.map((t) => `"${t}"`).join(", ")}`
+        }" is not one of the allowed values: ${CONTRACTING_METHODS.map(
+          (t) => `"${t}"`
+        ).join(", ")}`
       )
     )
   }
@@ -698,7 +729,9 @@ function validateRequiredField(
   suffix = ``
 ): CsvValidationError[] {
   if (!(row[field] || "").trim()) {
-    return [csvErr(rowIndex, columnIndex, `"${field}" is required${suffix}`)]
+    return [
+      csvErr(rowIndex, columnIndex, field, `"${field}" is required${suffix}`),
+    ]
   }
   return []
 }
@@ -715,6 +748,7 @@ function validateRequiredFloatField(
       csvErr(
         rowIndex,
         columnIndex,
+        field,
         `"${field}" is required to be a positive number${suffix}`
       ),
     ]
@@ -731,6 +765,7 @@ export function isTall(columns: string[]): boolean {
 function csvErrorToValidationError(err: CsvValidationError): ValidationError {
   return {
     path: csvCellName(err.row, err.column),
+    field: err.field,
     message: err.message,
     ...(err.warning ? { warning: err.warning } : {}),
   }
@@ -740,10 +775,11 @@ function csvErrorToValidationError(err: CsvValidationError): ValidationError {
 function csvErr(
   row: number,
   column: number,
+  field: string | undefined,
   message: string,
   warning?: boolean
 ): CsvValidationError {
-  return { row, column, message, warning }
+  return { row, column, field, message, warning }
 }
 
 function cleanRowFields(row: { [key: string]: string }): {

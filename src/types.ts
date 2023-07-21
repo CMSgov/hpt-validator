@@ -1,12 +1,14 @@
 export interface CsvValidationError {
   row: number
   column: number
+  field?: string
   message: string
   warning?: boolean
 }
 
 export interface ValidationError {
   path: string
+  field?: string
   message: string
   warning?: boolean
 }

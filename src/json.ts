@@ -316,7 +316,10 @@ function readFileChunk(
   })
 }
 
-// TODO: Update this, specifically to customize the message
 function errorObjectToValidationError(error: ErrorObject): ValidationError {
-  return { path: error.instancePath, message: error.message as string }
+  return {
+    path: error.instancePath,
+    field: error.instancePath.split("/").pop(),
+    message: error.message as string,
+  }
 }
