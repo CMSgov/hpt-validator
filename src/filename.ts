@@ -1,5 +1,5 @@
 const FILENAME_RE =
-  /^(\d{2}\-?\d{7})(\-\d{10})?(_.+_)(standardcharges)(\.csv|json)$/i
+  /^(\d{2}\-?\d{7})(\-\d{10})?(_.+_)(standardcharges)\.(csv|json)$/i
 
 /**
  *
