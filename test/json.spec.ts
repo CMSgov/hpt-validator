@@ -14,6 +14,12 @@ test("validateJson empty", async (t) => {
   t.deepEqual(result.errors.length, 4)
 })
 
+test("validateJson valid", async (t) => {
+  const result = await validateJson(loadFixtureStream("sample-valid.json"))
+  t.is(result.valid, true)
+  t.deepEqual(result.errors.length, 0)
+})
+
 test("validateJsonSync", (t) => {
   const result = validateJsonSync(loadFixture("sample-1.json"))
   t.is(result.valid, false)
@@ -24,4 +30,10 @@ test("validateJsonSync empty", (t) => {
   const result = validateJsonSync(loadFixture("sample-empty.json"))
   t.is(result.valid, false)
   t.is(result.errors.length, 4)
+})
+
+test("validateJsonSync valid", (t) => {
+  const result = validateJsonSync(loadFixture("sample-valid.json"))
+  t.is(result.valid, true)
+  t.is(result.errors.length, 0)
 })

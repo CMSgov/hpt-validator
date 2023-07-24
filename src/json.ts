@@ -243,10 +243,12 @@ export async function validateJson(
         )
       ) {
         valid = false
+        errors.push(
+          ...(validator.errors as ErrorObject[]).map(
+            errorObjectToValidationError
+          )
+        )
       }
-      errors.push(
-        ...(validator.errors as ErrorObject[]).map(errorObjectToValidationError)
-      )
       resolve({ valid, errors })
     }
 
