@@ -361,14 +361,6 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
 export function validateWideColumns(columns: string[]): CsvValidationError[] {
   const rowIndex = 2
   const errors: CsvValidationError[] = []
-  const wideColumns = getWideColumns(columns)
-
-  // TODO: incorporate order later on?
-  wideColumns.forEach((column) => {
-    if (!columns.some((c) => sepColumnsEqual(column, c))) {
-      errors.push(csvErr(rowIndex, 0, column, `Missing column "${column}"`))
-    }
-  })
 
   if (columns[columns.length - 1] !== "additional_generic_notes") {
     errors.push(

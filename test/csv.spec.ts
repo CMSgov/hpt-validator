@@ -98,24 +98,16 @@ test("validateColumns tall", (t) => {
 })
 
 test("validateWideColumns", (t) => {
+  // Currently only checking for the order of additional_generic_notes
   t.is(
     validateWideColumns([
       ...BASE_COLUMNS,
       ...MIN_MAX_COLUMNS,
-      "standard_charge |Payer | Plan",
+      "standard_charge | Payer | Plan",
       "additional_generic_notes",
-    ])[0].message,
-    `Missing column "standard_charge | Payer | Plan | percent"`
-  )
-  t.is(
-    validateWideColumns([
-      ...BASE_COLUMNS,
-      ...MIN_MAX_COLUMNS,
-      "standard_charge |Payer | Plan",
-      "standard_charge | Payer |Plan | pct",
-      "additional_generic_notes",
+      "standard_charge | Payer | Plan | pct",
     ]).length,
-    3
+    1
   )
 })
 
