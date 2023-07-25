@@ -105,7 +105,7 @@ test("validateWideColumns", (t) => {
       "standard_charge |Payer | Plan",
       "additional_generic_notes",
     ])[0].message,
-    "Missing column standard_charge | Payer | Plan | percent"
+    `Missing column "standard_charge | Payer | Plan | percent"`
   )
   t.is(
     validateWideColumns([

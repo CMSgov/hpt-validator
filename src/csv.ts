@@ -84,7 +84,7 @@ export async function validateCsv(
     } else if (index === 2) {
       dataColumns = row
       errors.push(...validateColumns(dataColumns))
-      if (errors.length > 1) {
+      if (errors.length > 0) {
         resolve({
           valid: false,
           errors: errors.map(csvErrorToValidationError).concat({
@@ -366,7 +366,7 @@ export function validateWideColumns(columns: string[]): CsvValidationError[] {
   // TODO: incorporate order later on?
   wideColumns.forEach((column) => {
     if (!columns.some((c) => sepColumnsEqual(column, c))) {
-      errors.push(csvErr(rowIndex, 0, column, `Missing column ${column}`))
+      errors.push(csvErr(rowIndex, 0, column, `Missing column "${column}"`))
     }
   })
 
