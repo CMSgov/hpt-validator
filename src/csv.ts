@@ -131,8 +131,13 @@ export async function validateCsv(
     Papa.parse(input, {
       header: false,
       // chunkSize: 64 * 1024,
-      step: (row: Papa.ParseStepResult<string[]>) =>
-        handleParseStep(row, resolve),
+      step: (row: Papa.ParseStepResult<string[]>) => {
+        try {
+          handleParseStep(row, resolve)
+        } catch (e) {
+          reject(e)
+        }
+      },
       complete: () => handleParseEnd(resolve),
       error: (error: Error) => reject(error),
     })
@@ -623,7 +628,7 @@ function parseSepField(field: string): string[] {
 
 /** @private */
 export function getBaseColumns(columns: string[]): string[] {
-  const codeCount = getCodeCount(columns)
+  const codeCount = Math.max(1, getCodeCount(columns))
   const codeColumns = Array(codeCount)
     .fill(0)
     .flatMap((_, i) => [`code | ${i + 1}`, `code | ${i + 1} | type`])
@@ -709,7 +714,8 @@ function getCodeCount(columns: string[]): number {
           .filter((v) => !!v)
       )
       .filter((c) => c[0] === "code" && c.length === 2)
-      .map((c) => +c[1])
+      .map((c) => +c[1].replace(/\D/g, ""))
+      .filter((v) => !isNaN(v))
   )
 }
 
