@@ -184,6 +184,13 @@ export const JSON_SCHEMA = {
   required: [...METADATA_REQUIRED, "standard_charge_information"],
 }
 
+interface ValidateJsonOptions {
+  maxErrors?: number
+  onValueCallback?: (
+    val: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct
+  ) => void
+}
+
 /**
  *
  * @param jsonInput Browser File or ReadableStream to stream content from
@@ -192,9 +199,7 @@ export const JSON_SCHEMA = {
  */
 export async function validateJson(
   jsonInput: File | NodeJS.ReadableStream,
-  onValueCallback?: (
-    val: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct
-  ) => void
+  options: ValidateJsonOptions = {}
 ): Promise<ValidationResult> {
   const validator = new Ajv({ allErrors: true })
   addFormats(validator)
@@ -228,8 +233,19 @@ export async function validateJson(
               }))
           )
         }
-        if (onValueCallback) {
-          onValueCallback(value)
+        if (options.onValueCallback) {
+          options.onValueCallback(value)
+        }
+        if (
+          options.maxErrors &&
+          options.maxErrors > 0 &&
+          errors.length > options.maxErrors
+        ) {
+          resolve({
+            valid: false,
+            errors: errors.slice(0, options.maxErrors),
+          })
+          parser.end()
         }
       }
     }
@@ -249,7 +265,13 @@ export async function validateJson(
           )
         )
       }
-      resolve({ valid, errors })
+      resolve({
+        valid,
+        errors:
+          options.maxErrors && options.maxErrors > 0
+            ? errors.slice(0, options.maxErrors)
+            : errors,
+      })
     }
 
     parser.onError = (e) => reject(e)

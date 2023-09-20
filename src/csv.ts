@@ -51,6 +51,11 @@ export const TALL_COLUMNS = [
   "additional_generic_notes",
 ]
 
+interface ValidateCsvOptions {
+  maxErrors?: number
+  onValueCallback?: (value: { [key: string]: string }) => void
+}
+
 /**
  *
  * @param input Browser File or ReadableStream for streaming file content
@@ -59,7 +64,7 @@ export const TALL_COLUMNS = [
  */
 export async function validateCsv(
   input: File | NodeJS.ReadableStream,
-  onValueCallback?: (value: { [key: string]: string }) => void
+  options: ValidateCsvOptions = {}
 ): Promise<ValidationResult> {
   let index = 0
   const errors: CsvValidationError[] = []
@@ -69,7 +74,8 @@ export async function validateCsv(
 
   const handleParseStep = (
     step: Papa.ParseStepResult<string[]>,
-    resolve: (result: ValidationResult | PromiseLike<ValidationResult>) => void
+    resolve: (result: ValidationResult | PromiseLike<ValidationResult>) => void,
+    parser: Papa.Parser
   ) => {
     const row: string[] = step.data
     // Ignore empty lines
@@ -92,15 +98,31 @@ export async function validateCsv(
             message: "Errors were seen in headers so rows were not evaluated",
           }),
         })
+        parser.abort()
       } else {
         tall = isTall(dataColumns)
       }
     } else {
       const cleanRow = cleanRowFields(objectFromKeysValues(dataColumns, row))
       errors.push(...validateRow(cleanRow, index, dataColumns, !tall))
-      if (onValueCallback) {
-        onValueCallback(cleanRow)
+
+      if (options.onValueCallback) {
+        options.onValueCallback(cleanRow)
       }
+    }
+
+    if (
+      options.maxErrors &&
+      options.maxErrors > 0 &&
+      errors.length > options.maxErrors
+    ) {
+      resolve({
+        valid: false,
+        errors: errors
+          .map(csvErrorToValidationError)
+          .slice(0, options.maxErrors),
+      })
+      parser.abort()
     }
 
     ++index
@@ -131,9 +153,9 @@ export async function validateCsv(
     Papa.parse(input, {
       header: false,
       // chunkSize: 64 * 1024,
-      step: (row: Papa.ParseStepResult<string[]>) => {
+      step: (row: Papa.ParseStepResult<string[]>, parser: Papa.Parser) => {
         try {
-          handleParseStep(row, resolve)
+          handleParseStep(row, resolve, parser)
         } catch (e) {
           reject(e)
         }

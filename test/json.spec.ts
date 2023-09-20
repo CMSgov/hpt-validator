@@ -14,6 +14,14 @@ test("validateJson empty", async (t) => {
   t.deepEqual(result.errors.length, 4)
 })
 
+test("validateJson maxErrors", async (t) => {
+  const result = await validateJson(loadFixtureStream("sample-empty.json"), {
+    maxErrors: 1,
+  })
+  t.is(result.valid, false)
+  t.deepEqual(result.errors.length, 1)
+})
+
 test("validateJson valid", async (t) => {
   const result = await validateJson(loadFixtureStream("sample-valid.json"))
   t.is(result.valid, true)
