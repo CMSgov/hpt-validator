@@ -1,10 +1,8 @@
-export interface CsvValidationError {
-  row: number
-  column: number
-  field?: string
-  message: string
-  warning?: boolean
-}
+import { JsonTypes } from "@streamparser/json"
+
+export const SCHEMA_VERSIONS = ["v1.1", "v2.0"] as const
+type SchemaVersionTuple = typeof SCHEMA_VERSIONS
+export type SchemaVersion = SchemaVersionTuple[number]
 
 export interface ValidationError {
   path: string
@@ -18,49 +16,50 @@ export interface ValidationResult {
   errors: ValidationError[]
 }
 
-export const BILLING_CODE_TYPES = [
-  "CPT",
-  "HCPCS",
-  "ICD",
-  "MS-DRG",
-  "R-DRG",
-  "S-DRG",
-  "APS-DRG",
-  "AP-DRG",
-  "APR-DRG",
-  "APC",
-  "NDC",
-  "HIPPS",
-  "LOCAL",
-  "EAPG",
-  "CDT",
-  "RC",
-  "CDM",
-] as const
-type BillingCodeTypeTuple = typeof BILLING_CODE_TYPES
-export type BillingCodeType = BillingCodeTypeTuple[number]
+export interface CsvValidationError {
+  row: number
+  column: number
+  field?: string
+  message: string
+  warning?: boolean
+}
 
-export const DRUG_UNITS = ["GR", "ME", "ML", "UN"]
-type DrugUnitTuple = typeof DRUG_UNITS
-export type DrugUnit = DrugUnitTuple[number]
+/**
+ * There will be a lot of duplication across different versions, this is intentional.
+ * Maintenance will be easier to avoid conflicts across different versions if changes
+ * can largely be isolated to a specific version, with commmon utilities in a shared
+ * common module.
+ */
+export interface CsvValidatorVersion {
+  validateHeader: (columns: string[], row: string[]) => CsvValidationError[]
+  validateColumns: (columns: string[]) => CsvValidationError[]
+  validateRow: (
+    row: { [key: string]: string },
+    index: number,
+    columns: string[],
+    wide: boolean
+  ) => CsvValidationError[]
+  isTall: (columns: string[]) => boolean
+}
 
-export const CHARGE_SETTINGS = ["inpatient", "outpatient", "both"] as const
-type ChargeSettingTuple = typeof CHARGE_SETTINGS
-export type ChargeSetting = ChargeSettingTuple[number]
+export interface CsvValidationOptions {
+  maxErrors?: number
+  onValueCallback?: (value: { [key: string]: string }) => void
+}
 
-export const CHARGE_BILLING_CLASSES = ["professional", "facility"] as const
-type ChargeBillingClassTuple = typeof CHARGE_BILLING_CLASSES
-export type ChargeBillingClass = ChargeBillingClassTuple[number]
+export interface JsonValidatorOptions {
+  maxErrors?: number
+  onValueCallback?: (
+    val: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct
+  ) => void
+}
 
-export const CONTRACTING_METHODS = [
-  "case rate",
-  "fee schedule",
-  "percent of total billed charges",
-  "per diem",
-  "other",
-] as const
-type ContractingMethodTuple = typeof CONTRACTING_METHODS
-export type ContractingMethod = ContractingMethodTuple[number]
+export interface JsonValidatorVersion {
+  validate: (
+    jsonInput: File | NodeJS.ReadableStream,
+    options: JsonValidatorOptions
+  ) => Promise<ValidationResult>
+}
 
 export const STATE_CODES = [
   "AL",

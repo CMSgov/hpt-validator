@@ -9,7 +9,3 @@ export function loadFixtureStream(name: string): fs.ReadStream {
     highWaterMark: 1024,
   })
 }
-
-export function loadFixture(name: string): string {
-  return fs.readFileSync(path.join(__dirname, "fixtures", name), "utf-8")
-}
