@@ -1,5 +1,5 @@
 import { ErrorObject } from "ajv"
-import { ValidationError } from "../../types"
+import { ValidationError } from "../../types.js"
 import { JSONParser } from "@streamparser/json"
 
 export async function parseJson(

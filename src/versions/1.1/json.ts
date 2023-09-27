@@ -7,14 +7,14 @@ import {
   STATE_CODES,
   ValidationError,
   ValidationResult,
-} from "../../types"
+} from "../../types.js"
 import {
   BILLING_CODE_TYPES,
   CHARGE_BILLING_CLASSES,
   CHARGE_SETTINGS,
   DRUG_UNITS,
   CONTRACTING_METHODS,
-} from "./types"
+} from "./types.js"
 import { errorObjectToValidationError, parseJson } from "../common/json.js"
 
 const STANDARD_CHARGE_DEFINITIONS = {

@@ -1,4 +1,4 @@
-import { CsvValidationError, ValidationError } from "../../types"
+import { CsvValidationError, ValidationError } from "../../types.js"
 
 export function csvErrorToValidationError(
   err: CsvValidationError

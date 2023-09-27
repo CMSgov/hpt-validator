@@ -16,7 +16,7 @@ import {
   ContractingMethod,
   DRUG_UNITS,
   DrugUnit,
-} from "./types"
+} from "./types.js"
 
 export const HEADER_COLUMNS = [
   "hospital_name",
