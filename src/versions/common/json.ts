@@ -8,20 +8,26 @@ export async function parseJson(
   reject: (e: unknown) => void
 ): Promise<void> {
   if (typeof window !== "undefined" && jsonInput instanceof File) {
-    const fileSize = jsonInput.size
-    const chunkSize = 64 * 1024
-    let offset = 0
+    const stream = jsonInput.stream()
+    const reader = stream.getReader()
+    const textDecoder = new TextDecoder("utf-8")
 
-    while (offset < fileSize) {
-      try {
-        const chunk = await readFileChunk(jsonInput, offset, chunkSize)
-        parser.write(chunk)
-        offset += chunk.length
-      } catch (error) {
-        reject(error)
-      }
+    function readChunk() {
+      return reader
+        .read()
+        .then(({ done, value }) => {
+          if (done) {
+            parser.end()
+            return
+          }
+
+          parser.write(textDecoder.decode(value))
+          readChunk()
+        })
+        .catch(reject)
     }
-    parser.end()
+
+    readChunk()
   } else {
     const jsonStream = jsonInput as NodeJS.ReadableStream
     jsonStream.on("data", (data) => parser.write(data))
