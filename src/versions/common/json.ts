@@ -36,28 +36,6 @@ export async function parseJson(
   }
 }
 
-export function readFileChunk(
-  file: File,
-  start: number,
-  chunkSize: number
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = () => {
-      resolve(reader.result as string)
-    }
-
-    reader.onerror = (e) => {
-      reader.abort()
-      reject(e)
-    }
-
-    const blob = file.slice(start, start + chunkSize)
-    reader.readAsText(blob)
-  })
-}
-
 export function errorObjectToValidationError(
   error: ErrorObject
 ): ValidationError {
