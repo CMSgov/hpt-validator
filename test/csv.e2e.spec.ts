@@ -4,7 +4,8 @@ import { loadFixtureStream } from "./utils.js"
 
 test("sample-1", async (t) => {
   t.deepEqual(
-    (await validateCsv(loadFixtureStream("sample-1.csv"), "v1.1")).errors,
+    (await validateCsv(loadFixtureStream("1.1", "sample-1.csv"), "v1.1"))
+      .errors,
     [
       {
         field: "code | 1 | type",
@@ -32,7 +33,7 @@ test("sample-1", async (t) => {
 test("sample-1 maxErrors", async (t) => {
   t.deepEqual(
     (
-      await validateCsv(loadFixtureStream("sample-1.csv"), "v1.1", {
+      await validateCsv(loadFixtureStream("1.1", "sample-1.csv"), "v1.1", {
         maxErrors: 1,
       })
     ).errors,
@@ -50,7 +51,8 @@ test("sample-1 maxErrors", async (t) => {
 
 test("sample-2", async (t) => {
   t.deepEqual(
-    (await validateCsv(loadFixtureStream("sample-2.csv"), "v1.1")).errors,
+    (await validateCsv(loadFixtureStream("1.1", "sample-2.csv"), "v1.1"))
+      .errors,
     [
       {
         field: "billing_class",

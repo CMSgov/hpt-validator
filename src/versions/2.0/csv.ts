@@ -23,8 +23,9 @@ export const HEADER_COLUMNS = [
   "last_updated_on",
   "version",
   "hospital_location",
-  "financial_aid_policy",
+  "hospital_address",
   "license_number | state",
+  "attestation",
 ]
 
 export const BASE_COLUMNS = [

@@ -2,12 +2,14 @@ export const BILLING_CODE_TYPES = [
   "CPT",
   "HCPCS",
   "ICD",
+  "DRG",
   "MS-DRG",
   "R-DRG",
   "S-DRG",
   "APS-DRG",
   "AP-DRG",
   "APR-DRG",
+  "TRIS-DRG",
   "APC",
   "NDC",
   "HIPPS",
@@ -20,7 +22,7 @@ export const BILLING_CODE_TYPES = [
 type BillingCodeTypeTuple = typeof BILLING_CODE_TYPES
 export type BillingCodeType = BillingCodeTypeTuple[number]
 
-export const DRUG_UNITS = ["GR", "ME", "ML", "UN"]
+export const DRUG_UNITS = ["GR", "ML", "ME", "UN", "F2", "GM", "EA"]
 type DrugUnitTuple = typeof DRUG_UNITS
 export type DrugUnit = DrugUnitTuple[number]
 
