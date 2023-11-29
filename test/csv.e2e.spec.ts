@@ -69,3 +69,19 @@ test("sample-2", async (t) => {
     ]
   )
 })
+
+test("sample-tall v2.0", async (t) => {
+  t.deepEqual(
+    (await validateCsv(loadFixtureStream("2.0", "sample-tall.csv"), "v2.0"))
+      .errors,
+    []
+  )
+})
+
+test("sample-wide v2.0", async (t) => {
+  t.deepEqual(
+    (await validateCsv(loadFixtureStream("2.0", "sample-wide.csv"), "v2.0"))
+      .errors,
+    []
+  )
+})

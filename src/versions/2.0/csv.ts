@@ -8,15 +8,16 @@ import {
 import {
   BILLING_CODE_TYPES,
   BillingCodeType,
-  CHARGE_BILLING_CLASSES,
   CHARGE_SETTINGS,
   CONTRACTING_METHODS,
-  ChargeBillingClass,
   ChargeSetting,
   ContractingMethod,
   DRUG_UNITS,
   DrugUnit,
 } from "./types"
+
+const ATTESTATION =
+  "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated."
 
 export const HEADER_COLUMNS = [
   "hospital_name",
@@ -25,12 +26,11 @@ export const HEADER_COLUMNS = [
   "hospital_location",
   "hospital_address",
   "license_number | state",
-  "attestation",
+  ATTESTATION,
 ]
 
 export const BASE_COLUMNS = [
   "description",
-  "billing_class",
   "setting",
   "drug_unit_of_measurement",
   "drug_type_of_measurement",
@@ -48,8 +48,8 @@ export const TALL_COLUMNS = [
   "payer_name",
   "plan_name",
   "standard_charge | negotiated_dollar",
-  "standard_charge | negotiated_percent",
-  "standard_charge | contracting_method",
+  "standard_charge | negotiated_percentage",
+  "standard_charge | methodology",
   "additional_generic_notes",
 ]
 
@@ -65,6 +65,8 @@ const ERRORS = {
     `Header column "${column}" includes an invalid state code "${stateCode}"`,
   COLUMN_COUNT: (actual: number, expected: number) =>
     `Received ${actual} columns, less than the required number ${expected}`,
+  COLUMN_MISSING: (expected: string, format: string) =>
+    `Missing expected column "${expected} for ${format} format`,
   COLUMN_NAME: (actual: string, expected: string, format: string) =>
     `Column is "${actual}" and should be "${expected}" for ${format} format`,
   NOTES_COLUMN: (column: string) =>
@@ -98,6 +100,7 @@ export function validateHeaderColumns(columns: string[]): CsvValidationError[] {
   const rowIndex = 0
   const errors: CsvValidationError[] = []
   HEADER_COLUMNS.forEach((headerColumn, index) => {
+    // TODO: findIndex instead of iterating through
     if (index < columns.length) {
       if (headerColumn === "license_number | state") {
         errors.push(
@@ -160,11 +163,13 @@ export function validateHeaderRow(row: string[]): CsvValidationError[] {
     "hospital_name",
     "version",
     "hospital_location",
-    "financial_aid_policy",
+    "hospital_address",
     "last_updated_on",
+    ATTESTATION,
   ]
   const requiredColumns = ["last_updated_on"]
   checkBlankColumns.forEach((checkBlankColumn) => {
+    // TODO: Fix
     const headerIndex = HEADER_COLUMNS.indexOf(checkBlankColumn)
     if (!row[headerIndex].trim()) {
       errors.push(
@@ -221,41 +226,14 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
     ]
   }
 
-  totalColumns.forEach((column, index) => {
-    if (!sepColumnsEqual(columns[index], column)) {
+  totalColumns.forEach((column) => {
+    const columnIndex = columns.findIndex((c) => sepColumnsEqual(c, column))
+    if (columnIndex === -1) {
       errors.push(
-        csvErr(
-          rowIndex,
-          index,
-          column,
-          ERRORS.COLUMN_NAME(columns[index], column, schemaFormat)
-        )
+        csvErr(rowIndex, 0, column, ERRORS.COLUMN_MISSING(column, schemaFormat))
       )
     }
   })
-
-  if (!tall) {
-    errors.push(...validateWideColumns(columns))
-  }
-
-  return errors
-}
-
-/** @private */
-export function validateWideColumns(columns: string[]): CsvValidationError[] {
-  const rowIndex = 2
-  const errors: CsvValidationError[] = []
-
-  if (columns[columns.length - 1] !== "additional_generic_notes") {
-    errors.push(
-      csvErr(
-        rowIndex,
-        columns.length - 1,
-        "additional_generic_notes",
-        ERRORS.NOTES_COLUMN(columns[columns.length - 1])
-      )
-    )
-  }
 
   return errors
 }
@@ -272,7 +250,12 @@ export function validateRow(
   const requiredFields = ["description", "code | 1"]
   requiredFields.forEach((field) =>
     errors.push(
-      ...validateRequiredField(row, field, index, columns.indexOf(field))
+      ...validateRequiredField(
+        row,
+        field,
+        index,
+        columns.findIndex((c) => sepColumnsEqual(field, c))
+      )
     )
   )
 
@@ -306,23 +289,6 @@ export function validateRow(
           "code | 2 | type",
           row["code | 2 | type"],
           BILLING_CODE_TYPES as unknown as string[]
-        )
-      )
-    )
-  }
-
-  if (
-    !CHARGE_BILLING_CLASSES.includes(row["billing_class"] as ChargeBillingClass)
-  ) {
-    errors.push(
-      csvErr(
-        index,
-        columns.indexOf("billing_class"),
-        "billing_class",
-        ERRORS.ALLOWED_VALUES(
-          "billing_class",
-          row["billing_class"],
-          CHARGE_BILLING_CLASSES as unknown as string[]
         )
       )
     )
@@ -381,14 +347,19 @@ export function validateRow(
   ]
   chargeFields.forEach((field) =>
     errors.push(
-      ...validateRequiredFloatField(row, field, index, columns.indexOf(field))
+      ...validateRequiredFloatField(
+        row,
+        field,
+        index,
+        columns.findIndex((c) => sepColumnsEqual(field, c))
+      )
     )
   )
 
   if (wide) {
-    errors.push(...validateWideFields(row, index))
+    errors.push(...validateWideFields(row, index, columns))
   } else {
-    errors.push(...validateTallFields(row, index))
+    errors.push(...validateTallFields(row, index, columns))
   }
 
   return errors
@@ -397,20 +368,20 @@ export function validateRow(
 /** @private */
 export function validateWideFields(
   row: { [key: string]: string },
-  index: number
+  index: number,
+  columns: string[]
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   // TODO: Is checking that all are present covered in checking columns?
-  // TODO: Is order maintained on entries? likely not
-  Object.entries(row).forEach(([field, value], columnIndex) => {
+  Object.entries(row).forEach(([field, value]) => {
     if (
-      field.includes("contracting_method") &&
+      field.includes("methodology") &&
       !CONTRACTING_METHODS.includes(value as ContractingMethod)
     ) {
       errors.push(
         csvErr(
           index,
-          BASE_COLUMNS.length + columnIndex,
+          columns.findIndex((c) => sepColumnsEqual(field, c)),
           field,
           ERRORS.ALLOWED_VALUES(
             field,
@@ -428,7 +399,7 @@ export function validateWideFields(
         errors.push(
           csvErr(
             index,
-            BASE_COLUMNS.length + columnIndex,
+            columns.findIndex((c) => sepColumnsEqual(field, c)),
             field, // TODO: Might be different?
             ERRORS.CHARGE_ONE_REQUIRED(field)
           )
@@ -472,7 +443,8 @@ function validateLicenseStateColumn(
 /** @private */
 export function validateTallFields(
   row: { [key: string]: string },
-  index: number
+  index: number,
+  columns: string[]
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
 
@@ -483,22 +455,24 @@ export function validateTallFields(
         row,
         field,
         index,
-        BASE_COLUMNS.length + TALL_COLUMNS.indexOf(field)
+        columns.findIndex((c) => sepColumnsEqual(field, c))
       )
     )
   )
 
+  // TODO: Missing some here
+
   // TODO: Only one of these has to be filled, clarify error
   const floatFields = [
     "standard_charge | negotiated_dollar",
-    "standard_charge | negotiated_percent",
+    "standard_charge | negotiated_percentage",
   ]
   const floatErrors = floatFields.flatMap((field) =>
     validateRequiredFloatField(
       row,
       field,
       index,
-      BASE_COLUMNS.length + TALL_COLUMNS.indexOf(field),
+      columns.findIndex((c) => sepColumnsEqual(field, c)),
       ERRORS.CHARGE_PERCENT_REQUIRED_SUFFIX
     )
   )
@@ -510,18 +484,18 @@ export function validateTallFields(
 
   if (
     !CONTRACTING_METHODS.includes(
-      row["standard_charge | contracting_method"] as ContractingMethod
+      row["standard_charge | methodology"] as ContractingMethod
     )
   ) {
     errors.push(
       csvErr(
         index,
-        BASE_COLUMNS.indexOf("standard_charge | contracting_method"),
+        BASE_COLUMNS.indexOf("standard_charge | methodology"),
         // TODO: Change to constants
-        "standard_charge | contracting_method",
+        "standard_charge | methodology",
         ERRORS.ALLOWED_VALUES(
-          "standard_charge | contracting_method",
-          row["standard_charge | contracting_method"],
+          "standard_charge | methodology",
+          row["standard_charge | methodology"],
           CONTRACTING_METHODS as unknown as string[]
         )
       )
@@ -541,7 +515,6 @@ export function getBaseColumns(columns: string[]): string[] {
   return [
     "description",
     ...codeColumns,
-    "billing_class",
     "setting",
     "drug_unit_of_measurement",
     "drug_type_of_measurement",
@@ -557,8 +530,11 @@ export function getWideColumns(columns: string[]): string[] {
   const payersPlansColumns: string[] = payersPlans
     .flatMap((payerPlan) => [
       ["standard_charge", ...payerPlan],
-      ["standard_charge", ...payerPlan, "percent"],
-      ["standard_charge", ...payerPlan, "contracting_method"],
+      ["standard_charge", ...payerPlan, "negotiated_dollar"],
+      ["standard_charge", ...payerPlan, "negotiated_percentage"],
+      ["standard_charge", ...payerPlan, "negotiated_algorithm"],
+      ["standard_charge", ...payerPlan, "methodology"],
+      ["estimated_amount", ...payerPlan],
       ["additional_payer_notes", ...payerPlan],
     ])
     .map((c) => c.join(" | "))
@@ -577,10 +553,12 @@ export function getTallColumns(columns: string[]): string[] {
     "payer_name",
     "plan_name",
     "standard_charge | negotiated_dollar",
-    "standard_charge | negotiated_percent",
+    "standard_charge | negotiated_percentage",
+    "standard_charge | negotiated_algorithm",
     "standard_charge | min",
     "standard_charge | max",
-    "standard_charge | contracting_method",
+    "standard_charge | methodology",
+    "estimated_amount",
     "additional_generic_notes",
   ]
 }
@@ -592,7 +570,6 @@ function getPayersPlans(columns: string[]): string[][] {
     "max",
     "gross",
     "discounted_cash",
-    "contracting_method",
   ]
   return Array.from(
     new Set(
