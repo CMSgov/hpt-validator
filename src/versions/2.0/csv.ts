@@ -92,7 +92,7 @@ export function validateHeader(
   columns: string[],
   row: string[]
 ): CsvValidationError[] {
-  return [...validateHeaderColumns(columns), ...validateHeaderRow(row)]
+  return [...validateHeaderColumns(columns), ...validateHeaderRow(columns, row)]
 }
 
 /** @private */
@@ -145,7 +145,10 @@ export function validateHeaderColumns(columns: string[]): CsvValidationError[] {
 }
 
 /** @private */
-export function validateHeaderRow(row: string[]): CsvValidationError[] {
+export function validateHeaderRow(
+  columns: string[],
+  row: string[]
+): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   const rowIndex = 1
 
@@ -167,33 +170,32 @@ export function validateHeaderRow(row: string[]): CsvValidationError[] {
     "last_updated_on",
     ATTESTATION,
   ]
-  const requiredColumns = ["last_updated_on"]
   checkBlankColumns.forEach((checkBlankColumn) => {
-    // TODO: Fix
-    const headerIndex = HEADER_COLUMNS.indexOf(checkBlankColumn)
+    const headerIndex = columns.indexOf(checkBlankColumn)
     if (!row[headerIndex].trim()) {
       errors.push(
         csvErr(
           rowIndex,
           headerIndex,
           checkBlankColumn,
-          ERRORS.HEADER_COLUMN_BLANK(checkBlankColumn),
-          !requiredColumns.includes(row[headerIndex].trim())
+          ERRORS.HEADER_COLUMN_BLANK(checkBlankColumn)
         )
       )
     }
   })
 
-  const licenseStateIndex = HEADER_COLUMNS.findIndex((c) =>
+  const licenseStateIndex = columns.findIndex((c) =>
     c.includes("license_number")
   )
+  const licenseStateField = columns.find((c) => c.includes("license_number"))
+
   if (!row[licenseStateIndex].trim()) {
     errors.push(
       csvErr(
         rowIndex,
         licenseStateIndex,
-        HEADER_COLUMNS[licenseStateIndex],
-        ERRORS.HEADER_COLUMN_BLANK(HEADER_COLUMNS[licenseStateIndex]),
+        licenseStateField,
+        ERRORS.HEADER_COLUMN_BLANK(licenseStateField as string),
         true
       )
     )
@@ -247,7 +249,7 @@ export function validateRow(
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
 
-  const requiredFields = ["description", "code | 1"]
+  const requiredFields = ["description"]
   requiredFields.forEach((field) =>
     errors.push(
       ...validateRequiredField(
@@ -259,7 +261,10 @@ export function validateRow(
     )
   )
 
-  if (!BILLING_CODE_TYPES.includes(row["code | 1 | type"] as BillingCodeType)) {
+  if (
+    row["code | 1"] &&
+    !BILLING_CODE_TYPES.includes(row["code | 1 | type"] as BillingCodeType)
+  ) {
     errors.push(
       csvErr(
         index,
@@ -275,7 +280,6 @@ export function validateRow(
     )
   }
 
-  // TODO: Code itself is required, need to check all of those, not all checked here
   if (
     row["code | 2"] &&
     !BILLING_CODE_TYPES.includes(row["code | 2 | type"] as BillingCodeType)
@@ -345,16 +349,19 @@ export function validateRow(
     "standard_charge | min",
     "standard_charge | max",
   ]
-  chargeFields.forEach((field) =>
-    errors.push(
-      ...validateRequiredFloatField(
-        row,
-        field,
-        index,
-        columns.findIndex((c) => sepColumnsEqual(field, c))
+
+  chargeFields.forEach((field) => {
+    if ((row[field] || "").trim()) {
+      errors.push(
+        ...validateFloatField(
+          row,
+          field,
+          index,
+          columns.findIndex((c) => sepColumnsEqual(field, c))
+        )
       )
-    )
-  )
+    }
+  })
 
   if (wide) {
     errors.push(...validateWideFields(row, index, columns))
@@ -372,16 +379,17 @@ export function validateWideFields(
   columns: string[]
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
-  // TODO: Is checking that all are present covered in checking columns?
   Object.entries(row).forEach(([field, value]) => {
+    const colIndex = columns.findIndex((c) => sepColumnsEqual(field, c))
     if (
       field.includes("methodology") &&
+      value.trim() &&
       !CONTRACTING_METHODS.includes(value as ContractingMethod)
     ) {
       errors.push(
         csvErr(
           index,
-          columns.findIndex((c) => sepColumnsEqual(field, c)),
+          colIndex,
           field,
           ERRORS.ALLOWED_VALUES(
             field,
@@ -391,20 +399,7 @@ export function validateWideFields(
         )
       )
     } else if (field.includes("standard_charge")) {
-      if (
-        field.includes(" | percent") &&
-        !value.trim() &&
-        !row[field.replace(" | percent", "")].trim()
-      ) {
-        errors.push(
-          csvErr(
-            index,
-            columns.findIndex((c) => sepColumnsEqual(field, c)),
-            field, // TODO: Might be different?
-            ERRORS.CHARGE_ONE_REQUIRED(field)
-          )
-        )
-      }
+      // TODO: Implement any logic around requiring either dollar or percentage
     }
   })
   return errors
@@ -468,7 +463,7 @@ export function validateTallFields(
     "standard_charge | negotiated_percentage",
   ]
   const floatErrors = floatFields.flatMap((field) =>
-    validateRequiredFloatField(
+    validateFloatField(
       row,
       field,
       index,
@@ -600,7 +595,7 @@ function validateRequiredField(
   return []
 }
 
-function validateRequiredFloatField(
+function validateFloatField(
   row: { [key: string]: string },
   field: string,
   rowIndex: number,

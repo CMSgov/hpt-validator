@@ -248,7 +248,6 @@ export const METADATA_PROPERTIES = {
       type: "string",
     },
   },
-  // TODO: How deep does this get? Can it be parsed separate from standard charge info?
   modifier_information: {
     type: "array",
     items: {
@@ -316,7 +315,6 @@ export async function validateJson(
     parser.onValue = ({ value, key, stack }) => {
       if (stack.length > 2 || key === "standard_charge_information") return
       if (typeof key === "string") {
-        // TODO: How are modifiers handled
         metadata[key] = value
       } else {
         hasCharges = true
