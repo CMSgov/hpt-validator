@@ -89,48 +89,57 @@ export function validateHeader(
   columns: string[],
   row: string[]
 ): CsvValidationError[] {
-  return [...validateHeaderColumns(columns), ...validateHeaderRow(row)]
+  const { errors: headerErrors, columns: headerColumns } =
+    validateHeaderColumns(columns)
+  const rowErrors = validateHeaderRow(headerColumns, row)
+  return [...headerErrors, ...rowErrors]
 }
 
 /** @private */
-export function validateHeaderColumns(columns: string[]): CsvValidationError[] {
+export function validateHeaderColumns(columns: string[]): {
+  errors: CsvValidationError[]
+  columns: string[]
+} {
   const rowIndex = 0
-  const errors: CsvValidationError[] = []
-  HEADER_COLUMNS.forEach((headerColumn, index) => {
-    if (index < columns.length) {
-      if (headerColumn === "license_number | state") {
-        errors.push(
-          ...validateLicenseStateColumn(columns[index], rowIndex, index)
-        )
-        return
-      }
-      if (!sepColumnsEqual(columns[index], headerColumn)) {
-        errors.push(
-          csvErr(
-            rowIndex,
-            index,
-            headerColumn,
-            ERRORS.HEADER_COLUMN_NAME(columns[index], headerColumn),
-            false
-          )
-        )
-      }
-    } else {
-      errors.push(
-        csvErr(
+  const remainingColumns = [...HEADER_COLUMNS]
+  const discoveredColumns: string[] = []
+  columns.forEach((column, index) => {
+    const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) => {
+      if (requiredColumn === "license_number | state") {
+        // see if it works
+        const licenseStateErrors = validateLicenseStateColumn(
+          column,
           rowIndex,
-          index,
-          headerColumn,
-          ERRORS.HEADER_COLUMN_MISSING(headerColumn)
+          index
         )
-      )
+        return licenseStateErrors.length === 0
+      } else {
+        return sepColumnsEqual(column, requiredColumn)
+      }
+    })
+    if (matchingColumnIndex > -1) {
+      discoveredColumns[index] = column
+      remainingColumns.splice(matchingColumnIndex, 1)
     }
   })
-  return errors
+  return {
+    errors: remainingColumns.map((requiredColumn) => {
+      return csvErr(
+        rowIndex,
+        columns.length,
+        requiredColumn,
+        ERRORS.HEADER_COLUMN_MISSING(requiredColumn)
+      )
+    }),
+    columns: discoveredColumns,
+  }
 }
 
 /** @private */
-export function validateHeaderRow(row: string[]): CsvValidationError[] {
+export function validateHeaderRow(
+  headers: string[],
+  row: string[]
+): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   const rowIndex = 1
 

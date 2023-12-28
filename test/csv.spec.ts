@@ -21,36 +21,46 @@ const VALID_HEADER_COLUMNS = HEADER_COLUMNS.map((c) =>
 )
 
 test("validateHeaderColumns", (t) => {
-  t.is(validateHeaderColumns([]).length, HEADER_COLUMNS.length)
-  t.deepEqual(validateHeaderColumns(VALID_HEADER_COLUMNS), [])
-  t.is(
-    validateHeaderColumns(VALID_HEADER_COLUMNS.slice(0, -1))[0].column,
-    VALID_HEADER_COLUMNS.length - 1
-  )
+  const emptyResult = validateHeaderColumns([])
+  t.is(emptyResult.errors.length, HEADER_COLUMNS.length)
+  t.is(emptyResult.columns.length, 0)
+  const basicResult = validateHeaderColumns(VALID_HEADER_COLUMNS)
+  t.is(basicResult.errors.length, 0)
+  t.deepEqual(basicResult.columns, VALID_HEADER_COLUMNS)
+  const reversedColumns = [...VALID_HEADER_COLUMNS].reverse()
+  const reverseResult = validateHeaderColumns(reversedColumns)
+  t.is(reverseResult.errors.length, 0)
+  t.deepEqual(reverseResult.columns, reversedColumns)
+  const extraColumns = [
+    "extra1",
+    ...VALID_HEADER_COLUMNS.slice(0, 2),
+    "extra2",
+    ...VALID_HEADER_COLUMNS.slice(2),
+  ]
+  const extraResult = validateHeaderColumns(extraColumns)
+  t.is(extraResult.errors.length, 0)
+  t.deepEqual(extraResult.columns, [
+    undefined,
+    ...VALID_HEADER_COLUMNS.slice(0, 2),
+    undefined,
+    ...VALID_HEADER_COLUMNS.slice(2),
+  ])
 })
 
 test("validateHeaderRow", (t) => {
-  t.is(validateHeaderRow([]).length, 1)
+  t.is(validateHeaderRow([], []).length, 1)
   t.is(
-    validateHeaderRow([
-      "name",
-      "2022-01-01",
-      "1.0.0",
-      "Woodlawn",
-      "Aid",
-      "001 | MD",
-    ]).length,
+    validateHeaderRow(
+      [],
+      ["name", "2022-01-01", "1.0.0", "Woodlawn", "Aid", "001 | MD"]
+    ).length,
     0
   )
   t.assert(
-    validateHeaderRow([
-      "",
-      "2022-01-01",
-      "1.0.0",
-      "Woodlawn",
-      "Aid",
-      "001 | MD",
-    ])[0].message.includes("blank")
+    validateHeaderRow(
+      [],
+      ["", "2022-01-01", "1.0.0", "Woodlawn", "Aid", "001 | MD"]
+    )[0].message.includes("blank")
   )
 })
 
