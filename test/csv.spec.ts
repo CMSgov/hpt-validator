@@ -48,19 +48,49 @@ test("validateHeaderColumns", (t) => {
 })
 
 test("validateHeaderRow", (t) => {
-  t.is(validateHeaderRow([], []).length, 1)
   t.is(
-    validateHeaderRow(
-      [],
-      ["name", "2022-01-01", "1.0.0", "Woodlawn", "Aid", "001 | MD"]
-    ).length,
+    validateHeaderRow(VALID_HEADER_COLUMNS, []).length,
+    VALID_HEADER_COLUMNS.length
+  )
+  t.is(
+    validateHeaderRow(VALID_HEADER_COLUMNS, [
+      "name",
+      "2022-01-01",
+      "1.0.0",
+      "Woodlawn",
+      "Aid",
+      "001 | MD",
+    ]).length,
+    0
+  )
+  const extraColumns = [
+    undefined,
+    ...VALID_HEADER_COLUMNS.slice(0, 2),
+    undefined,
+    ...VALID_HEADER_COLUMNS.slice(2),
+  ]
+  t.is(
+    validateHeaderRow(extraColumns, [
+      "",
+      "name",
+      "2022-01-01",
+      "",
+      "1.0.0",
+      "Woodlawn",
+      "Aid",
+      "001 | MD",
+    ]).length,
     0
   )
   t.assert(
-    validateHeaderRow(
-      [],
-      ["", "2022-01-01", "1.0.0", "Woodlawn", "Aid", "001 | MD"]
-    )[0].message.includes("blank")
+    validateHeaderRow(VALID_HEADER_COLUMNS, [
+      "",
+      "2022-01-01",
+      "1.0.0",
+      "Woodlawn",
+      "Aid",
+      "001 | MD",
+    ])[0].message.includes("blank")
   )
 })
 

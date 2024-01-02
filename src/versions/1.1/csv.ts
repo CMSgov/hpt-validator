@@ -57,8 +57,6 @@ const ERRORS = {
     `Header column is "${actual}", it should be "${expected}"`,
   HEADER_COLUMN_MISSING: (column: string) =>
     `Header column should be "${column}", but it is not present`,
-  HEADER_COLUMN_COUNT: (actual: number) =>
-    `${HEADER_COLUMNS.length} header fields are required and only ${actual} are present`,
   HEADER_COLUMN_BLANK: (column: string) => `"${column}" is blank`,
   HEADER_STATE_CODE: (column: string, stateCode: string) =>
     `Header column "${column}" includes an invalid state code "${stateCode}"`,
@@ -98,7 +96,7 @@ export function validateHeader(
 /** @private */
 export function validateHeaderColumns(columns: string[]): {
   errors: CsvValidationError[]
-  columns: string[]
+  columns: (string | undefined)[]
 } {
   const rowIndex = 0
   const remainingColumns = [...HEADER_COLUMNS]
@@ -137,59 +135,21 @@ export function validateHeaderColumns(columns: string[]): {
 
 /** @private */
 export function validateHeaderRow(
-  headers: string[],
+  headers: (string | undefined)[],
   row: string[]
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   const rowIndex = 1
 
-  if (row.length < HEADER_COLUMNS.length) {
-    return [
-      {
-        row: rowIndex,
-        column: 0,
-        message: ERRORS.HEADER_COLUMN_COUNT(row.length),
-      },
-    ]
-  }
-
-  const checkBlankColumns = [
-    "hospital_name",
-    "version",
-    "hospital_location",
-    "financial_aid_policy",
-    "last_updated_on",
-  ]
-  const requiredColumns = ["last_updated_on"]
-  checkBlankColumns.forEach((checkBlankColumn) => {
-    const headerIndex = HEADER_COLUMNS.indexOf(checkBlankColumn)
-    if (!row[headerIndex].trim()) {
-      errors.push(
-        csvErr(
-          rowIndex,
-          headerIndex,
-          checkBlankColumn,
-          ERRORS.HEADER_COLUMN_BLANK(checkBlankColumn),
-          !requiredColumns.includes(row[headerIndex].trim())
+  headers.forEach((header, index) => {
+    if (header != null) {
+      if (!row[index]?.trim()) {
+        errors.push(
+          csvErr(rowIndex, index, header, ERRORS.HEADER_COLUMN_BLANK(header))
         )
-      )
+      }
     }
   })
-
-  const licenseStateIndex = HEADER_COLUMNS.findIndex((c) =>
-    c.includes("license_number")
-  )
-  if (!row[licenseStateIndex].trim()) {
-    errors.push(
-      csvErr(
-        rowIndex,
-        licenseStateIndex,
-        HEADER_COLUMNS[licenseStateIndex],
-        ERRORS.HEADER_COLUMN_BLANK(HEADER_COLUMNS[licenseStateIndex]),
-        true
-      )
-    )
-  }
 
   return errors
 }
