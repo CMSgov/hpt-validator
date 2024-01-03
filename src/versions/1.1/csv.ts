@@ -64,6 +64,8 @@ const ERRORS = {
     `Received ${actual} columns, less than the required number ${expected}`,
   COLUMN_NAME: (actual: string, expected: string, format: string) =>
     `Column is "${actual}" and should be "${expected}" for ${format} format`,
+  COLUMN_MISSING: (column: string, format: string) =>
+    `Column ${column} is missing, but it is required for ${format} format`,
   NOTES_COLUMN: (column: string) =>
     `The last column should be "additional_generic_notes", is "${column}"`,
   ALLOWED_VALUES: (column: string, value: string, allowedValues: string[]) =>
@@ -157,7 +159,6 @@ export function validateHeaderRow(
 /** @private */
 export function validateColumns(columns: string[]): CsvValidationError[] {
   const rowIndex = 2
-  const errors: CsvValidationError[] = []
 
   const tall = isTall(columns)
 
@@ -165,56 +166,25 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
   const wideColumns = getWideColumns(columns)
   const tallColumns = getTallColumns(columns)
   const schemaFormat = tall ? "tall" : "wide"
-  const totalColumns = baseColumns.concat(tall ? tallColumns : wideColumns)
+  const remainingColumns = baseColumns.concat(tall ? tallColumns : wideColumns)
 
-  if (columns.length < totalColumns.length) {
-    return [
-      csvErr(
-        rowIndex,
-        0,
-        undefined,
-        ERRORS.COLUMN_COUNT(columns.length, baseColumns.length)
-      ),
-    ]
-  }
-
-  totalColumns.forEach((column, index) => {
-    if (!sepColumnsEqual(columns[index], column)) {
-      errors.push(
-        csvErr(
-          rowIndex,
-          index,
-          column,
-          ERRORS.COLUMN_NAME(columns[index], column, schemaFormat)
-        )
-      )
+  columns.forEach((column) => {
+    const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) =>
+      sepColumnsEqual(column, requiredColumn)
+    )
+    if (matchingColumnIndex > -1) {
+      remainingColumns.splice(matchingColumnIndex, 1)
     }
   })
 
-  if (!tall) {
-    errors.push(...validateWideColumns(columns))
-  }
-
-  return errors
-}
-
-/** @private */
-export function validateWideColumns(columns: string[]): CsvValidationError[] {
-  const rowIndex = 2
-  const errors: CsvValidationError[] = []
-
-  if (columns[columns.length - 1] !== "additional_generic_notes") {
-    errors.push(
-      csvErr(
-        rowIndex,
-        columns.length - 1,
-        "additional_generic_notes",
-        ERRORS.NOTES_COLUMN(columns[columns.length - 1])
-      )
+  return remainingColumns.map((requiredColumn) => {
+    return csvErr(
+      rowIndex,
+      columns.length,
+      requiredColumn,
+      ERRORS.COLUMN_MISSING(requiredColumn, schemaFormat)
     )
-  }
-
-  return errors
+  })
 }
 
 /** @private */
@@ -524,6 +494,7 @@ export function getWideColumns(columns: string[]): string[] {
     ...payersPlansColumns.slice(0, 2),
     ...MIN_MAX_COLUMNS,
     ...payersPlansColumns.slice(2),
+    "additional_generic_notes",
   ]
 }
 

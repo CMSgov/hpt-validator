@@ -2,7 +2,6 @@ import test from "ava"
 import {
   validateHeaderColumns,
   validateHeaderRow,
-  validateWideColumns,
   validateColumns,
   validateTallFields,
   validateWideFields,
@@ -133,19 +132,68 @@ test("validateColumns tall", (t) => {
       ...getTallColumns([]),
       "test",
     ]).length,
-    9
+    1
   )
 })
 
-test("validateWideColumns", (t) => {
-  // Currently only checking for the order of additional_generic_notes
+test("validateColumns wide", (t) => {
+  const columns = [
+    ...BASE_COLUMNS,
+    ...MIN_MAX_COLUMNS,
+    "code | 1",
+    "code | 1 | type",
+    "standard_charge | Payer | Plan",
+    "standard_charge | Payer | Plan | percent",
+    "standard_charge | Payer | Plan | contracting_method",
+    "additional_payer_notes | Payer | Plan",
+    "additional_generic_notes",
+  ]
+  t.is(validateColumns(columns).length, 0)
+  // any order is fine
+  const reverseColumns = [...columns].reverse()
+  t.is(validateColumns(reverseColumns).length, 0)
+  // extra payer and plan are fine
   t.is(
-    validateWideColumns([
-      ...BASE_COLUMNS,
-      ...MIN_MAX_COLUMNS,
-      "standard_charge | Payer | Plan",
-      "additional_generic_notes",
-      "standard_charge | Payer | Plan | pct",
+    validateColumns([
+      ...columns,
+      "standard_charge | Payer | Plan 2",
+      "standard_charge | Payer | Plan 2 | percent",
+      "standard_charge | Payer | Plan 2 | contracting_method",
+      "additional_payer_notes | Payer | Plan 2",
+      "standard_charge | Another Payer | Plan",
+      "standard_charge | Another Payer | Plan | percent",
+      "standard_charge | Another Payer | Plan | contracting_method",
+      "additional_payer_notes | Another Payer | Plan",
+    ]).length,
+    0
+  )
+  // missing percent is an error
+  t.is(
+    validateColumns([
+      ...columns,
+      "standard_charge | Payer | Plan 2",
+      "standard_charge | Payer | Plan 2 | contracting_method",
+      "additional_payer_notes | Payer | Plan 2",
+    ]).length,
+    1
+  )
+  // missing contracting_method is an error
+  t.is(
+    validateColumns([
+      ...columns,
+      "standard_charge | Payer | Plan 2",
+      "standard_charge | Payer | Plan 2 | percent",
+      "additional_payer_notes | Payer | Plan 2",
+    ]).length,
+    1
+  )
+  // missing additional_payer_notes is an error
+  t.is(
+    validateColumns([
+      ...columns,
+      "standard_charge | Payer | Plan 2",
+      "standard_charge | Payer | Plan 2 | percent",
+      "standard_charge | Payer | Plan 2 | contracting_method",
     ]).length,
     1
   )
