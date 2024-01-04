@@ -147,7 +147,6 @@ export async function validateCsv(
     Papa.parse(input, {
       header: false,
       // chunkSize: 64 * 1024,
-      skipEmptyLines: "greedy",
       step: (row: Papa.ParseStepResult<string[]>, parser: Papa.Parser) => {
         try {
           handleParseStep(row, resolve, parser)
