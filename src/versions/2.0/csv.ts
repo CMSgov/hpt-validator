@@ -60,8 +60,6 @@ const ERRORS = {
   HEADER_COLUMN_BLANK: (column: string) => `"${column}" is blank`,
   HEADER_STATE_CODE: (column: string, stateCode: string) =>
     `Header column "${column}" includes an invalid state code "${stateCode}"`,
-  COLUMN_COUNT: (actual: number, expected: number) =>
-    `Received ${actual} columns, less than the required number ${expected}`,
   COLUMN_NAME: (actual: string, expected: string, format: string) =>
     `Column is "${actual}" and should be "${expected}" for ${format} format`,
   COLUMN_MISSING: (column: string, format: string) =>
