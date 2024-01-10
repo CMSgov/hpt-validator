@@ -14,7 +14,7 @@ import {
   ContractingMethod,
   DRUG_UNITS,
   DrugUnit,
-} from "./types"
+} from "./types.js"
 
 const ATTESTATION =
   "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated."
