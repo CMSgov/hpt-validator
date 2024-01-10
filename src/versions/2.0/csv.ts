@@ -58,17 +58,13 @@ const ERRORS = {
     `Header column is "${actual}", it should be "${expected}"`,
   HEADER_COLUMN_MISSING: (column: string) =>
     `Header column should be "${column}", but it is not present`,
-  HEADER_COLUMN_COUNT: (actual: number) =>
-    `${HEADER_COLUMNS.length} header fields are required and only ${actual} are present`,
   HEADER_COLUMN_BLANK: (column: string) => `"${column}" is blank`,
   HEADER_STATE_CODE: (column: string, stateCode: string) =>
     `Header column "${column}" includes an invalid state code "${stateCode}"`,
-  COLUMN_COUNT: (actual: number, expected: number) =>
-    `Received ${actual} columns, less than the required number ${expected}`,
-  COLUMN_MISSING: (expected: string, format: string) =>
-    `Missing expected column "${expected} for ${format} format`,
   COLUMN_NAME: (actual: string, expected: string, format: string) =>
     `Column is "${actual}" and should be "${expected}" for ${format} format`,
+  COLUMN_MISSING: (column: string, format: string) =>
+    `Column ${column} is missing, but it is required for ${format} format`,
   NOTES_COLUMN: (column: string) =>
     `The last column should be "additional_generic_notes", is "${column}"`,
   ALLOWED_VALUES: (column: string, value: string, allowedValues: string[]) =>
@@ -92,114 +88,69 @@ export function validateHeader(
   columns: string[],
   row: string[]
 ): CsvValidationError[] {
-  return [...validateHeaderColumns(columns), ...validateHeaderRow(columns, row)]
+  const { errors: headerErrors, columns: headerColumns } =
+    validateHeaderColumns(columns)
+  const rowErrors = validateHeaderRow(headerColumns, row)
+  return [...headerErrors, ...rowErrors]
 }
 
 /** @private */
-export function validateHeaderColumns(columns: string[]): CsvValidationError[] {
+export function validateHeaderColumns(columns: string[]): {
+  errors: CsvValidationError[]
+  columns: (string | undefined)[]
+} {
   const rowIndex = 0
-  const errors: CsvValidationError[] = []
-  HEADER_COLUMNS.forEach((headerColumn, index) => {
-    // TODO: findIndex instead of iterating through
-    if (index < columns.length) {
-      if (headerColumn === "license_number | state") {
-        errors.push(
-          ...validateLicenseStateColumn(columns[index], rowIndex, index)
-        )
-        return
-      }
-      if (!sepColumnsEqual(columns[index], headerColumn)) {
-        errors.push(
-          csvErr(
-            rowIndex,
-            index,
-            headerColumn,
-            ERRORS.HEADER_COLUMN_NAME(columns[index], headerColumn),
-            false
-          )
-        )
-      }
-      if (!sepColumnsEqual(columns[index], headerColumn)) {
-        errors.push(
-          csvErr(
-            rowIndex,
-            index,
-            headerColumn,
-            ERRORS.HEADER_COLUMN_NAME(columns[index], headerColumn),
-            false
-          )
-        )
-      }
-    } else {
-      errors.push(
-        csvErr(
+  const remainingColumns = [...HEADER_COLUMNS]
+  const discoveredColumns: string[] = []
+  columns.forEach((column, index) => {
+    const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) => {
+      if (requiredColumn === "license_number | state") {
+        // see if it works
+        const licenseStateErrors = validateLicenseStateColumn(
+          column,
           rowIndex,
-          index,
-          headerColumn,
-          ERRORS.HEADER_COLUMN_MISSING(headerColumn)
+          index
         )
-      )
+        return licenseStateErrors.length === 0
+      } else {
+        return sepColumnsEqual(column, requiredColumn)
+      }
+    })
+    if (matchingColumnIndex > -1) {
+      discoveredColumns[index] = column
+      remainingColumns.splice(matchingColumnIndex, 1)
     }
   })
-  return errors
+  return {
+    errors: remainingColumns.map((requiredColumn) => {
+      return csvErr(
+        rowIndex,
+        columns.length,
+        requiredColumn,
+        ERRORS.HEADER_COLUMN_MISSING(requiredColumn)
+      )
+    }),
+    columns: discoveredColumns,
+  }
 }
 
 /** @private */
 export function validateHeaderRow(
-  columns: string[],
+  headers: (string | undefined)[],
   row: string[]
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   const rowIndex = 1
 
-  if (row.length < HEADER_COLUMNS.length) {
-    return [
-      {
-        row: rowIndex,
-        column: 0,
-        message: ERRORS.HEADER_COLUMN_COUNT(row.length),
-      },
-    ]
-  }
-
-  const checkBlankColumns = [
-    "hospital_name",
-    "version",
-    "hospital_location",
-    "hospital_address",
-    "last_updated_on",
-    ATTESTATION,
-  ]
-  checkBlankColumns.forEach((checkBlankColumn) => {
-    const headerIndex = columns.indexOf(checkBlankColumn)
-    if (!row[headerIndex].trim()) {
-      errors.push(
-        csvErr(
-          rowIndex,
-          headerIndex,
-          checkBlankColumn,
-          ERRORS.HEADER_COLUMN_BLANK(checkBlankColumn)
+  headers.forEach((header, index) => {
+    if (header != null) {
+      if (!row[index]?.trim()) {
+        errors.push(
+          csvErr(rowIndex, index, header, ERRORS.HEADER_COLUMN_BLANK(header))
         )
-      )
+      }
     }
   })
-
-  const licenseStateIndex = columns.findIndex((c) =>
-    c.includes("license_number")
-  )
-  const licenseStateField = columns.find((c) => c.includes("license_number"))
-
-  if (!row[licenseStateIndex].trim()) {
-    errors.push(
-      csvErr(
-        rowIndex,
-        licenseStateIndex,
-        licenseStateField,
-        ERRORS.HEADER_COLUMN_BLANK(licenseStateField as string),
-        true
-      )
-    )
-  }
 
   return errors
 }
@@ -207,7 +158,6 @@ export function validateHeaderRow(
 /** @private */
 export function validateColumns(columns: string[]): CsvValidationError[] {
   const rowIndex = 2
-  const errors: CsvValidationError[] = []
 
   const tall = isTall(columns)
 
@@ -215,29 +165,25 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
   const wideColumns = getWideColumns(columns)
   const tallColumns = getTallColumns(columns)
   const schemaFormat = tall ? "tall" : "wide"
-  const totalColumns = baseColumns.concat(tall ? tallColumns : wideColumns)
+  const remainingColumns = baseColumns.concat(tall ? tallColumns : wideColumns)
 
-  if (columns.length < totalColumns.length) {
-    return [
-      csvErr(
-        rowIndex,
-        0,
-        undefined,
-        ERRORS.COLUMN_COUNT(columns.length, baseColumns.length)
-      ),
-    ]
-  }
-
-  totalColumns.forEach((column) => {
-    const columnIndex = columns.findIndex((c) => sepColumnsEqual(c, column))
-    if (columnIndex === -1) {
-      errors.push(
-        csvErr(rowIndex, 0, column, ERRORS.COLUMN_MISSING(column, schemaFormat))
-      )
+  columns.forEach((column) => {
+    const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) =>
+      sepColumnsEqual(column, requiredColumn)
+    )
+    if (matchingColumnIndex > -1) {
+      remainingColumns.splice(matchingColumnIndex, 1)
     }
   })
 
-  return errors
+  return remainingColumns.map((requiredColumn) => {
+    return csvErr(
+      rowIndex,
+      columns.length,
+      requiredColumn,
+      ERRORS.COLUMN_MISSING(requiredColumn, schemaFormat)
+    )
+  })
 }
 
 /** @private */
@@ -538,6 +484,7 @@ export function getWideColumns(columns: string[]): string[] {
     ...payersPlansColumns.slice(0, 2),
     ...MIN_MAX_COLUMNS,
     ...payersPlansColumns.slice(2),
+    "additional_generic_notes",
   ]
 }
 

@@ -2,7 +2,6 @@ import test from "ava"
 import {
   validateHeaderColumns,
   validateHeaderRow,
-  validateWideColumns,
   validateColumns,
   validateTallFields,
   validateWideFields,
@@ -21,18 +20,39 @@ const VALID_HEADER_COLUMNS = HEADER_COLUMNS.map((c) =>
 )
 
 test("validateHeaderColumns", (t) => {
-  t.is(validateHeaderColumns([]).length, HEADER_COLUMNS.length)
-  t.deepEqual(validateHeaderColumns(VALID_HEADER_COLUMNS), [])
-  t.is(
-    validateHeaderColumns(VALID_HEADER_COLUMNS.slice(0, -1))[0].column,
-    VALID_HEADER_COLUMNS.length - 1
-  )
+  const emptyResult = validateHeaderColumns([])
+  t.is(emptyResult.errors.length, HEADER_COLUMNS.length)
+  t.is(emptyResult.columns.length, 0)
+  const basicResult = validateHeaderColumns(VALID_HEADER_COLUMNS)
+  t.is(basicResult.errors.length, 0)
+  t.deepEqual(basicResult.columns, VALID_HEADER_COLUMNS)
+  const reversedColumns = [...VALID_HEADER_COLUMNS].reverse()
+  const reverseResult = validateHeaderColumns(reversedColumns)
+  t.is(reverseResult.errors.length, 0)
+  t.deepEqual(reverseResult.columns, reversedColumns)
+  const extraColumns = [
+    "extra1",
+    ...VALID_HEADER_COLUMNS.slice(0, 2),
+    "extra2",
+    ...VALID_HEADER_COLUMNS.slice(2),
+  ]
+  const extraResult = validateHeaderColumns(extraColumns)
+  t.is(extraResult.errors.length, 0)
+  t.deepEqual(extraResult.columns, [
+    undefined,
+    ...VALID_HEADER_COLUMNS.slice(0, 2),
+    undefined,
+    ...VALID_HEADER_COLUMNS.slice(2),
+  ])
 })
 
 test("validateHeaderRow", (t) => {
-  t.is(validateHeaderRow([]).length, 1)
   t.is(
-    validateHeaderRow([
+    validateHeaderRow(VALID_HEADER_COLUMNS, []).length,
+    VALID_HEADER_COLUMNS.length
+  )
+  t.is(
+    validateHeaderRow(VALID_HEADER_COLUMNS, [
       "name",
       "2022-01-01",
       "1.0.0",
@@ -42,8 +62,27 @@ test("validateHeaderRow", (t) => {
     ]).length,
     0
   )
+  const extraColumns = [
+    undefined,
+    ...VALID_HEADER_COLUMNS.slice(0, 2),
+    undefined,
+    ...VALID_HEADER_COLUMNS.slice(2),
+  ]
+  t.is(
+    validateHeaderRow(extraColumns, [
+      "",
+      "name",
+      "2022-01-01",
+      "",
+      "1.0.0",
+      "Woodlawn",
+      "Aid",
+      "001 | MD",
+    ]).length,
+    0
+  )
   t.assert(
-    validateHeaderRow([
+    validateHeaderRow(VALID_HEADER_COLUMNS, [
       "",
       "2022-01-01",
       "1.0.0",
@@ -93,19 +132,68 @@ test("validateColumns tall", (t) => {
       ...getTallColumns([]),
       "test",
     ]).length,
-    9
+    1
   )
 })
 
-test("validateWideColumns", (t) => {
-  // Currently only checking for the order of additional_generic_notes
+test("validateColumns wide", (t) => {
+  const columns = [
+    ...BASE_COLUMNS,
+    ...MIN_MAX_COLUMNS,
+    "code | 1",
+    "code | 1 | type",
+    "standard_charge | Payer | Plan",
+    "standard_charge | Payer | Plan | percent",
+    "standard_charge | Payer | Plan | contracting_method",
+    "additional_payer_notes | Payer | Plan",
+    "additional_generic_notes",
+  ]
+  t.is(validateColumns(columns).length, 0)
+  // any order is fine
+  const reverseColumns = [...columns].reverse()
+  t.is(validateColumns(reverseColumns).length, 0)
+  // extra payer and plan are fine
   t.is(
-    validateWideColumns([
-      ...BASE_COLUMNS,
-      ...MIN_MAX_COLUMNS,
-      "standard_charge | Payer | Plan",
-      "additional_generic_notes",
-      "standard_charge | Payer | Plan | pct",
+    validateColumns([
+      ...columns,
+      "standard_charge | Payer | Plan 2",
+      "standard_charge | Payer | Plan 2 | percent",
+      "standard_charge | Payer | Plan 2 | contracting_method",
+      "additional_payer_notes | Payer | Plan 2",
+      "standard_charge | Another Payer | Plan",
+      "standard_charge | Another Payer | Plan | percent",
+      "standard_charge | Another Payer | Plan | contracting_method",
+      "additional_payer_notes | Another Payer | Plan",
+    ]).length,
+    0
+  )
+  // missing percent is an error
+  t.is(
+    validateColumns([
+      ...columns,
+      "standard_charge | Payer | Plan 2",
+      "standard_charge | Payer | Plan 2 | contracting_method",
+      "additional_payer_notes | Payer | Plan 2",
+    ]).length,
+    1
+  )
+  // missing contracting_method is an error
+  t.is(
+    validateColumns([
+      ...columns,
+      "standard_charge | Payer | Plan 2",
+      "standard_charge | Payer | Plan 2 | percent",
+      "additional_payer_notes | Payer | Plan 2",
+    ]).length,
+    1
+  )
+  // missing additional_payer_notes is an error
+  t.is(
+    validateColumns([
+      ...columns,
+      "standard_charge | Payer | Plan 2",
+      "standard_charge | Payer | Plan 2 | percent",
+      "standard_charge | Payer | Plan 2 | contracting_method",
     ]).length,
     1
   )
