@@ -258,6 +258,7 @@ export const METADATA_PROPERTIES = {
 
 export const METADATA_REQUIRED = [
   "hospital_name",
+  "standard_charge_information",
   "last_updated_on",
   "hospital_location",
   "hospital_address",
