@@ -12,8 +12,8 @@ import {
   MIN_MAX_COLUMNS,
   HEADER_COLUMNS,
   TALL_COLUMNS,
-} from "../src/versions/1.1/csv.js"
-import { CONTRACTING_METHODS } from "../src/versions/1.1/types.js"
+} from "../../src/versions/1.1/csv.js"
+import { CONTRACTING_METHODS } from "../../src/versions/1.1/types.js"
 
 const VALID_HEADER_COLUMNS = HEADER_COLUMNS.map((c) =>
   c === "license_number | state" ? "license_number | MD" : c

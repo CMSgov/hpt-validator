@@ -4,6 +4,8 @@ import {
   sepColumnsEqual,
   parseSepField,
   getCodeCount,
+  isValidDate,
+  matchesString,
 } from "../common/csv.js"
 import {
   BILLING_CODE_TYPES,
@@ -18,38 +20,46 @@ import {
   DrugUnit,
 } from "./types"
 
+const ATTESTATION =
+  "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated."
+
+// headers must all be non-empty
 export const HEADER_COLUMNS = [
-  "hospital_name",
-  "last_updated_on",
-  "version",
-  "hospital_location",
-  "financial_aid_policy",
-  "license_number | state",
-]
+  "hospital_name", // string
+  "last_updated_on", // date
+  "version", // string - maybe one of the known versions?
+  "hospital_location", // string
+  "hospital_address", // string
+  "license_number | state", // string, check for valid postal code in header
+  ATTESTATION, // "true"
+] as const
 
 export const BASE_COLUMNS = [
-  "description",
-  "billing_class",
-  "setting",
-  "drug_unit_of_measurement",
-  "drug_type_of_measurement",
-  "modifiers",
-  "standard_charge | gross",
-  "standard_charge | discounted_cash",
+  "description", // non-empty string
+  "setting", // one of CHARGE_SETTINGS
+  "drug_unit_of_measurement", // positive number or blank
+  "drug_type_of_measurement", // one of DRUG_UNITS or blank
+  "modifiers", // string
+  "standard_charge | gross", // positive number or blank
+  "standard_charge | discounted_cash", // positive number or blank
+  "standard_charge | min", // positive number or blank
+  "standard_charge | max", // positive number or blank
+  "additional_generic_notes", // string
 ]
 
-export const MIN_MAX_COLUMNS = [
-  "standard_charge | min",
-  "standard_charge | max",
+export const OPTIONAL_COLUMNS = [
+  "financial_aid_policy", // string
+  "billing_class", // CHARGE_BILLING_CLASSES or blank
 ]
 
 export const TALL_COLUMNS = [
-  "payer_name",
-  "plan_name",
-  "standard_charge | negotiated_dollar",
-  "standard_charge | negotiated_percent",
-  "standard_charge | contracting_method",
-  "additional_generic_notes",
+  "payer_name", // string
+  "plan_name", // string
+  "standard_charge | negotiated_dollar", // positive number or blank
+  "standard_charge | negotiated_percentage", // positive number or blank
+  "standard_charge | negotiated_algorithm", // string
+  "standard_charge | methodology", // one of CONTRACTING_METHODS or blank
+  "estimated_amount", // positive number or blank
 ]
 
 const ERRORS = {
@@ -64,12 +74,12 @@ const ERRORS = {
     `Column is "${actual}" and should be "${expected}" for ${format} format`,
   COLUMN_MISSING: (column: string, format: string) =>
     `Column ${column} is missing, but it is required for ${format} format`,
-  NOTES_COLUMN: (column: string) =>
-    `The last column should be "additional_generic_notes", is "${column}"`,
   ALLOWED_VALUES: (column: string, value: string, allowedValues: string[]) =>
     `"${column}" value "${value}" is not one of the allowed values: ${allowedValues
       .map((t) => `"${t}"`)
       .join(", ")}`,
+  INVALID_DATE: (column: string, value: string) =>
+    `"${column}" value "${value}" is not a valid YYYY-MM-DD date`,
   INVALID_NUMBER: (column: string, value: string) =>
     `"${column}" value "${value}" is not a valid number`,
   POSITIVE_NUMBER: (column: string, suffix = ``) =>
@@ -143,9 +153,23 @@ export function validateHeaderRow(
 
   headers.forEach((header, index) => {
     if (header != null) {
-      if (!row[index]?.trim()) {
+      const value = row[index]?.trim() ?? ""
+      if (!value) {
         errors.push(
           csvErr(rowIndex, index, header, ERRORS.HEADER_COLUMN_BLANK(header))
+        )
+      } else if (header === "last_updated_on" && !isValidDate(value)) {
+        errors.push(
+          csvErr(rowIndex, index, header, ERRORS.INVALID_DATE(header, value))
+        )
+      } else if (header === ATTESTATION && !matchesString(value, "true")) {
+        errors.push(
+          csvErr(
+            rowIndex,
+            index,
+            "ATTESTATION",
+            ERRORS.ALLOWED_VALUES("ATTESTATION", value, ["true"])
+          )
         )
       }
     }
@@ -435,18 +459,18 @@ export function validateTallFields(
 
   if (
     !CONTRACTING_METHODS.includes(
-      row["standard_charge | contracting_method"] as ContractingMethod
+      row["standard_charge | methodology"] as ContractingMethod
     )
   ) {
     errors.push(
       csvErr(
         index,
-        BASE_COLUMNS.indexOf("standard_charge | contracting_method"),
+        BASE_COLUMNS.indexOf("standard_charge | methodology"),
         // TODO: Change to constants
-        "standard_charge | contracting_method",
+        "standard_charge | methodology",
         ERRORS.ALLOWED_VALUES(
-          "standard_charge | contracting_method",
-          row["standard_charge | contracting_method"],
+          "standard_charge | methodology",
+          row["standard_charge | methodology"],
           CONTRACTING_METHODS as unknown as string[]
         )
       )
@@ -463,17 +487,7 @@ export function getBaseColumns(columns: string[]): string[] {
     .fill(0)
     .flatMap((_, i) => [`code | ${i + 1}`, `code | ${i + 1} | type`])
 
-  return [
-    "description",
-    ...codeColumns,
-    "billing_class",
-    "setting",
-    "drug_unit_of_measurement",
-    "drug_type_of_measurement",
-    "modifiers",
-    "standard_charge | gross",
-    "standard_charge | discounted_cash",
-  ]
+  return [...BASE_COLUMNS, ...codeColumns]
 }
 
 /** @private */
@@ -488,27 +502,13 @@ export function getWideColumns(columns: string[]): string[] {
     ])
     .map((c) => c.join(" | "))
 
-  return [
-    ...payersPlansColumns.slice(0, 2),
-    ...MIN_MAX_COLUMNS,
-    ...payersPlansColumns.slice(2),
-    "additional_generic_notes",
-  ]
+  return payersPlansColumns
 }
 
 /** @private */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function getTallColumns(columns: string[]): string[] {
-  return [
-    "payer_name",
-    "plan_name",
-    "standard_charge | negotiated_dollar",
-    "standard_charge | negotiated_percent",
-    "standard_charge | min",
-    "standard_charge | max",
-    "standard_charge | contracting_method",
-    "additional_generic_notes",
-  ]
+  return TALL_COLUMNS
 }
 
 function getPayersPlans(columns: string[]): string[][] {
@@ -518,7 +518,6 @@ function getPayersPlans(columns: string[]): string[][] {
     "max",
     "gross",
     "discounted_cash",
-    "contracting_method",
   ]
   return Array.from(
     new Set(
