@@ -21,7 +21,9 @@ import {
 
 // CSV is being allowed to have case insensitive values...
 const STATE_CODES_CSV = STATE_CODES.map((state) => state.toLowerCase())
-const BILLING_CODE_TYPES_CSV = BILLING_CODE_TYPES.map((code) => code.toLowerCase())
+const BILLING_CODE_TYPES_CSV = BILLING_CODE_TYPES.map((code) =>
+  code.toLowerCase()
+)
 const DRUG_UNITS_CSV = DRUG_UNITS.map((unit) => unit.toLowerCase())
 
 export const HEADER_COLUMNS = [
@@ -207,7 +209,9 @@ export function validateRow(
     )
   )
 
-  if (!BILLING_CODE_TYPES_CSV.includes(row["code | 1 | type"] as BillingCodeType)) {
+  if (
+    !BILLING_CODE_TYPES_CSV.includes(row["code | 1 | type"] as BillingCodeType)
+  ) {
     errors.push(
       csvErr(
         index,
