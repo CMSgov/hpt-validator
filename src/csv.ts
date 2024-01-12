@@ -71,7 +71,7 @@ export async function validateCsv(
     resolve: (result: ValidationResult | PromiseLike<ValidationResult>) => void,
     parser: Papa.Parser
   ) => {
-    const row: string[] = step.data
+    const row: string[] = step.data.map((item) => item.toLowerCase())
     // Ignore empty lines
     if (rowIsEmpty(row)) {
       ++index
