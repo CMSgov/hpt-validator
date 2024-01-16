@@ -9,7 +9,7 @@ test("sample-1", async (t) => {
       {
         field: "code | 1 | type",
         message:
-          '"code | 1 | type" value "c" is not one of the allowed values: "cpt", "hcpcs", "icd", "ms-drg", "r-drg", "s-drg", "aps-drg", "ap-drg", "apr-drg", "apc", "ndc", "hipps", "local", "eapg", "cdt", "rc", "cdm"',
+          '"code | 1 | type" value "c" is not one of the allowed values: "CPT", "HCPCS", "ICD", "MS-DRG", "R-DRG", "S-DRG", "APS-DRG", "AP-DRG", "APR-DRG", "APC", "NDC", "HIPPS", "LOCAL", "EAPG", "CDT", "RC", "CDM"',
         path: "C4",
         warning: true,
       },
@@ -34,7 +34,7 @@ test("sample-1 maxErrors", async (t) => {
       {
         field: "code | 1 | type",
         message:
-          '"code | 1 | type" value "c" is not one of the allowed values: "cpt", "hcpcs", "icd", "ms-drg", "r-drg", "s-drg", "aps-drg", "ap-drg", "apr-drg", "apc", "ndc", "hipps", "local", "eapg", "cdt", "rc", "cdm"',
+          '"code | 1 | type" value "c" is not one of the allowed values: "CPT", "HCPCS", "ICD", "MS-DRG", "R-DRG", "S-DRG", "APS-DRG", "AP-DRG", "APR-DRG", "APC", "NDC", "HIPPS", "LOCAL", "EAPG", "CDT", "RC", "CDM"',
         path: "C4",
         warning: true,
       },

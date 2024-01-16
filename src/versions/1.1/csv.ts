@@ -19,13 +19,6 @@ import {
   DrugUnit,
 } from "./types.js"
 
-// CSV is being allowed to have case insensitive values...
-const STATE_CODES_CSV = STATE_CODES.map((state) => state.toLowerCase())
-const BILLING_CODE_TYPES_CSV = BILLING_CODE_TYPES.map((code) =>
-  code.toLowerCase()
-)
-const DRUG_UNITS_CSV = DRUG_UNITS.map((unit) => unit.toLowerCase())
-
 export const HEADER_COLUMNS = [
   "hospital_name",
   "last_updated_on",
@@ -210,7 +203,9 @@ export function validateRow(
   )
 
   if (
-    !BILLING_CODE_TYPES_CSV.includes(row["code | 1 | type"] as BillingCodeType)
+    !BILLING_CODE_TYPES.includes(
+      row["code | 1 | type"].toUpperCase() as BillingCodeType
+    )
   ) {
     errors.push(
       csvErr(
@@ -220,7 +215,7 @@ export function validateRow(
         ERRORS.ALLOWED_VALUES(
           "code | 1 | type",
           row["code | 1 | type"],
-          BILLING_CODE_TYPES_CSV as unknown as string[]
+          BILLING_CODE_TYPES as unknown as string[]
         ),
         true
       )
@@ -230,7 +225,9 @@ export function validateRow(
   // TODO: Code itself is required, need to check all of those, not all checked here
   if (
     row["code | 2"] &&
-    !BILLING_CODE_TYPES_CSV.includes(row["code | 2 | type"] as BillingCodeType)
+    !BILLING_CODE_TYPES.includes(
+      row["code | 2 | type"].toUpperCase() as BillingCodeType
+    )
   ) {
     errors.push(
       csvErr(
@@ -240,7 +237,7 @@ export function validateRow(
         ERRORS.ALLOWED_VALUES(
           "code | 2 | type",
           row["code | 2 | type"],
-          BILLING_CODE_TYPES_CSV as unknown as string[]
+          BILLING_CODE_TYPES as unknown as string[]
         )
       )
     )
@@ -292,7 +289,11 @@ export function validateRow(
         )
       )
     }
-    if (!DRUG_UNITS_CSV.includes(row["drug_type_of_measurement"] as DrugUnit)) {
+    if (
+      !DRUG_UNITS.includes(
+        row["drug_type_of_measurement"].toUpperCase() as DrugUnit
+      )
+    ) {
       errors.push(
         csvErr(
           index,
@@ -301,7 +302,7 @@ export function validateRow(
           ERRORS.ALLOWED_VALUES(
             "drug_type_of_measurement",
             row["drug_type_of_measurement"],
-            DRUG_UNITS_CSV as unknown as string[]
+            DRUG_UNITS as unknown as string[]
           )
         )
       )
@@ -389,7 +390,7 @@ function validateLicenseStateColumn(
     return [csvErr(rowIndex, columnIndex, LICENSE_STATE, invalidMessage)]
   }
   const stateCode = column.split("|").slice(-1)[0].trim()
-  if (!STATE_CODES_CSV.includes(stateCode as StateCode)) {
+  if (!STATE_CODES.includes(stateCode.toUpperCase() as StateCode)) {
     return [
       csvErr(
         rowIndex,
