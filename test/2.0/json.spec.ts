@@ -1,6 +1,6 @@
 import test from "ava"
-import { loadFixtureStream } from "./utils"
-import { validateJson } from "../src/json.js"
+import { loadFixtureStream } from "../utils.js"
+import { validateJson } from "../../src/json.js"
 
 test("validateJson", async (t) => {
   const result = await validateJson(loadFixtureStream("sample-1.json"), "v1.1")
