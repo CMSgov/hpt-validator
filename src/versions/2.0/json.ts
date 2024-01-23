@@ -21,7 +21,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
   code_information: {
     type: "object",
     properties: {
-      code: { type: "string" },
+      code: { type: "string", minLength: 1 },
       type: {
         enum: BILLING_CODE_TYPES,
         type: "string",
@@ -32,7 +32,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
   drug_information: {
     type: "object",
     properties: {
-      unit: { type: "string" },
+      unit: { type: "string", minLength: 1 },
       type: { enum: DRUG_UNITS, type: "string" },
     },
     required: ["unit", "type"],
@@ -65,7 +65,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
   standard_charge_information: {
     type: "object",
     properties: {
-      description: { type: "string" },
+      description: { type: "string", minLength: 1 },
       drug_information: { $ref: "#/definitions/drug_information" },
       code_information: {
         type: "array",
@@ -83,8 +83,8 @@ const STANDARD_CHARGE_DEFINITIONS = {
   payers_information: {
     type: "object",
     properties: {
-      payer_name: { type: "string" },
-      plan_name: { type: "string" },
+      payer_name: { type: "string", minLength: 1 },
+      plan_name: { type: "string", minLength: 1 },
       additional_payer_notes: { type: "string" },
       standard_charge_dollar: { type: "number", exclusiveMinimum: 0 },
       standard_charge_algorithm: { type: "string" },
@@ -102,7 +102,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
 const STANDARD_CHARGE_PROPERTIES = {
   type: "object",
   properties: {
-    description: { type: "string" },
+    description: { type: "string", minLength: 1 },
     drug_information: { $ref: "#/definitions/drug_information" },
     code_information: {
       type: "array",
@@ -134,7 +134,7 @@ export const METADATA_DEFINITIONS = {
         type: "string",
       },
     },
-    required: ["license_number", "state"],
+    required: ["state"],
   },
   affirmation: {
     type: "object",
@@ -154,9 +154,11 @@ export const METADATA_DEFINITIONS = {
     properties: {
       description: {
         type: "string",
+        minLength: 1,
       },
       code: {
         type: "string",
+        minLength: 1,
       },
       modifier_payer_information: {
         type: "array",
@@ -173,12 +175,15 @@ export const METADATA_DEFINITIONS = {
     properties: {
       payer_name: {
         type: "string",
+        minLength: 1,
       },
       plan_name: {
         type: "string",
+        minLength: 1,
       },
       description: {
         type: "string",
+        minLength: 1,
       },
     },
     required: ["payer_name", "plan_name", "description"],
@@ -186,21 +191,23 @@ export const METADATA_DEFINITIONS = {
 }
 
 export const METADATA_PROPERTIES = {
-  hospital_name: { type: "string" },
+  hospital_name: { type: "string", minLength: 1 },
   last_updated_on: { type: "string", format: "date" },
   license_information: {
     $ref: "#/definitions/license_information",
   },
-  version: { type: "string" },
+  version: { type: "string", minLength: 1 },
   hospital_address: {
     type: "array",
     items: { type: "string" },
+    minItems: 1,
   },
   hospital_location: {
     type: "array",
     items: {
       type: "string",
     },
+    minItems: 1,
   },
   affirmation: {
     $ref: "#/definitions/affirmation",
