@@ -12,10 +12,10 @@ import {
   BillingCodeType,
   CHARGE_BILLING_CLASSES,
   CHARGE_SETTINGS,
-  CONTRACTING_METHODS,
+  STANDARD_CHARGE_METHODOLOGY,
   ChargeBillingClass,
   ChargeSetting,
-  ContractingMethod,
+  StandardChargeMethod,
   DRUG_UNITS,
   DrugUnit,
 } from "./types"
@@ -354,7 +354,7 @@ export function validateWideFields(
   Object.entries(row).forEach(([field, value], columnIndex) => {
     if (
       field.includes("contracting_method") &&
-      !CONTRACTING_METHODS.includes(value as ContractingMethod)
+      !STANDARD_CHARGE_METHODOLOGY.includes(value as StandardChargeMethod)
     ) {
       errors.push(
         csvErr(
@@ -364,7 +364,7 @@ export function validateWideFields(
           ERRORS.ALLOWED_VALUES(
             field,
             value,
-            CONTRACTING_METHODS as unknown as string[]
+            STANDARD_CHARGE_METHODOLOGY as unknown as string[]
           )
         )
       )
@@ -458,8 +458,8 @@ export function validateTallFields(
   }
 
   if (
-    !CONTRACTING_METHODS.includes(
-      row["standard_charge | methodology"] as ContractingMethod
+    !STANDARD_CHARGE_METHODOLOGY.includes(
+      row["standard_charge | methodology"] as StandardChargeMethod
     )
   ) {
     errors.push(
@@ -471,7 +471,7 @@ export function validateTallFields(
         ERRORS.ALLOWED_VALUES(
           "standard_charge | methodology",
           row["standard_charge | methodology"],
-          CONTRACTING_METHODS as unknown as string[]
+          STANDARD_CHARGE_METHODOLOGY as unknown as string[]
         )
       )
     )
