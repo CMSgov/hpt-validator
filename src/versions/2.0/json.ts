@@ -37,7 +37,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
     },
     required: ["unit", "type"],
   },
-  
+
   standard_charges: {
     type: "object",
     properties: {
@@ -273,7 +273,8 @@ export async function validateJson(
       if (stack.length > 2 || key === "standard_charge_information") return
       if (typeof key === "string") {
         metadata[key] = value
-      } else { // is this where I need to put another check for the modifier information?
+      } else {
+        // is this where I need to put another check for the modifier information?
         hasCharges = true
         if (!validator.validate(STANDARD_CHARGE_SCHEMA, value)) {
           valid = false

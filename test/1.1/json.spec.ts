@@ -3,7 +3,10 @@ import { loadFixtureStream } from "../utils.js"
 import { validateJson } from "../../src/json.js"
 
 test("validateJson", async (t) => {
-  const result = await validateJson(loadFixtureStream("/1.1/sample-1.json"), "v1.1")
+  const result = await validateJson(
+    loadFixtureStream("/1.1/sample-1.json"),
+    "v1.1"
+  )
   t.is(result.valid, false)
   t.is(result.errors.length, 1)
 })
