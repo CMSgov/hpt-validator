@@ -38,12 +38,12 @@ export const CHARGE_BILLING_CLASSES = [
 type ChargeBillingClassTuple = typeof CHARGE_BILLING_CLASSES
 export type ChargeBillingClass = ChargeBillingClassTuple[number]
 
-export const CONTRACTING_METHODS = [
+export const STANDARD_CHARGE_METHODOLOGY = [
   "case rate",
   "fee schedule",
   "percent of total billed charges",
   "per diem",
   "other",
 ] as const
-type ContractingMethodTuple = typeof CONTRACTING_METHODS
-export type ContractingMethod = ContractingMethodTuple[number]
+type StandardChargeTuple = typeof STANDARD_CHARGE_METHODOLOGY
+export type StandardChargeMethod = StandardChargeTuple[number]

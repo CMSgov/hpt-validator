@@ -13,15 +13,15 @@ import {
   CHARGE_BILLING_CLASSES,
   CHARGE_SETTINGS,
   DRUG_UNITS,
-  CONTRACTING_METHODS,
+  STANDARD_CHARGE_METHODOLOGY,
 } from "./types.js"
 import { errorObjectToValidationError, parseJson } from "../common/json.js"
 
 const STANDARD_CHARGE_DEFINITIONS = {
-  billing_code_information: {
+  code_information: {
     type: "object",
     properties: {
-      code: { type: "string" },
+      code: { type: "string", minLength: 1 },
       type: {
         enum: BILLING_CODE_TYPES,
         type: "string",
@@ -32,11 +32,12 @@ const STANDARD_CHARGE_DEFINITIONS = {
   drug_information: {
     type: "object",
     properties: {
-      unit: { type: "string" },
+      unit: { type: "string", minLength: 1 },
       type: { enum: DRUG_UNITS, type: "string" },
     },
     required: ["unit", "type"],
   },
+
   standard_charges: {
     type: "object",
     properties: {
@@ -47,11 +48,6 @@ const STANDARD_CHARGE_DEFINITIONS = {
       setting: {
         enum: CHARGE_SETTINGS,
         type: "string",
-      },
-      modifiers: {
-        type: "array",
-        items: { type: "string" },
-        uniqueItems: true,
       },
       payers_information: {
         type: "array",
@@ -69,11 +65,11 @@ const STANDARD_CHARGE_DEFINITIONS = {
   standard_charge_information: {
     type: "object",
     properties: {
-      description: { type: "string" },
+      description: { type: "string", minLength: 1 },
       drug_information: { $ref: "#/definitions/drug_information" },
-      billing_code_information: {
+      code_information: {
         type: "array",
-        items: { $ref: "#/definitions/billing_code_information" },
+        items: { $ref: "#/definitions/code_information" },
         minItems: 1,
       },
       standard_charges: {
@@ -82,40 +78,35 @@ const STANDARD_CHARGE_DEFINITIONS = {
         minItems: 1,
       },
     },
-    required: ["description", "billing_code_information", "standard_charges"],
+    required: ["description", "code_information", "standard_charges"],
   },
   payers_information: {
     type: "object",
     properties: {
-      payer_name: { type: "string" },
-      plan_name: { type: "string" },
+      payer_name: { type: "string", minLength: 1 },
+      plan_name: { type: "string", minLength: 1 },
       additional_payer_notes: { type: "string" },
-      standard_charge: { type: "number", exclusiveMinimum: 0 },
-      standard_charge_percent: { type: "number", exclusiveMinimum: 0 },
-      contracting_method: {
-        enum: CONTRACTING_METHODS,
+      standard_charge_dollar: { type: "number", exclusiveMinimum: 0 },
+      standard_charge_algorithm: { type: "string" },
+      standard_charge_percentage: { type: "number", exclusiveMinimum: 0 },
+      estimated_amount: { type: "number", exclusiveMinimum: 0 },
+      methodology: {
+        enum: STANDARD_CHARGE_METHODOLOGY,
         type: "string",
       },
     },
-    required: ["payer_name", "plan_name", "contracting_method"],
-    if: {
-      properties: {
-        contracting_method: { const: "percent of total billed charges" },
-      },
-    },
-    then: { required: ["standard_charge_percent"] },
-    else: { required: ["standard_charge"] },
+    required: ["payer_name", "plan_name", "methodology"],
   },
 }
 
 const STANDARD_CHARGE_PROPERTIES = {
   type: "object",
   properties: {
-    description: { type: "string" },
+    description: { type: "string", minLength: 1 },
     drug_information: { $ref: "#/definitions/drug_information" },
-    billing_code_information: {
+    code_information: {
       type: "array",
-      items: { $ref: "#/definitions/billing_code_information" },
+      items: { $ref: "#/definitions/code_information" },
       minItems: 1,
     },
     standard_charges: {
@@ -124,7 +115,7 @@ const STANDARD_CHARGE_PROPERTIES = {
       minItems: 1,
     },
   },
-  required: ["description", "billing_code_information", "standard_charges"],
+  required: ["description", "code_information", "standard_charges"],
 }
 
 export const STANDARD_CHARGE_SCHEMA = {
@@ -143,24 +134,101 @@ export const METADATA_DEFINITIONS = {
         type: "string",
       },
     },
-    required: ["license_number", "state"],
+    required: ["state"],
+  },
+  affirmation: {
+    type: "object",
+    properties: {
+      affirmation: {
+        const:
+          "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.",
+      },
+      confirm_affirmation: {
+        type: "boolean",
+      },
+    },
+    required: ["affirmation", "confirm_affirmation"],
+  },
+  modifier_information: {
+    type: "object",
+    properties: {
+      description: {
+        type: "string",
+        minLength: 1,
+      },
+      code: {
+        type: "string",
+        minLength: 1,
+      },
+      modifier_payer_information: {
+        type: "array",
+        items: {
+          $ref: "#/definitions/modifier_payer_information",
+        },
+        minItems: 1,
+      },
+    },
+    required: ["description", "modifier_payer_information", "code"],
+  },
+  modifier_payer_information: {
+    type: "object",
+    properties: {
+      payer_name: {
+        type: "string",
+        minLength: 1,
+      },
+      plan_name: {
+        type: "string",
+        minLength: 1,
+      },
+      description: {
+        type: "string",
+        minLength: 1,
+      },
+    },
+    required: ["payer_name", "plan_name", "description"],
   },
 }
 
 export const METADATA_PROPERTIES = {
-  hospital_name: { type: "string" },
+  hospital_name: { type: "string", minLength: 1 },
   last_updated_on: { type: "string", format: "date" },
   license_information: {
+    $ref: "#/definitions/license_information",
+  },
+  version: { type: "string", minLength: 1 },
+  hospital_address: {
     type: "array",
-    items: { $ref: "#/definitions/license_information" },
+    items: { type: "string" },
     minItems: 1,
   },
-  version: { type: "string" },
-  hospital_location: { type: "string" },
-  financial_aid_policy: { type: "string" },
+  hospital_location: {
+    type: "array",
+    items: {
+      type: "string",
+    },
+    minItems: 1,
+  },
+  affirmation: {
+    $ref: "#/definitions/affirmation",
+  },
+  modifier_information: {
+    type: "array",
+    items: {
+      $ref: "#/definitions/modifier_information",
+    },
+  },
 }
 
-export const METADATA_REQUIRED = ["hospital_name", "last_updated_on", "version"]
+export const METADATA_REQUIRED = [
+  "hospital_name",
+  "last_updated_on",
+  "hospital_location",
+  "hospital_address",
+  "license_information",
+  "version",
+  "affirmation",
+]
 
 export const METADATA_SCHEMA = {
   $schema: "http://json-schema.org/draft-07/schema#",
@@ -213,6 +281,7 @@ export async function validateJson(
       if (typeof key === "string") {
         metadata[key] = value
       } else {
+        // is this where I need to put another check for the modifier information?
         hasCharges = true
         if (!validator.validate(STANDARD_CHARGE_SCHEMA, value)) {
           valid = false
