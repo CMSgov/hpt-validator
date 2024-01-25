@@ -77,7 +77,11 @@ export function getCodeCount(columns: string[]): number {
           .map((v) => v.trim())
           .filter((v) => !!v)
       )
-      .filter((c) => c[0] === "code" && c.length === 2)
+      .filter(
+        (c) =>
+          c[0] === "code" &&
+          (c.length === 2 || (c.length === 3 && c[2] === "type"))
+      )
       .map((c) => +c[1].replace(/\D/g, ""))
       .filter((v) => !isNaN(v))
   )

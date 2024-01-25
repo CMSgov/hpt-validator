@@ -9,15 +9,11 @@ import {
 } from "../common/csv.js"
 import {
   BILLING_CODE_TYPES,
-  BillingCodeType,
   CHARGE_BILLING_CLASSES,
   CHARGE_SETTINGS,
   STANDARD_CHARGE_METHODOLOGY,
-  ChargeBillingClass,
-  ChargeSetting,
   StandardChargeMethod,
   DRUG_UNITS,
-  DrugUnit,
 } from "./types"
 
 const ATTESTATION =
@@ -70,23 +66,32 @@ const ERRORS = {
   HEADER_COLUMN_BLANK: (column: string) => `"${column}" is blank`,
   HEADER_STATE_CODE: (column: string, stateCode: string) =>
     `Header column "${column}" includes an invalid state code "${stateCode}"`,
+  DUPLICATE_HEADER_COLUMN: (column: string) =>
+    `Column ${column} duplicated in header`,
   COLUMN_NAME: (actual: string, expected: string, format: string) =>
     `Column is "${actual}" and should be "${expected}" for ${format} format`,
   COLUMN_MISSING: (column: string, format: string) =>
     `Column ${column} is missing, but it is required for ${format} format`,
-  ALLOWED_VALUES: (column: string, value: string, allowedValues: string[]) =>
+  ALLOWED_VALUES: (
+    column: string,
+    value: string,
+    allowedValues: readonly string[]
+  ) =>
     `"${column}" value "${value}" is not one of the allowed values: ${allowedValues
       .map((t) => `"${t}"`)
       .join(", ")}`,
   INVALID_DATE: (column: string, value: string) =>
     `"${column}" value "${value}" is not a valid YYYY-MM-DD date`,
   INVALID_NUMBER: (column: string, value: string) =>
-    `"${column}" value "${value}" is not a valid number`,
+    `"${column}" value "${value}" is not a valid positive number`,
   POSITIVE_NUMBER: (column: string, suffix = ``) =>
     `"${column}" is required to be a positive number${suffix}`,
   CHARGE_ONE_REQUIRED: (column: string) => {
     const fieldName = column.replace(" | percent", "")
     return `One of "${fieldName}" or "${fieldName} | percent" is required`
+  },
+  CODE_ONE_REQUIRED: () => {
+    return "At least one code and code type must be specified"
   },
   REQUIRED: (column: string, suffix = ``) => `"${column}" is required${suffix}`,
   CHARGE_PERCENT_REQUIRED_SUFFIX: " (one of charge or percent is required)",
@@ -111,6 +116,7 @@ export function validateHeaderColumns(columns: string[]): {
   const rowIndex = 0
   const remainingColumns = [...HEADER_COLUMNS]
   const discoveredColumns: string[] = []
+  const duplicateErrors: CsvValidationError[] = []
   columns.forEach((column, index) => {
     const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) => {
       if (requiredColumn === "license_number | state") {
@@ -128,17 +134,35 @@ export function validateHeaderColumns(columns: string[]): {
     if (matchingColumnIndex > -1) {
       discoveredColumns[index] = column
       remainingColumns.splice(matchingColumnIndex, 1)
+    } else {
+      // if we already found this column, it's a duplicate
+      const existingColumn = discoveredColumns.find((discovered) => {
+        return discovered != null && sepColumnsEqual(discovered, column)
+      })
+      if (existingColumn) {
+        duplicateErrors.push(
+          csvErr(
+            rowIndex,
+            index,
+            "column",
+            ERRORS.DUPLICATE_HEADER_COLUMN(column)
+          )
+        )
+      }
     }
   })
   return {
-    errors: remainingColumns.map((requiredColumn) => {
-      return csvErr(
-        rowIndex,
-        columns.length,
-        requiredColumn,
-        ERRORS.HEADER_COLUMN_MISSING(requiredColumn)
-      )
-    }),
+    errors: [
+      ...duplicateErrors,
+      ...remainingColumns.map((requiredColumn) => {
+        return csvErr(
+          rowIndex,
+          columns.length,
+          requiredColumn,
+          ERRORS.HEADER_COLUMN_MISSING(requiredColumn)
+        )
+      }),
+    ],
     columns: discoveredColumns,
   }
 }
@@ -183,12 +207,11 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
   const rowIndex = 2
 
   const tall = isTall(columns)
-
   const baseColumns = getBaseColumns(columns)
-  const wideColumns = getWideColumns(columns)
-  const tallColumns = getTallColumns(columns)
   const schemaFormat = tall ? "tall" : "wide"
-  const remainingColumns = baseColumns.concat(tall ? tallColumns : wideColumns)
+  const remainingColumns = baseColumns.concat(
+    tall ? getTallColumns() : getWideColumns(columns)
+  )
 
   columns.forEach((column) => {
     const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) =>
@@ -218,108 +241,117 @@ export function validateRow(
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
 
-  const requiredFields = ["description", "code | 1"]
+  const requiredFields = ["description"]
   requiredFields.forEach((field) =>
     errors.push(
       ...validateRequiredField(row, field, index, columns.indexOf(field))
     )
   )
 
-  if (!BILLING_CODE_TYPES.includes(row["code | 1 | type"] as BillingCodeType)) {
-    errors.push(
-      csvErr(
-        index,
-        columns.indexOf("code | 1 | type"),
-        "code | 1 | type",
-        ERRORS.ALLOWED_VALUES(
-          "code | 1 | type",
-          row["code | 1 | type"],
-          BILLING_CODE_TYPES as unknown as string[]
-        ),
-        true
-      )
-    )
-  }
-
-  // TODO: Code itself is required, need to check all of those, not all checked here
-  if (
-    row["code | 2"] &&
-    !BILLING_CODE_TYPES.includes(row["code | 2 | type"] as BillingCodeType)
-  ) {
-    errors.push(
-      csvErr(
-        index,
-        columns.indexOf("code | 2 | type"),
-        "code | 2 | type",
-        ERRORS.ALLOWED_VALUES(
-          "code | 2 | type",
-          row["code | 2 | type"],
-          BILLING_CODE_TYPES as unknown as string[]
-        )
-      )
-    )
-  }
-
-  if (
-    !CHARGE_BILLING_CLASSES.includes(row["billing_class"] as ChargeBillingClass)
-  ) {
-    errors.push(
-      csvErr(
-        index,
-        columns.indexOf("billing_class"),
-        "billing_class",
-        ERRORS.ALLOWED_VALUES(
-          "billing_class",
-          row["billing_class"],
-          CHARGE_BILLING_CLASSES as unknown as string[]
-        )
-      )
-    )
-  }
-
-  if (!CHARGE_SETTINGS.includes(row["setting"] as ChargeSetting)) {
-    errors.push(
-      csvErr(
-        index,
-        columns.indexOf("setting"),
-        "setting",
-        ERRORS.ALLOWED_VALUES(
-          "setting",
-          row["setting"],
-          CHARGE_SETTINGS as unknown as string[]
-        )
-      )
-    )
-  }
-
-  if (row["drug_unit_of_measurement"]) {
-    if (!/\d+(\.\d+)?/g.test(row["drug_unit_of_measurement"])) {
-      errors.push(
-        csvErr(
-          index,
-          columns.indexOf("drug_unit_of_measurement"),
-          "drug_unit_of_measurement",
-          ERRORS.INVALID_NUMBER(
-            "drug_unit_of_measurement",
-            row["drug_unit_of_measurement"]
+  // check code and code-type columns
+  const codeColumns = columns.filter((column) => {
+    return /^code \| \d+$/.test(column)
+  })
+  let foundCode = false
+  codeColumns.forEach((codeColumn) => {
+    const codeTypeColumn = `${codeColumn} | type`
+    // if the type column is missing, we already created an error when checking the columns
+    // if both columns exist, we can check the values
+    if (row[codeTypeColumn] != null) {
+      const trimCode = row[codeColumn].trim()
+      const trimType = row[codeTypeColumn].trim()
+      if (trimCode.length === 0 && trimType.length > 0) {
+        foundCode = true
+        errors.push(
+          csvErr(
+            index,
+            columns.indexOf(codeColumn),
+            codeColumn,
+            ERRORS.REQUIRED(codeColumn)
           )
+        )
+      } else if (trimCode.length > 0 && trimType.length === 0) {
+        foundCode = true
+        errors.push(
+          csvErr(
+            index,
+            columns.indexOf(codeTypeColumn),
+            codeTypeColumn,
+            ERRORS.REQUIRED(codeTypeColumn)
+          )
+        )
+      } else if (trimCode.length > 0 && trimType.length > 0) {
+        foundCode = true
+      }
+      errors.push(
+        ...validateOptionalEnumField(
+          row,
+          codeTypeColumn,
+          index,
+          columns.indexOf(codeTypeColumn),
+          BILLING_CODE_TYPES
         )
       )
     }
-    if (!DRUG_UNITS.includes(row["drug_type_of_measurement"] as DrugUnit)) {
-      errors.push(
-        csvErr(
-          index,
-          columns.indexOf("drug_type_of_measurement"),
-          "drug_type_of_measurement",
-          ERRORS.ALLOWED_VALUES(
-            "drug_type_of_measurement",
-            row["drug_type_of_measurement"],
-            DRUG_UNITS as unknown as string[]
-          )
-        )
+  })
+  if (!foundCode) {
+    errors.push(
+      csvErr(index, columns.length, "code | 1", ERRORS.CODE_ONE_REQUIRED())
+    )
+  }
+
+  errors.push(
+    ...validateOptionalEnumField(
+      row,
+      "billing_class",
+      index,
+      columns.indexOf("billing_class"),
+      CHARGE_BILLING_CLASSES
+    )
+  )
+
+  errors.push(
+    ...validateRequiredEnumField(
+      row,
+      "setting",
+      index,
+      columns.indexOf("setting"),
+      CHARGE_SETTINGS
+    )
+  )
+
+  if ((row["drug_unit_of_measurement"] || "").trim()) {
+    errors.push(
+      ...validateOptionalFloatField(
+        row,
+        "drug_unit_of_measurement",
+        index,
+        columns.indexOf("drug_unit_of_measurement")
       )
-    }
+    )
+    errors.push(
+      ...validateRequiredEnumField(
+        row,
+        "drug_type_of_measurement",
+        index,
+        columns.indexOf("drug_type_of_measurement"),
+        DRUG_UNITS
+      )
+    )
+    // if (!DRUG_UNITS.includes(row["drug_type_of_measurement"] as DrugUnit)) {
+    //   errors.push(
+    //     csvErr(
+    //       index,
+    //       columns.indexOf("drug_type_of_measurement"),
+    //       "drug_type_of_measurement",
+    //       ERRORS.ALLOWED_VALUES(
+    //         "drug_type_of_measurement",
+    //         row["drug_type_of_measurement"],
+    //         DRUG_UNITS as unknown as string[]
+    //       )
+    //     )
+    //   )
+    // }
   }
 
   const chargeFields = [
@@ -330,14 +362,14 @@ export function validateRow(
   ]
   chargeFields.forEach((field) =>
     errors.push(
-      ...validateRequiredFloatField(row, field, index, columns.indexOf(field))
+      ...validateOptionalFloatField(row, field, index, columns.indexOf(field))
     )
   )
 
   if (wide) {
     errors.push(...validateWideFields(row, index))
   } else {
-    errors.push(...validateTallFields(row, index))
+    errors.push(...validateTallFields(row, index, columns))
   }
 
   return errors
@@ -421,7 +453,8 @@ function validateLicenseStateColumn(
 /** @private */
 export function validateTallFields(
   row: { [key: string]: string },
-  index: number
+  index: number,
+  columns: string[]
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
 
@@ -457,25 +490,15 @@ export function validateTallFields(
     errors.push(...floatErrors)
   }
 
-  if (
-    !STANDARD_CHARGE_METHODOLOGY.includes(
-      row["standard_charge | methodology"] as StandardChargeMethod
+  errors.push(
+    ...validateRequiredEnumField(
+      row,
+      "standard_charge | methodology",
+      index,
+      columns.indexOf("standard_charge | methodology"),
+      STANDARD_CHARGE_METHODOLOGY
     )
-  ) {
-    errors.push(
-      csvErr(
-        index,
-        BASE_COLUMNS.indexOf("standard_charge | methodology"),
-        // TODO: Change to constants
-        "standard_charge | methodology",
-        ERRORS.ALLOWED_VALUES(
-          "standard_charge | methodology",
-          row["standard_charge | methodology"],
-          STANDARD_CHARGE_METHODOLOGY as unknown as string[]
-        )
-      )
-    )
-  }
+  )
 
   return errors
 }
@@ -506,8 +529,7 @@ export function getWideColumns(columns: string[]): string[] {
 }
 
 /** @private */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function getTallColumns(columns: string[]): string[] {
+export function getTallColumns(): string[] {
   return TALL_COLUMNS
 }
 
@@ -555,13 +577,78 @@ function validateRequiredFloatField(
   columnIndex: number,
   suffix = ``
 ): CsvValidationError[] {
-  if (!/\d+(\.\d+)?/g.test(row[field] || "")) {
+  if (!/^\d+(\.\d+)?$/g.test((row[field] || "").trim())) {
     return [
       csvErr(
         rowIndex,
         columnIndex,
         field,
         ERRORS.POSITIVE_NUMBER(field, suffix)
+      ),
+    ]
+  }
+  return []
+}
+
+function validateOptionalFloatField(
+  row: { [key: string]: string },
+  field: string,
+  rowIndex: number,
+  columnIndex: number
+): CsvValidationError[] {
+  if (!(row[field] || "").trim()) {
+    return []
+  } else if (!/^\d+(\.\d+)?$/g.test(row[field].trim())) {
+    return [
+      csvErr(
+        rowIndex,
+        columnIndex,
+        field,
+        ERRORS.INVALID_NUMBER(field, row[field])
+      ),
+    ]
+  }
+  return []
+}
+
+function validateRequiredEnumField(
+  row: { [key: string]: string },
+  field: string,
+  rowIndex: number,
+  columnIndex: number,
+  allowedValues: readonly string[]
+) {
+  if (!(row[field] || "").trim()) {
+    return [csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field))]
+  } else if (!allowedValues.includes(row[field])) {
+    return [
+      csvErr(
+        rowIndex,
+        columnIndex,
+        field,
+        ERRORS.ALLOWED_VALUES(field, row[field], allowedValues)
+      ),
+    ]
+  }
+  return []
+}
+
+function validateOptionalEnumField(
+  row: { [key: string]: string },
+  field: string,
+  rowIndex: number,
+  columnIndex: number,
+  allowedValues: readonly string[]
+) {
+  if (!(row[field] || "").trim()) {
+    return []
+  } else if (!allowedValues.includes(row[field])) {
+    return [
+      csvErr(
+        rowIndex,
+        columnIndex,
+        field,
+        ERRORS.ALLOWED_VALUES(field, row[field], allowedValues)
       ),
     ]
   }
