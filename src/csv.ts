@@ -28,7 +28,7 @@ export function getValidator(
 ): CsvValidatorVersion | null {
   if (version === "v1.1") {
     return CsvValidatorOneOne
-  } else if (version === "v2.0" || version === "v2.0.0"){
+  } else if (version === "v2.0" || version === "v2.0.0") {
     return CsvValidatorTwoZero
   }
   return null
