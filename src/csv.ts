@@ -9,10 +9,11 @@ import {
   csvErrorToValidationError,
   rowIsEmpty,
   csvCellName,
-  cleanRowFields,
   objectFromKeysValues,
+  cleanColumnNames,
 } from "./versions/common/csv.js"
 import { CsvValidatorOneOne } from "./versions/1.1/csv.js"
+import { CsvValidatorTwoZero } from "./versions/2.0/csv.js"
 
 import Papa from "papaparse"
 
@@ -27,6 +28,8 @@ export function getValidator(
 ): CsvValidatorVersion | null {
   if (version === "v1.1") {
     return CsvValidatorOneOne
+  } else if (version === "v2.0" || version === "v2.0.0") {
+    return CsvValidatorTwoZero
   }
   return null
 }
@@ -82,7 +85,7 @@ export async function validateCsv(
     } else if (index === 1) {
       errors.push(...validator.validateHeader(headerColumns, row))
     } else if (index === 2) {
-      dataColumns = row
+      dataColumns = cleanColumnNames(row)
       errors.push(...validator.validateColumns(dataColumns))
       if (errors.length > 0) {
         resolve({
@@ -97,7 +100,7 @@ export async function validateCsv(
         tall = validator.isTall(dataColumns)
       }
     } else {
-      const cleanRow = cleanRowFields(objectFromKeysValues(dataColumns, row))
+      const cleanRow = objectFromKeysValues(dataColumns, row)
       errors.push(...validator.validateRow(cleanRow, index, dataColumns, !tall))
 
       if (options.onValueCallback) {

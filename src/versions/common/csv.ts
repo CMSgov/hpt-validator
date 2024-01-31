@@ -22,19 +22,13 @@ export function csvErr(
   return { row, column, field, message, warning }
 }
 
-export function cleanRowFields(row: { [key: string]: string }): {
-  [key: string]: string
-} {
-  const newRow: { [key: string]: string } = {}
-  Object.entries(row).forEach(([key, value]: string[]) => {
-    newRow[
-      key
-        .split("|")
-        .map((v) => v.trim())
-        .join(" | ")
-    ] = value
-  })
-  return newRow
+export function cleanColumnNames(columns: string[]) {
+  return columns.map((col) =>
+    col
+      .split("|")
+      .map((v) => v.trim())
+      .join(" | ")
+  )
 }
 
 export function sepColumnsEqual(colA: string, colB: string) {
@@ -83,8 +77,44 @@ export function getCodeCount(columns: string[]): number {
           .map((v) => v.trim())
           .filter((v) => !!v)
       )
-      .filter((c) => c[0] === "code" && c.length === 2)
+      .filter(
+        (c) =>
+          c[0] === "code" &&
+          (c.length === 2 || (c.length === 3 && c[2] === "type"))
+      )
       .map((c) => +c[1].replace(/\D/g, ""))
       .filter((v) => !isNaN(v))
   )
+}
+
+export function isEmptyString(value: string) {
+  return value.trim().length === 0
+}
+
+export function isNonEmptyString(value: string) {
+  return value.trim().length > 0
+}
+
+export function isValidDate(value: string) {
+  // required format is YYYY-MM-DD
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (match != null) {
+    // UTC methods are used because "date-only forms are interpreted as a UTC time",
+    // as per https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format
+    // check that the parsed date matches the input, to guard against e.g. February 31
+    const expectedYear = parseInt(match[1])
+    const expectedMonth = parseInt(match[2]) - 1
+    const expectedDate = parseInt(match[3])
+    const parsedDate = new Date(value)
+    return (
+      expectedYear === parsedDate.getUTCFullYear() &&
+      expectedMonth === parsedDate.getUTCMonth() &&
+      expectedDate === parsedDate.getUTCDate()
+    )
+  }
+  return false
+}
+
+export function matchesString(value: string, target: string) {
+  return value.trim().toLocaleUpperCase() === target.trim().toLocaleUpperCase()
 }
