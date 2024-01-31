@@ -8,6 +8,5 @@ test("validateCsvTall", async (t) => {
     "v2.0"
   )
   t.is(result.valid, true)
-  console.log(result.errors)
   t.deepEqual(result.errors.length, 0)
 })

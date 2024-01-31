@@ -473,7 +473,7 @@ export function validateTallFields(
   // TODO: Only one of these has to be filled, clarify error
   const floatFields = [
     "standard_charge | negotiated_dollar",
-    "standard_charge | negotiated_percent",
+    "standard_charge | negotiated_percentage",
   ]
   const floatErrors = floatFields.flatMap((field) =>
     validateRequiredFloatField(
