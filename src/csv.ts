@@ -13,6 +13,7 @@ import {
   cleanColumnNames,
 } from "./versions/common/csv.js"
 import { CsvValidatorOneOne } from "./versions/1.1/csv.js"
+import { CsvValidatorTwoZero } from "./versions/2.0/csv.js"
 
 import Papa from "papaparse"
 
@@ -27,6 +28,8 @@ export function getValidator(
 ): CsvValidatorVersion | null {
   if (version === "v1.1") {
     return CsvValidatorOneOne
+  } else if (version === "v2.0" || version === "v2.0.0"){
+    return CsvValidatorTwoZero
   }
   return null
 }
