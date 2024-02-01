@@ -518,9 +518,11 @@ export function getWideColumns(columns: string[]): string[] {
   const payersPlans = getPayersPlans(columns)
   const payersPlansColumns: string[] = payersPlans
     .flatMap((payerPlan) => [
-      ["standard_charge", ...payerPlan],
-      ["standard_charge", ...payerPlan, "percent"],
-      ["standard_charge", ...payerPlan, "contracting_method"],
+      ["standard_charge", ...payerPlan, "negotiated_dollar"],
+      ["standard_charge", ...payerPlan, "negotiated_percentage"],
+      ["standard_charge", ...payerPlan, "methodology"],
+      ["standard_charge", ...payerPlan, "negotiated_algorithm"],
+      ["estimated_amount", ...payerPlan],
       ["additional_payer_notes", ...payerPlan],
     ])
     .map((c) => c.join(" | "))
@@ -540,6 +542,10 @@ function getPayersPlans(columns: string[]): string[][] {
     "max",
     "gross",
     "discounted_cash",
+    "negotiated_dollar",
+    "negotiated_percentage",
+    "negotiated_algorithm",
+    "methodology"
   ]
   return Array.from(
     new Set(
