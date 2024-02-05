@@ -1,4 +1,5 @@
 import { CsvValidationError, StateCode, STATE_CODES } from "../../types.js"
+
 import {
   csvErr,
   sepColumnsEqual,
@@ -201,7 +202,11 @@ export function validateRow(
     )
   )
 
-  if (!BILLING_CODE_TYPES.includes(row["code | 1 | type"] as BillingCodeType)) {
+  if (
+    !BILLING_CODE_TYPES.includes(
+      row["code | 1 | type"].toUpperCase() as BillingCodeType
+    )
+  ) {
     errors.push(
       csvErr(
         index,
@@ -220,7 +225,9 @@ export function validateRow(
   // TODO: Code itself is required, need to check all of those, not all checked here
   if (
     row["code | 2"] &&
-    !BILLING_CODE_TYPES.includes(row["code | 2 | type"] as BillingCodeType)
+    !BILLING_CODE_TYPES.includes(
+      row["code | 2 | type"].toUpperCase() as BillingCodeType
+    )
   ) {
     errors.push(
       csvErr(
@@ -282,7 +289,11 @@ export function validateRow(
         )
       )
     }
-    if (!DRUG_UNITS.includes(row["drug_type_of_measurement"] as DrugUnit)) {
+    if (
+      !DRUG_UNITS.includes(
+        row["drug_type_of_measurement"].toUpperCase() as DrugUnit
+      )
+    ) {
       errors.push(
         csvErr(
           index,
@@ -379,7 +390,7 @@ function validateLicenseStateColumn(
     return [csvErr(rowIndex, columnIndex, LICENSE_STATE, invalidMessage)]
   }
   const stateCode = column.split("|").slice(-1)[0].trim()
-  if (!STATE_CODES.includes(stateCode as StateCode)) {
+  if (!STATE_CODES.includes(stateCode.toUpperCase() as StateCode)) {
     return [
       csvErr(
         rowIndex,

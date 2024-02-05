@@ -435,7 +435,7 @@ function validateLicenseStateColumn(
     return [csvErr(rowIndex, columnIndex, LICENSE_STATE, invalidMessage)]
   }
   const stateCode = column.split("|").slice(-1)[0].trim()
-  if (!STATE_CODES.includes(stateCode as StateCode)) {
+  if (!STATE_CODES.includes(stateCode.toUpperCase() as StateCode)) {
     return [
       csvErr(
         rowIndex,
@@ -620,15 +620,20 @@ function validateRequiredEnumField(
 ) {
   if (!(row[field] || "").trim()) {
     return [csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field))]
-  } else if (!allowedValues.includes(row[field])) {
-    return [
-      csvErr(
-        rowIndex,
-        columnIndex,
-        field,
-        ERRORS.ALLOWED_VALUES(field, row[field], allowedValues)
-      ),
-    ]
+  } else {
+    const uppercaseValue = row[field].toUpperCase()
+    if (
+      !allowedValues.some((allowed) => allowed.toUpperCase() === uppercaseValue)
+    ) {
+      return [
+        csvErr(
+          rowIndex,
+          columnIndex,
+          field,
+          ERRORS.ALLOWED_VALUES(field, row[field], allowedValues)
+        ),
+      ]
+    }
   }
   return []
 }
@@ -642,16 +647,22 @@ function validateOptionalEnumField(
 ) {
   if (!(row[field] || "").trim()) {
     return []
-  } else if (!allowedValues.includes(row[field])) {
-    return [
-      csvErr(
-        rowIndex,
-        columnIndex,
-        field,
-        ERRORS.ALLOWED_VALUES(field, row[field], allowedValues)
-      ),
-    ]
+  } else {
+    const uppercaseValue = row[field].toUpperCase()
+    if (
+      !allowedValues.some((allowed) => allowed.toUpperCase() === uppercaseValue)
+    ) {
+      return [
+        csvErr(
+          rowIndex,
+          columnIndex,
+          field,
+          ERRORS.ALLOWED_VALUES(field, row[field], allowedValues)
+        ),
+      ]
+    }
   }
+
   return []
 }
 
