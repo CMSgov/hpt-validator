@@ -192,7 +192,7 @@ export function validateHeaderRow(
             rowIndex,
             index,
             "ATTESTATION",
-            ERRORS.ALLOWED_VALUES("ATTESTATION", value, ["true"])
+            ERRORS.ALLOWED_VALUES("ATTESTATION", value, ["true", "false"])
           )
         )
       }
@@ -354,6 +354,7 @@ export function validateRow(
     // }
   }
 
+  // TODO: do we want to consider these as optional fields?
   const chargeFields = [
     "standard_charge | gross",
     "standard_charge | discounted_cash",
@@ -545,7 +546,7 @@ function getPayersPlans(columns: string[]): string[][] {
     "negotiated_dollar",
     "negotiated_percentage",
     "negotiated_algorithm",
-    "methodology"
+    "methodology",
   ]
   return Array.from(
     new Set(

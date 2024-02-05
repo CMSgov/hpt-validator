@@ -39,6 +39,7 @@ test("validateJson errorFile", async (t) => {
   )
   t.is(result.valid, false)
   t.deepEqual(result.errors.length, 3)
+  console.log(result.errors)
   t.deepEqual(result.errors, [
     {
       path: "/standard_charges/0/payers_information/0/standard_charge_dollar",
