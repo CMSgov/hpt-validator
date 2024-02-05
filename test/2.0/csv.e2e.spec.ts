@@ -22,12 +22,14 @@ test("validateCsvWide", async (t) => {
 
 //loadFixtureStream("/2.0/mayo_1.csv"),
 test("validateCsvWideMayoError", async (t) => {
-  const result = await validateCsv(loadFixtureStream("/2.0/mayo_sample.csv"), "v2.0")
+  const result = await validateCsv(
+    loadFixtureStream("/2.0/mayo_sample.csv"),
+    "v2.0"
+  )
   t.is(result.valid, false)
   t.deepEqual(result.errors, [{}])
   console.log(result.errors)
 })
-
 
 test("validateCsvWideError", async (t) => {
   const result = await validateCsv(
@@ -38,7 +40,6 @@ test("validateCsvWideError", async (t) => {
   console.log(result.errors)
   //t.deepEqual(result.errors, [{}])
 })
-
 
 /*
 test("validateCsvWideHeaderError", async (t) => {

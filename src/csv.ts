@@ -86,9 +86,9 @@ export async function validateCsv(
         errors: [
           {
             path: csvCellName(0, 0),
-            message: ERRORS.HEADER_BLANK(index+1),
+            message: ERRORS.HEADER_BLANK(index + 1),
           },
-        ]
+        ],
       })
       parser.abort()
     } else if (isEmpty) {
