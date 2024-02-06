@@ -76,7 +76,7 @@ export async function validateCsv(
     resolve: (result: ValidationResult | PromiseLike<ValidationResult>) => void,
     parser: Papa.Parser
   ) => {
-    const row: string[] = step.data
+    const row: string[] = step.data.map((item) => item.toLowerCase())
     const isEmpty: boolean = rowIsEmpty(row)
 
     // Headers must be in the proper row, abort if not
@@ -92,7 +92,6 @@ export async function validateCsv(
       })
       parser.abort()
     } else if (isEmpty) {
-      // Ignore empty lines
       ++index
       return
     }
