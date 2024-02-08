@@ -522,7 +522,7 @@ export function getWideColumns(columns: string[]): string[] {
       ["standard_charge", ...payerPlan, "negotiated_percentage"],
       ["standard_charge", ...payerPlan, "methodology"],
       ["standard_charge", ...payerPlan, "negotiated_algorithm"],
-      ["estimated_amount", ...payerPlan],
+      ["estimated_amount", ...payerPlan], // turn into a warning
       ["additional_payer_notes", ...payerPlan],
     ])
     .map((c) => c.join(" | "))

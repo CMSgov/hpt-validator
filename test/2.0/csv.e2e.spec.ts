@@ -66,3 +66,22 @@ test("validateCsvWideMissingEnumError", async (t) => {
     },
   ])
 })
+
+test("validateCsvWideMissingMissingRequiredColumnError", async (t) => {
+  const result = await validateCsv(
+    loadFixtureStream("/2.0/sample-wide-error-header-standardcharge.csv"),
+    "v2.0"
+  )
+  t.is(result.valid, false)
+  t.deepEqual(result.errors, [
+    {
+      path: 'BA3',
+      field: 'standard_charge | platform_health_insurance | ppo | negotiated_dollar',
+      message: 'Column standard_charge | platform_health_insurance | ppo | negotiated_dollar is missing, but it is required for wide format'
+    },
+    {
+      path: 'A1',
+      message: 'Errors were seen in headers so rows were not evaluated'
+    }
+  ])
+})
