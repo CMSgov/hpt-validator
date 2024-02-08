@@ -75,13 +75,15 @@ test("validateCsvWideMissingMissingRequiredColumnError", async (t) => {
   t.is(result.valid, false)
   t.deepEqual(result.errors, [
     {
-      path: 'BA3',
-      field: 'standard_charge | platform_health_insurance | ppo | negotiated_dollar',
-      message: 'Column standard_charge | platform_health_insurance | ppo | negotiated_dollar is missing, but it is required for wide format'
+      path: "BA3",
+      field:
+        "standard_charge | platform_health_insurance | ppo | negotiated_dollar",
+      message:
+        "Column standard_charge | platform_health_insurance | ppo | negotiated_dollar is missing, but it is required for wide format",
     },
     {
-      path: 'A1',
-      message: 'Errors were seen in headers so rows were not evaluated'
-    }
+      path: "A1",
+      message: "Errors were seen in headers so rows were not evaluated",
+    },
   ])
 })
