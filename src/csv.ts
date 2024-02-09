@@ -21,6 +21,8 @@ const ERRORS = {
   INVALID_VERSION: "Invalid version supplied",
   HEADER_ERRORS: "Errors were seen in headers so rows were not evaluated",
   MIN_ROWS: "At least one row must be present",
+  HEADER_BLANK: (row: number) =>
+    `Required headers must be defined on rows 1 and 3. Row ${row} is blank`,
 }
 
 export function getValidator(
@@ -75,11 +77,25 @@ export async function validateCsv(
     parser: Papa.Parser
   ) => {
     const row: string[] = step.data.map((item) => item.toLowerCase())
-    // Ignore empty lines
-    if (rowIsEmpty(row)) {
+    const isEmpty: boolean = rowIsEmpty(row)
+
+    // Headers must be in the proper row, abort if not
+    if (isEmpty && (index === 0 || index === 2)) {
+      resolve({
+        valid: false,
+        errors: [
+          {
+            path: csvCellName(0, 0),
+            message: ERRORS.HEADER_BLANK(index + 1),
+          },
+        ],
+      })
+      parser.abort()
+    } else if (isEmpty) {
       ++index
       return
     }
+
     if (index === 0) {
       headerColumns = row
     } else if (index === 1) {

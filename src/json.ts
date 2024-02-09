@@ -19,7 +19,7 @@ export async function validateJson(
 ): Promise<ValidationResult> {
   if (version === "v1.1") {
     return JsonValidatorOneOne.validateJson(jsonInput, options)
-  } else if (version === "v2.0") {
+  } else if (version === "v2.0" || version === "v2.0.0") {
     return JsonValidatorTwoZero.validateJson(jsonInput, options)
   }
   return new Promise((resolve) => {

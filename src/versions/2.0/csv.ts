@@ -14,7 +14,7 @@ import {
   STANDARD_CHARGE_METHODOLOGY,
   StandardChargeMethod,
   DRUG_UNITS,
-} from "./types"
+} from "./types.js"
 
 const ATTESTATION =
   "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated."
@@ -518,9 +518,11 @@ export function getWideColumns(columns: string[]): string[] {
   const payersPlans = getPayersPlans(columns)
   const payersPlansColumns: string[] = payersPlans
     .flatMap((payerPlan) => [
-      ["standard_charge", ...payerPlan],
-      ["standard_charge", ...payerPlan, "percent"],
-      ["standard_charge", ...payerPlan, "contracting_method"],
+      ["standard_charge", ...payerPlan, "negotiated_dollar"],
+      ["standard_charge", ...payerPlan, "negotiated_percentage"],
+      ["standard_charge", ...payerPlan, "methodology"],
+      ["standard_charge", ...payerPlan, "negotiated_algorithm"],
+      ["estimated_amount", ...payerPlan], // turn into a warning
       ["additional_payer_notes", ...payerPlan],
     ])
     .map((c) => c.join(" | "))
@@ -540,6 +542,10 @@ function getPayersPlans(columns: string[]): string[][] {
     "max",
     "gross",
     "discounted_cash",
+    "negotiated_dollar",
+    "negotiated_percentage",
+    "negotiated_algorithm",
+    "methodology",
   ]
   return Array.from(
     new Set(
