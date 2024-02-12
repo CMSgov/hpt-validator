@@ -38,22 +38,54 @@ test("validateJson errorFile", async (t) => {
     "v2.0"
   )
   t.is(result.valid, false)
-  t.deepEqual(result.errors.length, 3)
+  t.deepEqual(result.errors.length, 5)
   t.deepEqual(result.errors, [
     {
-      path: "/standard_charges/0/payers_information/0/standard_charge_dollar",
-      field: "standard_charge_dollar",
-      message: "must be number",
+      path: '/standard_charges/0/payers_information/0/standard_charge_dollar',
+      field: 'standard_charge_dollar',
+      message: 'must be number'
     },
     {
-      path: "/standard_charges/3/payers_information/2",
-      field: "2",
-      message: "must have required property 'methodology'",
+      path: '/standard_charges/3/payers_information/2',
+      field: '2',
+      message: "must have required property 'additional_payer_notes'"
     },
     {
-      path: "/affirmation/affirmation",
-      field: "affirmation",
-      message: "must be equal to constant",
+      path: '/standard_charges/3/payers_information/2',
+      field: '2',
+      message: 'must match "then" schema'
     },
+    {
+      path: '/standard_charges/3/payers_information/2',
+      field: '2',
+      message: "must have required property 'methodology'"
+    },
+    {
+      path: '/affirmation/affirmation',
+      field: 'affirmation',
+      message: 'must be equal to constant'
+    }
   ])
 })
+
+test("validateJson errorConditionalFile", async (t) => {
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-errors.json"),
+    "v2.0"
+  )
+  t.is(result.valid, false)
+  t.deepEqual(result.errors.length, 2)
+  t.deepEqual(result.errors, [
+    {
+      path: '/standard_charges/3/payers_information/2',
+      field: '2',
+      message: "must have required property 'additional_payer_notes'"
+    },
+    {
+      path: '/standard_charges/3/payers_information/2',
+      field: '2',
+      message: 'must match "then" schema'
+    }
+  ])
+})
+

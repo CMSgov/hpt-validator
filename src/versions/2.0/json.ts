@@ -96,6 +96,19 @@ const STANDARD_CHARGE_DEFINITIONS = {
       },
     },
     required: ["payer_name", "plan_name", "methodology"],
+
+    if: {
+      properties: {
+        methodology: {
+          const: "other"
+        }
+      }
+    },
+    then: {
+      required: [
+        "additional_payer_notes"
+      ]
+    }
   },
 }
 
