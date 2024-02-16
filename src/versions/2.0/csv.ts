@@ -59,8 +59,6 @@ export const TALL_COLUMNS = [
 ]
 
 const ERRORS = {
-  HEADER_COLUMN_NAME: (actual: string, expected: string) =>
-    `Header column is "${actual}", it should be "${expected}"`,
   HEADER_COLUMN_MISSING: (column: string) =>
     `Header column should be "${column}", but it is not present`,
   HEADER_COLUMN_BLANK: (column: string) => `"${column}" is blank`,
@@ -68,8 +66,6 @@ const ERRORS = {
     `Header column "${column}" includes an invalid state code "${stateCode}"`,
   DUPLICATE_HEADER_COLUMN: (column: string) =>
     `Column ${column} duplicated in header`,
-  COLUMN_NAME: (actual: string, expected: string, format: string) =>
-    `Column is "${actual}" and should be "${expected}" for ${format} format`,
   COLUMN_MISSING: (column: string, format: string) =>
     `Column ${column} is missing, but it is required for ${format} format`,
   ALLOWED_VALUES: (
@@ -121,12 +117,7 @@ export function validateHeaderColumns(columns: string[]): {
     const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) => {
       if (requiredColumn === "license_number | state") {
         // see if it works
-        const licenseStateErrors = validateLicenseStateColumn(
-          column,
-          rowIndex,
-          index
-        )
-        return licenseStateErrors.length === 0
+        return validateLicenseStateColumn(column)
       } else {
         return sepColumnsEqual(column, requiredColumn)
       }
@@ -420,34 +411,18 @@ export function validateWideFields(
   return errors
 }
 
-function validateLicenseStateColumn(
-  column: string,
-  rowIndex: number,
-  columnIndex: number
-): CsvValidationError[] {
-  const LICENSE_STATE = "license_number | state"
-  const invalidMessage = ERRORS.HEADER_COLUMN_NAME(
-    column,
-    "license_number | <state>"
-  )
+function validateLicenseStateColumn(column: string): boolean {
   const splitColumn = column.split("|").map((v) => v.trim())
   if (splitColumn.length !== 2) {
-    return [csvErr(rowIndex, columnIndex, LICENSE_STATE, invalidMessage)]
+    return false
   }
   const stateCode = column.split("|").slice(-1)[0].trim()
   if (!STATE_CODES.includes(stateCode.toUpperCase() as StateCode)) {
-    return [
-      csvErr(
-        rowIndex,
-        columnIndex,
-        LICENSE_STATE,
-        ERRORS.HEADER_STATE_CODE(column, stateCode)
-      ),
-    ]
+    return false
   } else if (!sepColumnsEqual(column, `license_number | ${stateCode}`)) {
-    return [csvErr(rowIndex, columnIndex, LICENSE_STATE, invalidMessage)]
+    return false
   }
-  return []
+  return true
 }
 
 /** @private */
