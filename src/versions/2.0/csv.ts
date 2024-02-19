@@ -90,7 +90,8 @@ const ERRORS = {
     return "At least one code and code type must be specified"
   },
   REQUIRED: (column: string, suffix = ``) => `"${column}" is required${suffix}`,
-  CHARGE_PERCENT_REQUIRED_SUFFIX: " (one of charge or percent is required)",
+  ONE_OF_REQUIRED: (columns: string[], suffix = "") =>
+    `at least one of ${columns.join(",")} is required${suffix}`,
 }
 
 /** @private */
@@ -446,23 +447,29 @@ export function validateTallFields(
   )
 
   // TODO: Only one of these has to be filled, clarify error
-  const floatFields = [
+  const chargeFields = [
     "standard_charge | negotiated_dollar",
     "standard_charge | negotiated_percentage",
+    "standard_charge | negotiated_algorithm",
   ]
-  const floatErrors = floatFields.flatMap((field) =>
-    validateRequiredFloatField(
-      row,
-      field,
-      index,
-      BASE_COLUMNS.length + TALL_COLUMNS.indexOf(field),
-      ERRORS.CHARGE_PERCENT_REQUIRED_SUFFIX
-    )
+  const oneOfChargeErrors = validateOneOfRequiredField(
+    row,
+    chargeFields,
+    index,
+    columns.indexOf("standard_charge | negotiated_dollar")
   )
-  // TODO: Is it an error if both fields are present?
-  // Only one of these has to be filled, so if only one errors out ignore it
-  if (floatErrors.length > 1) {
-    errors.push(...floatErrors)
+  if (oneOfChargeErrors.length > 0) {
+    errors.push(...oneOfChargeErrors)
+  } else {
+    const floatChargeFields = [
+      "standard_charge | negotiated_dollar",
+      "standard_charge | negotiated_percentage",
+    ]
+    floatChargeFields.forEach((field) => {
+      errors.push(
+        ...validateOptionalFloatField(row, field, index, columns.indexOf(field))
+      )
+    })
   }
 
   errors.push(
@@ -474,6 +481,23 @@ export function validateTallFields(
       STANDARD_CHARGE_METHODOLOGY
     )
   )
+
+  // If there is a "payer specific negotiated charge" encoded as a dollar amount,
+  // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
+  // min and max have already been checked for valid float format, so this checks only if they are present.
+  if ((row["standard_charge | negotiated_dollar"] || "").trim().length > 0) {
+    ;["standard_charge | min", "standard_charge | max"].forEach((field) => {
+      errors.push(
+        ...validateRequiredField(
+          row,
+          field,
+          index,
+          columns.indexOf(field),
+          " when a negotiated dollar amount is present"
+        )
+      )
+    })
+  }
 
   return errors
 }
@@ -546,6 +570,24 @@ function validateRequiredField(
   if (!(row[field] || "").trim()) {
     return [
       csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field, suffix)),
+    ]
+  }
+  return []
+}
+
+function validateOneOfRequiredField(
+  row: { [key: string]: string },
+  fields: string[],
+  rowIndex: number,
+  columnIndex: number
+): CsvValidationError[] {
+  if (
+    fields.every((field) => {
+      ;(row[field] || "").trim().length === 0
+    })
+  ) {
+    return [
+      csvErr(rowIndex, columnIndex, fields[0], ERRORS.ONE_OF_REQUIRED(fields)),
     ]
   }
   return []

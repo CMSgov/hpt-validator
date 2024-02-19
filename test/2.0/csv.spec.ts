@@ -243,7 +243,12 @@ test("validateRow tall", (t) => {
     )
   )
   // standard_charge | min must be positive number if present
-  const emptyMinRow = { ...basicRow, "standard_charge | min": "" }
+  const emptyMinRow = {
+    ...basicRow,
+    "standard_charge | min": "",
+    "standard_charge | negotiated_dollar": "",
+    "standard_charge | negotiated_percentage": "80",
+  }
   const emptyMinResult = validateRow(emptyMinRow, 17, columns, false)
   t.is(emptyMinResult.length, 0)
   const wrongMinRow = {
@@ -258,7 +263,12 @@ test("validateRow tall", (t) => {
     )
   )
   // standard_charge | max must be positive number if present
-  const emptyMaxRow = { ...basicRow, "standard_charge | max": "" }
+  const emptyMaxRow = {
+    ...basicRow,
+    "standard_charge | max": "",
+    "standard_charge | negotiated_dollar": "",
+    "standard_charge | negotiated_percentage": "80",
+  }
   const emptyMaxResult = validateRow(emptyMaxRow, 19, columns, false)
   t.is(emptyMaxResult.length, 0)
   const wrongMaxRow = {
@@ -318,4 +328,85 @@ test("validateRow tall", (t) => {
       '"code | 1 | type" value "GUS" is not one of the allowed values'
     )
   )
+})
+
+test("validateRow tall conditionals", (t) => {
+  const columns = [
+    ...BASE_COLUMNS,
+    ...TALL_COLUMNS,
+    "code | 1",
+    "code | 1 | type",
+    "code | 2",
+    "code | 2 | type",
+  ]
+  const basicRow = {
+    description: "basic description",
+    setting: "inpatient",
+    "code | 1": "12345",
+    "code | 1 | type": "DRG",
+    "code | 2": "",
+    "code | 2 | type": "",
+    drug_unit_of_measurement: "8.5",
+    drug_type_of_measurement: "ML",
+    modifiers: "",
+    "standard_charge | gross": "100",
+    "standard_charge | discounted_cash": "200.50",
+    "standard_charge | min": "50",
+    "standard_charge | max": "500",
+    additional_generic_notes: "some notes",
+    payer_name: "Acme Payer",
+    plan_name: "Acme Basic Coverage",
+    "standard_charge | negotiated_dollar": "",
+    "standard_charge | negotiated_percentage": "",
+    "standard_charge | negotiated_algorithm": "",
+    "standard_charge | methodology": "fee schedule",
+    estimated_amount: "",
+  }
+
+  // If there is a "payer specific negotiated charge" encoded as a dollar amount,
+  // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
+  const dollarNoBoundsRow = {
+    ...basicRow,
+    "standard_charge | negotiated_dollar": "300",
+    "standard_charge | min": "",
+    "standard_charge | max": "",
+  }
+  const dollarNoBoundsErrors = validateRow(dollarNoBoundsRow, 5, columns, false)
+  t.is(dollarNoBoundsErrors.length, 2)
+  t.assert(
+    dollarNoBoundsErrors[0].message.includes(
+      '"standard_charge | min" is required when a negotiated dollar amount is present'
+    )
+  )
+  t.assert(
+    dollarNoBoundsErrors[1].message.includes(
+      '"standard_charge | max" is required when a negotiated dollar amount is present'
+    )
+  )
+  const percentageNoBoundsRow = {
+    ...basicRow,
+    "standard_charge | negotiated_percentage": "80",
+    "standard_charge | min": "",
+    "standard_charge | max": "",
+  }
+  const percentageNoBoundsErrors = validateRow(
+    percentageNoBoundsRow,
+    6,
+    columns,
+    false
+  )
+  t.is(percentageNoBoundsErrors.length, 0)
+  const algorithmNoBoundsRow = {
+    ...basicRow,
+    "standard_charge | negotiated_algorithm": "standard logarithm table",
+    "standard_charge | min": "",
+    "standard_charge | max": "",
+  }
+  const algorithmNoBoundsErrors = validateRow(
+    algorithmNoBoundsRow,
+    7,
+    columns,
+    false
+  )
+  t.is(algorithmNoBoundsErrors.length, 0)
 })
