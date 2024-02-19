@@ -330,20 +330,6 @@ export function validateRow(
         DRUG_UNITS
       )
     )
-    // if (!DRUG_UNITS.includes(row["drug_type_of_measurement"] as DrugUnit)) {
-    //   errors.push(
-    //     csvErr(
-    //       index,
-    //       columns.indexOf("drug_type_of_measurement"),
-    //       "drug_type_of_measurement",
-    //       ERRORS.ALLOWED_VALUES(
-    //         "drug_type_of_measurement",
-    //         row["drug_type_of_measurement"],
-    //         DRUG_UNITS as unknown as string[]
-    //       )
-    //     )
-    //   )
-    // }
   }
 
   const chargeFields = [
@@ -504,7 +490,6 @@ export function validateTallFields(
 
   // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
   // then a corresponding "Estimated Allowed Amount" must also be encoded. Required beginning 1/1/2025.
-  // At time of writing, it is not yet 1/1/2025, so this generates a warning.
   if (
     (row["standard_charge | negotiated_dollar"] || "").trim().length === 0 &&
     ((row["standard_charge | negotiated_percentage"] || "").trim().length > 0 ||
@@ -523,6 +508,32 @@ export function validateTallFields(
         csvErr.warning = !enforceConditionals
         return csvErr
       })
+    )
+  }
+
+  // If code type is NDC, then the corresponding drug unit of measure and
+  // drug type of measure data elements must be encoded. Required beginning 1/1/2025.
+  const allCodeTypes = columns
+    .filter((column) => {
+      return /^code \| \d+ | type$/.test(column)
+    })
+    .map((codeTypeColumn) => row[codeTypeColumn])
+  if (allCodeTypes.some((codeType) => matchesString(codeType, "NDC"))) {
+    ;["drug_unit_of_measurement", "drug_type_of_measurement"].forEach(
+      (field) => {
+        errors.push(
+          ...validateRequiredField(
+            row,
+            field,
+            index,
+            columns.indexOf(field),
+            " when an NDC code is present"
+          ).map((csvErr) => {
+            csvErr.warning = !enforceConditionals
+            return csvErr
+          })
+        )
+      }
     )
   }
 

@@ -348,8 +348,8 @@ test("validateRow tall conditionals", (t) => {
     "code | 1 | type": "DRG",
     "code | 2": "",
     "code | 2 | type": "",
-    drug_unit_of_measurement: "8.5",
-    drug_type_of_measurement: "ML",
+    drug_unit_of_measurement: "",
+    drug_type_of_measurement: "",
     modifiers: "",
     "standard_charge | gross": "100",
     "standard_charge | discounted_cash": "200.50",
@@ -477,4 +477,58 @@ test("validateRow tall conditionals", (t) => {
     )
   )
   t.is(algorithmNoEstimateErrors[0].warning, !enforceConditionals)
+
+  // If code type is NDC, then the corresponding drug unit of measure and
+  // drug type of measure data elements must be encoded. Required beginning 1/1/2025.
+  const ndcNoMeasurementRow = {
+    ...basicRow,
+    "code | 1 | type": "NDC",
+    drug_unit_of_measurement: "",
+    drug_type_of_measurement: "",
+  }
+  const ndcNoMeasurementErrors = validateRow(
+    ndcNoMeasurementRow,
+    12,
+    columns,
+    false
+  )
+  t.is(ndcNoMeasurementErrors.length, 2)
+  t.assert(
+    ndcNoMeasurementErrors[0].message.includes(
+      '"drug_unit_of_measurement" is required when an NDC code is present'
+    )
+  )
+  t.assert(
+    ndcNoMeasurementErrors[1].message.includes(
+      '"drug_type_of_measurement" is required when an NDC code is present'
+    )
+  )
+  t.is(ndcNoMeasurementErrors[0].warning, !enforceConditionals)
+  t.is(ndcNoMeasurementErrors[1].warning, !enforceConditionals)
+  const ndcSecondNoMeasurementRow = {
+    ...basicRow,
+    "code | 2": "12345",
+    "code | 2 | type": "NDC",
+    drug_unit_of_measurement: "",
+    drug_type_of_measurement: "",
+  }
+  const ndcSecondNoMeasurementErrors = validateRow(
+    ndcSecondNoMeasurementRow,
+    13,
+    columns,
+    false
+  )
+  t.is(ndcSecondNoMeasurementErrors.length, 2)
+  t.assert(
+    ndcSecondNoMeasurementErrors[0].message.includes(
+      '"drug_unit_of_measurement" is required when an NDC code is present'
+    )
+  )
+  t.assert(
+    ndcSecondNoMeasurementErrors[1].message.includes(
+      '"drug_type_of_measurement" is required when an NDC code is present'
+    )
+  )
+  t.is(ndcSecondNoMeasurementErrors[0].warning, !enforceConditionals)
+  t.is(ndcSecondNoMeasurementErrors[1].warning, !enforceConditionals)
 })
