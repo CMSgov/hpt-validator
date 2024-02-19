@@ -248,6 +248,7 @@ test("validateRow tall", (t) => {
     "standard_charge | min": "",
     "standard_charge | negotiated_dollar": "",
     "standard_charge | negotiated_percentage": "80",
+    estimated_amount: "150",
   }
   const emptyMinResult = validateRow(emptyMinRow, 17, columns, false)
   t.is(emptyMinResult.length, 0)
@@ -268,6 +269,7 @@ test("validateRow tall", (t) => {
     "standard_charge | max": "",
     "standard_charge | negotiated_dollar": "",
     "standard_charge | negotiated_percentage": "80",
+    estimated_amount: "250",
   }
   const emptyMaxResult = validateRow(emptyMaxRow, 19, columns, false)
   t.is(emptyMaxResult.length, 0)
@@ -388,6 +390,7 @@ test("validateRow tall conditionals", (t) => {
     "standard_charge | negotiated_percentage": "80",
     "standard_charge | min": "",
     "standard_charge | max": "",
+    estimated_amount: "160",
   }
   const percentageNoBoundsErrors = validateRow(
     percentageNoBoundsRow,
@@ -401,6 +404,7 @@ test("validateRow tall conditionals", (t) => {
     "standard_charge | negotiated_algorithm": "standard logarithm table",
     "standard_charge | min": "",
     "standard_charge | max": "",
+    estimated_amount: "160",
   }
   const algorithmNoBoundsErrors = validateRow(
     algorithmNoBoundsRow,
@@ -409,4 +413,68 @@ test("validateRow tall conditionals", (t) => {
     false
   )
   t.is(algorithmNoBoundsErrors.length, 0)
+
+  // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+  // then a corresponding "Estimated Allowed Amount" must also be encoded. Required beginning 1/1/2025.
+  const enforceConditionals = new Date().getFullYear() >= 2025
+  const percentageWithEstimateRow = {
+    ...basicRow,
+    "standard_charge | negotiated_percentage": "80",
+    estimated_amount: "150",
+  }
+  const percentageWithEstimateErrors = validateRow(
+    percentageWithEstimateRow,
+    8,
+    columns,
+    false
+  )
+  t.is(percentageWithEstimateErrors.length, 0)
+  const percentageNoEstimateRow = {
+    ...basicRow,
+    "standard_charge | negotiated_percentage": "80",
+    estimated_amount: "",
+  }
+  const percentageNoEstimateErrors = validateRow(
+    percentageNoEstimateRow,
+    9,
+    columns,
+    false
+  )
+  t.is(percentageNoEstimateErrors.length, 1)
+  t.assert(
+    percentageNoEstimateErrors[0].message.includes(
+      '"estimated_amount" is required to be a positive number when a negotiated percentage or algorithm is present, but negotiated dollar is not present'
+    )
+  )
+  t.is(percentageNoEstimateErrors[0].warning, !enforceConditionals)
+  const algorithmWithEstimateRow = {
+    ...basicRow,
+    "standard_charge | negotiated_algorithm": "standard logarithm table",
+    estimated_amount: "150",
+  }
+  const algorithmWithEstimateErrors = validateRow(
+    algorithmWithEstimateRow,
+    10,
+    columns,
+    false
+  )
+  t.is(algorithmWithEstimateErrors.length, 0)
+  const algorithmNoEstimateRow = {
+    ...basicRow,
+    "standard_charge | negotiated_algorithm": "standard logarithm table",
+    estimated_amount: "",
+  }
+  const algorithmNoEstimateErrors = validateRow(
+    algorithmNoEstimateRow,
+    11,
+    columns,
+    false
+  )
+  t.is(algorithmNoEstimateErrors.length, 1)
+  t.assert(
+    algorithmNoEstimateErrors[0].message.includes(
+      '"estimated_amount" is required to be a positive number when a negotiated percentage or algorithm is present, but negotiated dollar is not present'
+    )
+  )
+  t.is(algorithmNoEstimateErrors[0].warning, !enforceConditionals)
 })

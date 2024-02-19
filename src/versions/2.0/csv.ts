@@ -482,6 +482,9 @@ export function validateTallFields(
     )
   )
 
+  // Conditional checks are here. Some have date-dependent enforcement.
+  const enforceConditionals = new Date().getFullYear() >= 2025
+
   // If there is a "payer specific negotiated charge" encoded as a dollar amount,
   // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
   // min and max have already been checked for valid float format, so this checks only if they are present.
@@ -497,6 +500,30 @@ export function validateTallFields(
         )
       )
     })
+  }
+
+  // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+  // then a corresponding "Estimated Allowed Amount" must also be encoded. Required beginning 1/1/2025.
+  // At time of writing, it is not yet 1/1/2025, so this generates a warning.
+  if (
+    (row["standard_charge | negotiated_dollar"] || "").trim().length === 0 &&
+    ((row["standard_charge | negotiated_percentage"] || "").trim().length > 0 ||
+      (row["standard_charge | negotiated_algorithm"] || "").trim().length >
+        0) &&
+    (row["estimated_amount"] || "").trim().length === 0
+  ) {
+    errors.push(
+      ...validateRequiredFloatField(
+        row,
+        "estimated_amount",
+        index,
+        columns.indexOf("estimated_amount"),
+        " when a negotiated percentage or algorithm is present, but negotiated dollar is not present"
+      ).map((csvErr) => {
+        csvErr.warning = !enforceConditionals
+        return csvErr
+      })
+    )
   }
 
   return errors
