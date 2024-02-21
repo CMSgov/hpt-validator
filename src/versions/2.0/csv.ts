@@ -91,7 +91,7 @@ const ERRORS = {
   },
   REQUIRED: (column: string, suffix = ``) => `"${column}" is required${suffix}`,
   ONE_OF_REQUIRED: (columns: string[], suffix = "") =>
-    `at least one of ${columns.join(",")} is required${suffix}`,
+    `at least one of ${columns.join(", ")} is required${suffix}`,
 }
 
 /** @private */
@@ -286,6 +286,13 @@ export function validateRow(
       )
     }
   })
+
+  const modifierPresent = (row["modifiers"] || "").trim().length > 0
+  if (modifierPresent && !foundCode) {
+    errors.push(...validateModifierRow(row, index, columns, wide))
+    return errors
+  }
+
   if (!foundCode) {
     errors.push(
       csvErr(index, columns.length, "code | 1", ERRORS.CODE_ONE_REQUIRED())
@@ -348,6 +355,99 @@ export function validateRow(
     errors.push(...validateWideFields(row, index))
   } else {
     errors.push(...validateTallFields(row, index, columns))
+  }
+
+  return errors
+}
+
+/** @private */
+function validateModifierRow(
+  row: { [key: string]: string },
+  index: number,
+  columns: string[],
+  wide: boolean
+): CsvValidationError[] {
+  const errors: CsvValidationError[] = []
+  // If a modifier is encoded without an item or service, then a description and one of the following
+  // is the minimum information required:
+  // additional_payer_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
+
+  if (wide) {
+  } else {
+    const modifierRequiredFields = [
+      "additional_generic_notes",
+      "standard_charge | negotiated_dollar",
+      "standard_charge | negotiated_percentage",
+      "standard_charge | negotiated_algorithm",
+    ]
+    errors.push(
+      ...validateOneOfRequiredField(
+        row,
+        modifierRequiredFields,
+        index,
+        columns.indexOf(modifierRequiredFields[0]),
+        " for tall format when a modifier is encoded without an item or service"
+      )
+    )
+  }
+
+  // other conditionals don't apply for modifier rows, but any values entered should still be the correct type
+  errors.push(
+    ...validateOptionalEnumField(
+      row,
+      "billing_class",
+      index,
+      columns.indexOf("billing_class"),
+      CHARGE_BILLING_CLASSES
+    )
+  )
+
+  errors.push(
+    ...validateOptionalEnumField(
+      row,
+      "setting",
+      index,
+      columns.indexOf("setting"),
+      CHARGE_SETTINGS
+    )
+  )
+
+  // if ((row["drug_unit_of_measurement"] || "").trim()) {
+  errors.push(
+    ...validateOptionalFloatField(
+      row,
+      "drug_unit_of_measurement",
+      index,
+      columns.indexOf("drug_unit_of_measurement")
+    )
+  )
+  errors.push(
+    ...validateOptionalEnumField(
+      row,
+      "drug_type_of_measurement",
+      index,
+      columns.indexOf("drug_type_of_measurement"),
+      DRUG_UNITS
+    )
+  )
+  // }
+
+  const chargeFields = [
+    "standard_charge | gross",
+    "standard_charge | discounted_cash",
+    "standard_charge | min",
+    "standard_charge | max",
+  ]
+  chargeFields.forEach((field) =>
+    errors.push(
+      ...validateOptionalFloatField(row, field, index, columns.indexOf(field))
+    )
+  )
+
+  if (wide) {
+    // validateWideModifierFields
+  } else {
+    errors.push(...validateTallModifierFields(row, index, columns))
   }
 
   return errors
@@ -432,7 +532,6 @@ export function validateTallFields(
     )
   )
 
-  // TODO: Only one of these has to be filled, clarify error
   const chargeFields = [
     "standard_charge | negotiated_dollar",
     "standard_charge | negotiated_percentage",
@@ -541,6 +640,38 @@ export function validateTallFields(
 }
 
 /** @private */
+// checks the same fields as validateTallFields, but they are now optional
+export function validateTallModifierFields(
+  row: { [key: string]: string },
+  index: number,
+  columns: string[]
+): CsvValidationError[] {
+  const errors: CsvValidationError[] = []
+
+  const floatChargeFields = [
+    "standard_charge | negotiated_dollar",
+    "standard_charge | negotiated_percentage",
+  ]
+  floatChargeFields.forEach((field) => {
+    errors.push(
+      ...validateOptionalFloatField(row, field, index, columns.indexOf(field))
+    )
+  })
+
+  errors.push(
+    ...validateOptionalEnumField(
+      row,
+      "standard_charge | methodology",
+      index,
+      columns.indexOf("standard_charge | methodology"),
+      STANDARD_CHARGE_METHODOLOGY
+    )
+  )
+
+  return errors
+}
+
+/** @private */
 export function getBaseColumns(columns: string[]): string[] {
   const codeCount = Math.max(1, getCodeCount(columns))
   const codeColumns = Array(codeCount)
@@ -617,15 +748,21 @@ function validateOneOfRequiredField(
   row: { [key: string]: string },
   fields: string[],
   rowIndex: number,
-  columnIndex: number
+  columnIndex: number,
+  suffix = ""
 ): CsvValidationError[] {
   if (
     fields.every((field) => {
-      ;(row[field] || "").trim().length === 0
+      return (row[field] || "").trim().length === 0
     })
   ) {
     return [
-      csvErr(rowIndex, columnIndex, fields[0], ERRORS.ONE_OF_REQUIRED(fields)),
+      csvErr(
+        rowIndex,
+        columnIndex,
+        fields[0],
+        ERRORS.ONE_OF_REQUIRED(fields, suffix)
+      ),
     ]
   }
   return []
@@ -636,7 +773,7 @@ function validateRequiredFloatField(
   field: string,
   rowIndex: number,
   columnIndex: number,
-  suffix = ``
+  suffix = ""
 ): CsvValidationError[] {
   if (!/^\d+(\.\d+)?$/g.test((row[field] || "").trim())) {
     return [

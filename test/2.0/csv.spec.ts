@@ -355,7 +355,7 @@ test("validateRow tall conditionals", (t) => {
     "standard_charge | discounted_cash": "200.50",
     "standard_charge | min": "50",
     "standard_charge | max": "500",
-    additional_generic_notes: "some notes",
+    additional_generic_notes: "",
     payer_name: "Acme Payer",
     plan_name: "Acme Basic Coverage",
     "standard_charge | negotiated_dollar": "",
@@ -483,6 +483,7 @@ test("validateRow tall conditionals", (t) => {
   const ndcNoMeasurementRow = {
     ...basicRow,
     "code | 1 | type": "NDC",
+    "standard_charge | negotiated_dollar": "300",
     drug_unit_of_measurement: "",
     drug_type_of_measurement: "",
   }
@@ -509,6 +510,7 @@ test("validateRow tall conditionals", (t) => {
     ...basicRow,
     "code | 2": "12345",
     "code | 2 | type": "NDC",
+    "standard_charge | negotiated_dollar": "300",
     drug_unit_of_measurement: "",
     drug_type_of_measurement: "",
   }
@@ -531,4 +533,112 @@ test("validateRow tall conditionals", (t) => {
   )
   t.is(ndcSecondNoMeasurementErrors[0].warning, !enforceConditionals)
   t.is(ndcSecondNoMeasurementErrors[1].warning, !enforceConditionals)
+  // If a modifier is encoded without an item or service, then a description and one of the following
+  // is the minimum information required:
+  // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
+  const invalidModifierRow = {
+    ...basicRow,
+    "code | 1": "",
+    "code | 1 | type": "",
+    modifiers: "50",
+  }
+  const invalidModifierErrors = validateRow(
+    invalidModifierRow,
+    14,
+    columns,
+    false
+  )
+  t.is(invalidModifierErrors.length, 1)
+  t.assert(
+    invalidModifierErrors[0].message.includes(
+      "at least one of additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, standard_charge | negotiated_algorithm is required for tall format when a modifier is encoded without an item or service"
+    )
+  )
+  const modifierWithNotesRow = {
+    ...basicRow,
+    "code | 1": "",
+    "code | 1 | type": "",
+    modifiers: "50",
+    additional_generic_notes: "useful notes about the modifier",
+  }
+  const modifierWithNotesErrors = validateRow(
+    modifierWithNotesRow,
+    15,
+    columns,
+    false
+  )
+  t.is(modifierWithNotesErrors.length, 0)
+  const modifierWithDollarRow = {
+    ...basicRow,
+    "code | 1": "",
+    "code | 1 | type": "",
+    modifiers: "50",
+    "standard_charge | negotiated_dollar": "380",
+  }
+  const modifierWithDollarErrors = validateRow(
+    modifierWithDollarRow,
+    16,
+    columns,
+    false
+  )
+  t.is(modifierWithDollarErrors.length, 0)
+  const modifierWithPercentageRow = {
+    ...basicRow,
+    "code | 1": "",
+    "code | 1 | type": "",
+    modifiers: "50",
+    "standard_charge | negotiated_percentage": "48.5",
+    estimated_amount: "150",
+  }
+  const modifierWithPercentageErrors = validateRow(
+    modifierWithPercentageRow,
+    17,
+    columns,
+    false
+  )
+  t.is(modifierWithPercentageErrors.length, 0)
+  const modifierWithAlgorithmRow = {
+    ...basicRow,
+    "code | 1": "",
+    "code | 1 | type": "",
+    modifiers: "50",
+    "standard_charge | negotiated_algorithm": "sliding function",
+    estimated_amount: "150",
+  }
+  const modifierWithAlgorithmErrors = validateRow(
+    modifierWithAlgorithmRow,
+    18,
+    columns,
+    false
+  )
+  t.is(modifierWithAlgorithmErrors.length, 0)
+  // types are still enforced for a modifier row
+  const modifierWithWrongTypesRow = {
+    ...basicRow,
+    "standard_charge | negotiated_dollar": "$100",
+    "standard_charge | negotiated_percentage": "15%",
+    "standard_charge | methodology": "secret",
+  }
+  const modifierWithWrongTypesErrors = validateRow(
+    modifierWithWrongTypesRow,
+    19,
+    columns,
+    false
+  )
+  t.is(modifierWithWrongTypesErrors.length, 3)
+  t.assert(
+    modifierWithWrongTypesErrors[0].message.includes(
+      '"standard_charge | negotiated_dollar" value "$100" is not a valid positive number'
+    )
+  )
+  t.assert(
+    modifierWithWrongTypesErrors[1].message.includes(
+      '"standard_charge | negotiated_percentage" value "15%" is not a valid positive number'
+    )
+  )
+  t.assert(
+    modifierWithWrongTypesErrors[2].message.includes(
+      '"standard_charge | methodology" value "secret" is not one of the allowed values'
+    )
+  )
 })
