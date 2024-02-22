@@ -91,7 +91,9 @@ const ERRORS = {
   },
   REQUIRED: (column: string, suffix = ``) => `"${column}" is required${suffix}`,
   ONE_OF_REQUIRED: (columns: string[], suffix = "") =>
-    `at least one of ${columns.join(", ")} is required${suffix}`,
+    `at least one of ${columns
+      .map((column) => `"${column}"`)
+      .join(", ")} is required${suffix}`,
 }
 
 /** @private */
@@ -351,8 +353,36 @@ export function validateRow(
     )
   )
 
+  // Some conditional checks have date-dependent enforcement.
+  const enforceConditionals = new Date().getFullYear() >= 2025
+  // If code type is NDC, then the corresponding drug unit of measure and
+  // drug type of measure data elements must be encoded. Required beginning 1/1/2025.
+  const allCodeTypes = columns
+    .filter((column) => {
+      return /^code \| \d+ | type$/.test(column)
+    })
+    .map((codeTypeColumn) => row[codeTypeColumn])
+  if (allCodeTypes.some((codeType) => matchesString(codeType, "NDC"))) {
+    ;["drug_unit_of_measurement", "drug_type_of_measurement"].forEach(
+      (field) => {
+        errors.push(
+          ...validateRequiredField(
+            row,
+            field,
+            index,
+            columns.indexOf(field),
+            " when an NDC code is present"
+          ).map((csvErr) => {
+            csvErr.warning = !enforceConditionals
+            return csvErr
+          })
+        )
+      }
+    )
+  }
+
   if (wide) {
-    errors.push(...validateWideFields(row, index))
+    errors.push(...validateWideFields(row, index, columns))
   } else {
     errors.push(...validateTallFields(row, index, columns))
   }
@@ -370,9 +400,31 @@ function validateModifierRow(
   const errors: CsvValidationError[] = []
   // If a modifier is encoded without an item or service, then a description and one of the following
   // is the minimum information required:
-  // additional_payer_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
+  // additional_generic_notes, additional_payer_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
 
   if (wide) {
+    const payersPlans = getPayersPlans(columns)
+    const payersPlansColumns: string[] = payersPlans
+      .flatMap((payerPlan) => [
+        ["standard_charge", ...payerPlan, "negotiated_dollar"],
+        ["standard_charge", ...payerPlan, "negotiated_percentage"],
+        ["standard_charge", ...payerPlan, "negotiated_algorithm"],
+        ["additional_payer_notes", ...payerPlan],
+      ])
+      .map((c) => c.join(" | "))
+    const modifierRequiredFields = [
+      "additional_generic_notes",
+      ...payersPlansColumns,
+    ]
+    errors.push(
+      ...validateOneOfRequiredField(
+        row,
+        modifierRequiredFields,
+        index,
+        columns.indexOf(modifierRequiredFields[0]),
+        " for wide format when a modifier is encoded without an item or service"
+      )
+    )
   } else {
     const modifierRequiredFields = [
       "additional_generic_notes",
@@ -445,7 +497,7 @@ function validateModifierRow(
   )
 
   if (wide) {
-    // validateWideModifierFields
+    errors.push(...validateWideModifierFields(row, index, columns))
   } else {
     errors.push(...validateTallModifierFields(row, index, columns))
   }
@@ -456,15 +508,16 @@ function validateModifierRow(
 /** @private */
 export function validateWideFields(
   row: { [key: string]: string },
-  index: number
+  index: number,
+  columns: string[]
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   // TODO: Is checking that all are present covered in checking columns?
   // TODO: Is order maintained on entries? likely not
-  Object.entries(row).forEach(([field, value], columnIndex) => {
+  columns.forEach((field, columnIndex) => {
     if (
       field.includes("contracting_method") &&
-      !STANDARD_CHARGE_METHODOLOGY.includes(value as StandardChargeMethod)
+      !STANDARD_CHARGE_METHODOLOGY.includes(row[field] as StandardChargeMethod)
     ) {
       errors.push(
         csvErr(
@@ -473,7 +526,7 @@ export function validateWideFields(
           field,
           ERRORS.ALLOWED_VALUES(
             field,
-            value,
+            row[field],
             STANDARD_CHARGE_METHODOLOGY as unknown as string[]
           )
         )
@@ -481,7 +534,7 @@ export function validateWideFields(
     } else if (field.includes("standard_charge")) {
       if (
         field.includes(" | percent") &&
-        !value.trim() &&
+        !row[field].trim() &&
         !row[field.replace(" | percent", "")].trim()
       ) {
         errors.push(
@@ -495,6 +548,100 @@ export function validateWideFields(
       }
     }
   })
+
+  // Some conditional checks have date-dependent enforcement.
+  const enforceConditionals = new Date().getFullYear() >= 2025
+
+  // If there is a "payer specific negotiated charge" encoded as a dollar amount,
+  // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
+  const dollarChargeColumns = columns.filter((column) =>
+    column.endsWith("| negotiated_dollar")
+  )
+  if (dollarChargeColumns.some((column) => row[column].trim().length > 0)) {
+    ;["standard_charge | min", "standard_charge | max"].forEach((field) => {
+      errors.push(
+        ...validateRequiredField(
+          row,
+          field,
+          index,
+          columns.indexOf(field),
+          " when a negotiated dollar amount is present"
+        )
+      )
+    })
+  }
+
+  // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+  // then a corresponding "Estimated Allowed Amount" must also be encoded. Required beginning 1/1/2025.
+  const payersPlans = getPayersPlans(columns)
+  payersPlans.forEach(([payer, plan]) => {
+    if (
+      (
+        row[`standard_charge | ${payer} | ${plan} | negotiated_dollar`] || ""
+      ).trim().length === 0 &&
+      ((
+        row[`standard_charge | ${payer} | ${plan} | negotiated_percentage`] ||
+        ""
+      ).trim().length > 0 ||
+        (
+          row[`standard_charge | ${payer} | ${plan} | negotiated_algorithm`] ||
+          ""
+        ).trim().length > 0)
+    ) {
+      errors.push(
+        ...validateRequiredFloatField(
+          row,
+          `estimated_amount | ${payer} | ${plan}`,
+          index,
+          columns.indexOf(`estimated_amount | ${payer} | ${plan}`),
+          " when a negotiated percentage or algorithm is present, but negotiated dollar is not present"
+        ).map((csvErr) => {
+          csvErr.warning = !enforceConditionals
+          return csvErr
+        })
+      )
+    }
+  })
+  return errors
+}
+
+/** @private */
+// checks the same fields as validateWideFields, but they are now optional
+export function validateWideModifierFields(
+  row: { [key: string]: string },
+  index: number,
+  columns: string[]
+): CsvValidationError[] {
+  const errors: CsvValidationError[] = []
+
+  const payersPlans = getPayersPlans(columns)
+  const floatChargeFields = payersPlans
+    .flatMap((payerPlan) => [
+      ["standard_charge", ...payerPlan, "negotiated_dollar"],
+      ["standard_charge", ...payerPlan, "negotiated_percentage"],
+    ])
+    .map((c) => c.join(" | "))
+  floatChargeFields.forEach((field) => {
+    errors.push(
+      ...validateOptionalFloatField(row, field, index, columns.indexOf(field))
+    )
+  })
+
+  const methodologyFields = payersPlans.map((payerPlan) =>
+    ["standard_charge", ...payerPlan, "methodology"].join(" | ")
+  )
+  methodologyFields.forEach((field) => {
+    errors.push(
+      ...validateOptionalEnumField(
+        row,
+        field,
+        index,
+        columns.indexOf(field),
+        STANDARD_CHARGE_METHODOLOGY
+      )
+    )
+  })
+
   return errors
 }
 
@@ -592,9 +739,7 @@ export function validateTallFields(
   if (
     (row["standard_charge | negotiated_dollar"] || "").trim().length === 0 &&
     ((row["standard_charge | negotiated_percentage"] || "").trim().length > 0 ||
-      (row["standard_charge | negotiated_algorithm"] || "").trim().length >
-        0) &&
-    (row["estimated_amount"] || "").trim().length === 0
+      (row["standard_charge | negotiated_algorithm"] || "").trim().length > 0)
   ) {
     errors.push(
       ...validateRequiredFloatField(
@@ -607,32 +752,6 @@ export function validateTallFields(
         csvErr.warning = !enforceConditionals
         return csvErr
       })
-    )
-  }
-
-  // If code type is NDC, then the corresponding drug unit of measure and
-  // drug type of measure data elements must be encoded. Required beginning 1/1/2025.
-  const allCodeTypes = columns
-    .filter((column) => {
-      return /^code \| \d+ | type$/.test(column)
-    })
-    .map((codeTypeColumn) => row[codeTypeColumn])
-  if (allCodeTypes.some((codeType) => matchesString(codeType, "NDC"))) {
-    ;["drug_unit_of_measurement", "drug_type_of_measurement"].forEach(
-      (field) => {
-        errors.push(
-          ...validateRequiredField(
-            row,
-            field,
-            index,
-            columns.indexOf(field),
-            " when an NDC code is present"
-          ).map((csvErr) => {
-            csvErr.warning = !enforceConditionals
-            return csvErr
-          })
-        )
-      }
     )
   }
 
