@@ -114,8 +114,6 @@
       ],
       "standard_charges": [
         {
-          "gross_charge": 2500,
-          "discounted_cash": 2250,
           "minimum": 1200,
           "maximum": 2000,
           "setting": "inpatient",

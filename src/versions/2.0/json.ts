@@ -80,6 +80,23 @@ const STANDARD_CHARGE_DEFINITIONS = {
         },
       },
     ],
+    if: {
+      type: "object",
+      properties: {
+        payers_information: {
+          type: "array",
+          items: {
+            type: "object",
+            not: {
+              required: ["standard_charge_dollar"],
+            },
+          },
+        },
+      },
+    },
+    else: {
+      required: ["minimum", "maximum"],
+    },
   },
   standard_charge_information: {
     type: "object",

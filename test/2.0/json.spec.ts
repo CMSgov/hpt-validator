@@ -152,4 +152,48 @@ test("validateJsonConditionals", async (t) => {
       message: "must match a schema in anyOf",
     },
   ])
+
+  const result3 = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-error-minimum.json"),
+    "v2.0"
+  )
+  t.is(result3.valid, false)
+  t.deepEqual(result3.errors.length, 7)
+  t.deepEqual(result3.errors, [
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'minimum'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'maximum'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: 'must match "else" schema',
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'maximum'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: 'must match "else" schema',
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'maximum'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: 'must match "else" schema',
+    },
+  ])
 })
