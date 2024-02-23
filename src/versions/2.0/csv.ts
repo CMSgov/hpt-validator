@@ -464,7 +464,6 @@ function validateModifierRow(
     )
   )
 
-  // if ((row["drug_unit_of_measurement"] || "").trim()) {
   errors.push(
     ...validateOptionalFloatField(
       row,
@@ -482,7 +481,6 @@ function validateModifierRow(
       DRUG_UNITS
     )
   )
-  // }
 
   const chargeFields = [
     "standard_charge | gross",
