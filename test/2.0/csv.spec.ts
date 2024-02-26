@@ -184,16 +184,29 @@ test("validateRow tall", (t) => {
   // drug_unit_of_measurement must be positive number if present
   const emptyDrugUnitRow = { ...basicRow, drug_unit_of_measurement: "" }
   const emptyDrugUnitResult = validateRow(emptyDrugUnitRow, 9, columns, false)
-  t.is(emptyDrugUnitResult.length, 0)
+  t.is(emptyDrugUnitResult.length, 1)
+  t.assert(
+    emptyDrugUnitResult[0].message.includes(
+      '"drug_unit_of_measurement" is required to be a positive number when "drug_type_of_measurement" is present'
+    )
+  )
   const wrongDrugUnitRow = { ...basicRow, drug_unit_of_measurement: "-4" }
   const wrongDrugUnitResult = validateRow(wrongDrugUnitRow, 10, columns, false)
   t.is(wrongDrugUnitResult.length, 1)
   t.assert(
     wrongDrugUnitResult[0].message.includes(
-      '"drug_unit_of_measurement" value "-4" is not a valid positive number'
+      '"drug_unit_of_measurement" is required to be a positive number when "drug_type_of_measurement" is present'
     )
   )
   // drug_type_of_measurement must be one of DRUG_UNITS if present
+  const emptyDrugTypeRow = { ...basicRow, drug_type_of_measurement: "" }
+  const emptyDrugTypeResult = validateRow(emptyDrugTypeRow, 12, columns, false)
+  t.is(emptyDrugTypeResult.length, 1)
+  t.assert(
+    emptyDrugTypeResult[0].message.includes(
+      '"drug_type_of_measurement" is required when "drug_unit_of_measurement" is present'
+    )
+  )
   const wrongDrugTypeRow = { ...basicRow, drug_type_of_measurement: "KG" }
   const wrongDrugTypeResult = validateRow(wrongDrugTypeRow, 12, columns, false)
   t.is(wrongDrugTypeResult.length, 1)
