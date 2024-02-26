@@ -58,27 +58,6 @@ test("validateJson errorFile", async (t) => {
   ])
 })
 
-test("validateJson errorConditionalFile", async (t) => {
-  const result = await validateJson(
-    loadFixtureStream("/2.0/sample-conditional-errors.json"),
-    "v2.0"
-  )
-  t.is(result.valid, false)
-  t.deepEqual(result.errors.length, 2)
-  t.deepEqual(result.errors, [
-    {
-      path: "/standard_charges/3/payers_information/2",
-      field: "2",
-      message: "must have required property 'additional_payer_notes'",
-    },
-    {
-      path: "/standard_charges/3/payers_information/2",
-      field: "2",
-      message: 'must match "then" schema',
-    },
-  ])
-})
-
 test("validateJsonConditionals", async (t) => {
   const result = await validateJson(
     loadFixtureStream("/2.0/sample-conditional-errors.json"),
