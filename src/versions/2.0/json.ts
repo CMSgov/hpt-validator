@@ -61,6 +61,42 @@ const STANDARD_CHARGE_DEFINITIONS = {
       additional_generic_notes: { type: "string" },
     },
     required: ["setting"],
+    anyOf: [
+      { type: "object", required: ["gross_charge"] },
+      { type: "object", required: ["discounted_cash"] },
+      {
+        type: "object",
+        properties: {
+          payers_information: {
+            type: "array",
+            items: {
+              anyOf: [
+                { type: "object", required: ["standard_charge_dollar"] },
+                { type: "object", required: ["standard_charge_algorithm"] },
+                { type: "object", required: ["standard_charge_percentage"] },
+              ],
+            },
+          },
+        },
+      },
+    ],
+    if: {
+      type: "object",
+      properties: {
+        payers_information: {
+          type: "array",
+          items: {
+            type: "object",
+            not: {
+              required: ["standard_charge_dollar"],
+            },
+          },
+        },
+      },
+    },
+    else: {
+      required: ["minimum", "maximum"],
+    },
   },
   standard_charge_information: {
     type: "object",
@@ -96,6 +132,18 @@ const STANDARD_CHARGE_DEFINITIONS = {
       },
     },
     required: ["payer_name", "plan_name", "methodology"],
+
+    if: {
+      properties: {
+        methodology: {
+          const: "other",
+        },
+      },
+      required: ["methodology"],
+    },
+    then: {
+      required: ["additional_payer_notes"],
+    },
   },
 }
 

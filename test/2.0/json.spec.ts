@@ -57,3 +57,112 @@ test("validateJson errorFile", async (t) => {
     },
   ])
 })
+
+test("validateJsonConditionals", async (t) => {
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-errors.json"),
+    "v2.0"
+  )
+  t.is(result.valid, false)
+  t.deepEqual(result.errors.length, 2)
+  t.deepEqual(result.errors, [
+    {
+      path: "/standard_charges/3/payers_information/2",
+      field: "2",
+      message: "must have required property 'additional_payer_notes'",
+    },
+    {
+      path: "/standard_charges/3/payers_information/2",
+      field: "2",
+      message: 'must match "then" schema',
+    },
+  ])
+
+  const result2 = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-error-standardcharge.json"),
+    "v2.0"
+  )
+  t.is(result2.valid, false)
+  t.deepEqual(result2.errors.length, 7)
+  t.deepEqual(result2.errors, [
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'gross_charge'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'discounted_cash'",
+    },
+    {
+      path: "/standard_charges/1/payers_information/0",
+      field: "0",
+      message: "must have required property 'standard_charge_dollar'",
+    },
+    {
+      path: "/standard_charges/1/payers_information/0",
+      field: "0",
+      message: "must have required property 'standard_charge_algorithm'",
+    },
+    {
+      path: "/standard_charges/1/payers_information/0",
+      field: "0",
+      message: "must have required property 'standard_charge_percentage'",
+    },
+    {
+      path: "/standard_charges/1/payers_information/0",
+      field: "0",
+      message: "must match a schema in anyOf",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must match a schema in anyOf",
+    },
+  ])
+
+  const result3 = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-error-minimum.json"),
+    "v2.0"
+  )
+  t.is(result3.valid, false)
+  t.deepEqual(result3.errors.length, 7)
+  t.deepEqual(result3.errors, [
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'minimum'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'maximum'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: 'must match "else" schema',
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'maximum'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: 'must match "else" schema',
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: "must have required property 'maximum'",
+    },
+    {
+      path: "/standard_charges/0",
+      field: "0",
+      message: 'must match "else" schema',
+    },
+  ])
+})
