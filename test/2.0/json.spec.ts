@@ -38,22 +38,12 @@ test("validateJson errorFile", async (t) => {
     "v2.0"
   )
   t.is(result.valid, false)
-  t.deepEqual(result.errors.length, 5)
+  t.deepEqual(result.errors.length, 3)
   t.deepEqual(result.errors, [
     {
       path: "/standard_charges/0/payers_information/0/standard_charge_dollar",
       field: "standard_charge_dollar",
       message: "must be number",
-    },
-    {
-      path: "/standard_charges/3/payers_information/2",
-      field: "2",
-      message: "must have required property 'additional_payer_notes'",
-    },
-    {
-      path: "/standard_charges/3/payers_information/2",
-      field: "2",
-      message: 'must match "then" schema',
     },
     {
       path: "/standard_charges/3/payers_information/2",
