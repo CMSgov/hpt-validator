@@ -10,7 +10,7 @@ import {
 } from "../../src/versions/2.0/csv.js"
 
 const VALID_HEADER_COLUMNS = HEADER_COLUMNS.map((c) =>
-  c === "license_number | state" ? "license_number | MD" : c
+  c === "license_number | [state]" ? "license_number | MD" : c
 )
 
 test("validateHeaderColumns", (t) => {
@@ -46,6 +46,15 @@ test("validateHeaderColumns", (t) => {
     "Column hospital_location duplicated in header"
   )
   t.deepEqual(duplicateResult.columns, VALID_HEADER_COLUMNS)
+  const invalidStateColumns = HEADER_COLUMNS.map((c) =>
+    c === "license_number | [state]" ? "license_number | ZZ" : c
+  )
+  const invalidStateErrors = validateHeaderColumns(invalidStateColumns)
+  t.is(invalidStateErrors.errors.length, 2)
+  t.is(
+    invalidStateErrors.errors[0].message,
+    'Header column "license_number | ZZ" includes an invalid state code "ZZ"'
+  )
 })
 
 test("validateHeaderRow", (t) => {
