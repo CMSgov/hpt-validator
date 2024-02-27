@@ -233,6 +233,10 @@ export const METADATA_DEFINITIONS = {
         type: "string",
         minLength: 1,
       },
+      setting: {
+        enum: CHARGE_SETTINGS,
+        type: "string",
+      },
     },
     required: ["payer_name", "plan_name", "description"],
   },
