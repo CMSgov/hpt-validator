@@ -26,7 +26,7 @@ export const HEADER_COLUMNS = [
   "version", // string - maybe one of the known versions?
   "hospital_location", // string
   "hospital_address", // string
-  "license_number | state", // string, check for valid postal code in header
+  "license_number | [state]", // string, check for valid postal code in header
   ATTESTATION, // "true"
 ] as const
 
@@ -62,8 +62,8 @@ const ERRORS = {
   HEADER_COLUMN_MISSING: (column: string) =>
     `Header column should be "${column}", but it is not present`,
   HEADER_COLUMN_BLANK: (column: string) => `"${column}" is blank`,
-  HEADER_STATE_CODE: (column: string, stateCode: string) =>
-    `Header column "${column}" includes an invalid state code "${stateCode}"`,
+  HEADER_STATE_CODE: (stateCode: string) =>
+    `${stateCode} is not an allowed value for state abbreviation. You must fill in the state or territory abbreviation even if there is no license number to encode. See the table found here for the list of valid values for state and territory abbreviations https://github.com/CMSgov/hospital-price-transparency/blob/master/documentation/CSV/state_codes.md`,
   DUPLICATE_HEADER_COLUMN: (column: string) =>
     `Column ${column} duplicated in header`,
   COLUMN_MISSING: (column: string, format: string) =>
@@ -115,12 +115,33 @@ export function validateHeaderColumns(columns: string[]): {
   const rowIndex = 0
   const remainingColumns = [...HEADER_COLUMNS]
   const discoveredColumns: string[] = []
-  const duplicateErrors: CsvValidationError[] = []
+  const errors: CsvValidationError[] = []
   columns.forEach((column, index) => {
     const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) => {
-      if (requiredColumn === "license_number | state") {
-        // see if it works
-        return validateLicenseStateColumn(column)
+      if (requiredColumn === "license_number | [state]") {
+        // make a best guess as to when a header is meant to be the license_number header
+        // if it has two parts, and the first part matches, then the second part ought to be valid
+        const splitColumn = column.split("|").map((v) => v.trim())
+        if (splitColumn.length !== 2) {
+          return false
+        }
+        if (sepColumnsEqual(splitColumn[0], "license_number")) {
+          if (STATE_CODES.includes(splitColumn[1].toUpperCase() as StateCode)) {
+            return true
+          } else {
+            errors.push(
+              csvErr(
+                rowIndex,
+                index,
+                requiredColumn,
+                ERRORS.HEADER_STATE_CODE(splitColumn[1])
+              )
+            )
+            return false
+          }
+        } else {
+          return false
+        }
       } else {
         return sepColumnsEqual(column, requiredColumn)
       }
@@ -134,7 +155,7 @@ export function validateHeaderColumns(columns: string[]): {
         return discovered != null && sepColumnsEqual(discovered, column)
       })
       if (existingColumn) {
-        duplicateErrors.push(
+        errors.push(
           csvErr(
             rowIndex,
             index,
@@ -147,7 +168,7 @@ export function validateHeaderColumns(columns: string[]): {
   })
   return {
     errors: [
-      ...duplicateErrors,
+      ...errors,
       ...remainingColumns.map((requiredColumn) => {
         return csvErr(
           rowIndex,
@@ -641,20 +662,6 @@ export function validateWideModifierFields(
   })
 
   return errors
-}
-
-function validateLicenseStateColumn(column: string): boolean {
-  const splitColumn = column.split("|").map((v) => v.trim())
-  if (splitColumn.length !== 2) {
-    return false
-  }
-  const stateCode = column.split("|").slice(-1)[0].trim()
-  if (!STATE_CODES.includes(stateCode.toUpperCase() as StateCode)) {
-    return false
-  } else if (!sepColumnsEqual(column, `license_number | ${stateCode}`)) {
-    return false
-  }
-  return true
 }
 
 /** @private */
