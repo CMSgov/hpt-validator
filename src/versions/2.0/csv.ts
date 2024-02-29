@@ -6,6 +6,7 @@ import {
   getCodeCount,
   isValidDate,
   matchesString,
+  objectFromKeysValues,
 } from "../common/csv.js"
 import {
   BILLING_CODE_TYPES,
@@ -16,7 +17,7 @@ import {
   DRUG_UNITS,
 } from "./types.js"
 
-const ATTESTATION =
+const AFFIRMATION =
   "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated."
 
 // headers must all be non-empty
@@ -27,7 +28,7 @@ export const HEADER_COLUMNS = [
   "hospital_location", // string
   "hospital_address", // string
   "license_number | [state]", // string, check for valid postal code in header
-  ATTESTATION, // "true"
+  AFFIRMATION, // "true" or "false"
 ] as const
 
 export const BASE_COLUMNS = [
@@ -60,41 +61,50 @@ export const TALL_COLUMNS = [
 
 const ERRORS = {
   HEADER_COLUMN_MISSING: (column: string) =>
-    `Header column should be "${column}", but it is not present`,
-  HEADER_COLUMN_BLANK: (column: string) => `"${column}" is blank`,
+    `Header column "${column}" is miscoded or missing. You must include this header and confirm that it is encoded as specified in the data dictionary.`,
+  HEADER_COLUMN_BLANK: (column: string) =>
+    `A value is required for "${column}". You must encode the missing information.`,
   HEADER_STATE_CODE: (stateCode: string) =>
     `${stateCode} is not an allowed value for state abbreviation. You must fill in the state or territory abbreviation even if there is no license number to encode. See the table found here for the list of valid values for state and territory abbreviations https://github.com/CMSgov/hospital-price-transparency/blob/master/documentation/CSV/state_codes.md`,
   DUPLICATE_HEADER_COLUMN: (column: string) =>
-    `Column ${column} duplicated in header`,
-  COLUMN_MISSING: (column: string, format: string) =>
-    `Column ${column} is missing, but it is required for ${format} format`,
+    `Column ${column} duplicated in header. You must review and revise your column headers so that each header appears only once in the first row.`,
+  COLUMN_MISSING: (column: string) =>
+    `Column ${column} is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.`,
   ALLOWED_VALUES: (
     column: string,
     value: string,
-    allowedValues: readonly string[],
-    suffix = ""
+    allowedValues: readonly string[]
   ) =>
-    `"${column}" value "${value}" is not one of the allowed values: ${allowedValues
-      .map((t) => `"${t}"`)
-      .join(", ")}${suffix}`,
+    `"${column}" value "${value}" is not one of the allowed valid values. You must encode one of these valid values: ${allowedValues.join(
+      ", "
+    )}`,
   INVALID_DATE: (column: string, value: string) =>
-    `"${column}" value "${value}" is not a valid YYYY-MM-DD date`,
+    `"${column}" value "${value}" is not in a valid ISO 8601 format. You must encode the date using this format: YYYY-MM-DD`,
   INVALID_NUMBER: (column: string, value: string) =>
-    `"${column}" value "${value}" is not a valid positive number`,
-  POSITIVE_NUMBER: (column: string, suffix = ``) =>
-    `"${column}" is required to be a positive number${suffix}`,
+    `"${column}" value "${value}" is not a positive number. You must encode a positive, non-zero, numeric value.`,
+  POSITIVE_NUMBER: (column: string, value: string) =>
+    `"${column}" value "${value}" is not a positive number. You must encode a positive, non-zero, numeric value.`,
   CHARGE_ONE_REQUIRED: (column: string) => {
     const fieldName = column.replace(" | percent", "")
     return `One of "${fieldName}" or "${fieldName} | percent" is required`
   },
   CODE_ONE_REQUIRED: () => {
-    return "At least one code and code type must be specified"
+    return "If a standard charge is encoded, there must be a corresponding code and code type pairing. The code and code type pairing do not need to be in the first code and code type columns (i.e., code|1 and code|1|type)."
   },
-  REQUIRED: (column: string, suffix = ``) => `"${column}" is required${suffix}`,
+  REQUIRED: (column: string, suffix = ``) =>
+    `A value is required for "${column}"${suffix}. You must encode the missing information.`,
   ONE_OF_REQUIRED: (columns: string[], suffix = "") =>
     `at least one of ${columns
       .map((column) => `"${column}"`)
       .join(", ")} is required${suffix}`,
+  DOLLAR_MIN_MAX: () =>
+    'If there is a "payer specific negotiated charge" encoded as a dollar amount, there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.',
+  PERCENTAGE_ALGORITHM_ESTIMATE: () =>
+    'If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm, then a corresponding "Estimated Allowed Amount" must also be encoded.',
+  NDC_DRUG_MEASURE: () =>
+    "If code type is NDC, then the corresponding drug unit of measure and drug type of measure data element must be encoded.",
+  MODIFIER_EXTRA_INFO: () =>
+    "If a modifier is encoded without an item or service, then a description and one of the following is the minimum information required: additional_payer_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm.",
 }
 
 /** @private */
@@ -111,7 +121,7 @@ export function validateHeader(
 /** @private */
 export function validateHeaderColumns(columns: string[]): {
   errors: CsvValidationError[]
-  columns: (string | undefined)[]
+  columns: string[]
 } {
   const rowIndex = 0
   const remainingColumns = [...HEADER_COLUMNS]
@@ -185,7 +195,7 @@ export function validateHeaderColumns(columns: string[]): {
 
 /** @private */
 export function validateHeaderRow(
-  headers: (string | undefined)[],
+  headers: string[],
   row: string[]
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
@@ -202,13 +212,14 @@ export function validateHeaderRow(
         errors.push(
           csvErr(rowIndex, index, header, ERRORS.INVALID_DATE(header, value))
         )
-      } else if (header === ATTESTATION && !matchesString(value, "true")) {
+      } else if (header === AFFIRMATION) {
         errors.push(
-          csvErr(
+          ...validateRequiredEnumField(
+            objectFromKeysValues(headers, row),
+            header,
             rowIndex,
             index,
-            "ATTESTATION",
-            ERRORS.ALLOWED_VALUES("ATTESTATION", value, ["true"])
+            ["true", "false"]
           )
         )
       }
@@ -224,7 +235,6 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
 
   const tall = isTall(columns)
   const baseColumns = getBaseColumns(columns)
-  const schemaFormat = tall ? "tall" : "wide"
   const remainingColumns = baseColumns.concat(
     tall ? getTallColumns() : getWideColumns(columns)
   )
@@ -243,7 +253,7 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
       rowIndex,
       columns.length,
       requiredColumn,
-      ERRORS.COLUMN_MISSING(requiredColumn, schemaFormat)
+      ERRORS.COLUMN_MISSING(requiredColumn)
     )
   })
 }
@@ -390,22 +400,26 @@ export function validateRow(
     })
     .map((codeTypeColumn) => row[codeTypeColumn])
   if (allCodeTypes.some((codeType) => matchesString(codeType, "NDC"))) {
-    ;["drug_unit_of_measurement", "drug_type_of_measurement"].forEach(
-      (field) => {
-        errors.push(
-          ...validateRequiredField(
-            row,
-            field,
-            index,
-            columns.indexOf(field),
-            " when an NDC code is present"
-          ).map((csvErr) => {
-            csvErr.warning = !enforceConditionals
-            return csvErr
-          })
+    const invalidFields = [
+      "drug_unit_of_measurement",
+      "drug_type_of_measurement",
+    ].filter((field) => {
+      return (
+        validateRequiredField(row, field, index, columns.indexOf(field))
+          .length > 0
+      )
+    })
+    if (invalidFields.length > 0) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(invalidFields[0]),
+          invalidFields[0],
+          ERRORS.NDC_DRUG_MEASURE(),
+          !enforceConditionals
         )
-      }
-    )
+      )
+    }
   }
 
   if (wide) {
@@ -443,15 +457,24 @@ function validateModifierRow(
       "additional_generic_notes",
       ...payersPlansColumns,
     ]
-    errors.push(
-      ...validateOneOfRequiredField(
+    if (
+      validateOneOfRequiredField(
         row,
         modifierRequiredFields,
         index,
         columns.indexOf(modifierRequiredFields[0]),
         " for wide format when a modifier is encoded without an item or service"
+      ).length > 0
+    ) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(modifierRequiredFields[0]),
+          modifierRequiredFields[0],
+          ERRORS.MODIFIER_EXTRA_INFO()
+        )
       )
-    )
+    }
   } else {
     const modifierRequiredFields = [
       "additional_generic_notes",
@@ -459,15 +482,24 @@ function validateModifierRow(
       "standard_charge | negotiated_percentage",
       "standard_charge | negotiated_algorithm",
     ]
-    errors.push(
-      ...validateOneOfRequiredField(
+    if (
+      validateOneOfRequiredField(
         row,
         modifierRequiredFields,
         index,
         columns.indexOf(modifierRequiredFields[0]),
         " for tall format when a modifier is encoded without an item or service"
+      ).length > 0
+    ) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(modifierRequiredFields[0]),
+          modifierRequiredFields[0],
+          ERRORS.MODIFIER_EXTRA_INFO()
+        )
       )
-    )
+    }
   }
 
   // other conditionals don't apply for modifier rows, but any values entered should still be the correct type
@@ -583,17 +615,25 @@ export function validateWideFields(
     column.endsWith("| negotiated_dollar")
   )
   if (dollarChargeColumns.some((column) => row[column].trim().length > 0)) {
-    ;["standard_charge | min", "standard_charge | max"].forEach((field) => {
-      errors.push(
-        ...validateRequiredField(
-          row,
-          field,
-          index,
-          columns.indexOf(field),
-          " when a negotiated dollar amount is present"
-        )
+    const invalidFields = [
+      "standard_charge | min",
+      "standard_charge | max",
+    ].filter((field) => {
+      return (
+        validateRequiredField(row, field, index, columns.indexOf(field))
+          .length > 0
       )
     })
+    if (invalidFields.length > 0) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(invalidFields[0]),
+          invalidFields[0],
+          ERRORS.DOLLAR_MIN_MAX()
+        )
+      )
+    }
   }
 
   // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
@@ -613,18 +653,25 @@ export function validateWideFields(
           ""
         ).trim().length > 0)
     ) {
-      errors.push(
-        ...validateRequiredFloatField(
+      const estimatedField = `estimated_amount | ${payer} | ${plan}`
+      if (
+        validateRequiredFloatField(
           row,
-          `estimated_amount | ${payer} | ${plan}`,
+          estimatedField,
           index,
-          columns.indexOf(`estimated_amount | ${payer} | ${plan}`),
-          " when a negotiated percentage or algorithm is present, but negotiated dollar is not present"
-        ).map((csvErr) => {
-          csvErr.warning = !enforceConditionals
-          return csvErr
-        })
-      )
+          columns.indexOf(estimatedField)
+        ).length > 0
+      ) {
+        errors.push(
+          csvErr(
+            index,
+            columns.indexOf(estimatedField),
+            estimatedField,
+            ERRORS.PERCENTAGE_ALGORITHM_ESTIMATE(),
+            !enforceConditionals
+          )
+        )
+      }
     }
   })
   return errors
@@ -732,17 +779,25 @@ export function validateTallFields(
   // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
   // min and max have already been checked for valid float format, so this checks only if they are present.
   if ((row["standard_charge | negotiated_dollar"] || "").trim().length > 0) {
-    ;["standard_charge | min", "standard_charge | max"].forEach((field) => {
-      errors.push(
-        ...validateRequiredField(
-          row,
-          field,
-          index,
-          columns.indexOf(field),
-          " when a negotiated dollar amount is present"
-        )
+    const invalidFields = [
+      "standard_charge | min",
+      "standard_charge | max",
+    ].filter((field) => {
+      return (
+        validateRequiredField(row, field, index, columns.indexOf(field))
+          .length > 0
       )
     })
+    if (invalidFields.length > 0) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(invalidFields[0]),
+          invalidFields[0],
+          ERRORS.DOLLAR_MIN_MAX()
+        )
+      )
+    }
   }
 
   // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
@@ -752,18 +807,25 @@ export function validateTallFields(
     ((row["standard_charge | negotiated_percentage"] || "").trim().length > 0 ||
       (row["standard_charge | negotiated_algorithm"] || "").trim().length > 0)
   ) {
-    errors.push(
-      ...validateRequiredFloatField(
+    const estimatedField = `estimated_amount`
+    if (
+      validateRequiredFloatField(
         row,
-        "estimated_amount",
+        estimatedField,
         index,
-        columns.indexOf("estimated_amount"),
-        " when a negotiated percentage or algorithm is present, but negotiated dollar is not present"
-      ).map((csvErr) => {
-        csvErr.warning = !enforceConditionals
-        return csvErr
-      })
-    )
+        columns.indexOf(estimatedField)
+      ).length > 0
+    ) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(estimatedField),
+          estimatedField,
+          ERRORS.PERCENTAGE_ALGORITHM_ESTIMATE(),
+          !enforceConditionals
+        )
+      )
+    }
   }
 
   return errors
@@ -905,13 +967,17 @@ function validateRequiredFloatField(
   columnIndex: number,
   suffix = ""
 ): CsvValidationError[] {
-  if (!/^\d+(\.\d+)?$/g.test((row[field] || "").trim())) {
+  if (!(row[field] || "").trim()) {
+    return [
+      csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field, suffix)),
+    ]
+  } else if (!/^\d+(\.\d+)?$/g.test(row[field].trim())) {
     return [
       csvErr(
         rowIndex,
         columnIndex,
         field,
-        ERRORS.POSITIVE_NUMBER(field, suffix)
+        ERRORS.POSITIVE_NUMBER(field, row[field])
       ),
     ]
   }
