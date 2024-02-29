@@ -68,7 +68,8 @@ const ERRORS = {
     `Column ${column} duplicated in header`,
   COLUMN_MISSING: (column: string, format: string) =>
     `Column ${column} is missing, but it is required for ${format} format`,
-  DUPLICATE_COLUMN: (column: string) => `Column "${column}" duplicated`,
+  DUPLICATE_COLUMN: (column: string) =>
+    `Column ${column} duplicated in header. You must review and revise your column headers so that each header appears only once in the third row.`,
   ALLOWED_VALUES: (
     column: string,
     value: string,

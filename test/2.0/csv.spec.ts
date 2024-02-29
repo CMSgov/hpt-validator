@@ -115,8 +115,9 @@ test("validateColumns tall", (t) => {
   const duplicateColumns = [...columns, "payer_name"]
   const duplicateErrors = validateColumns(duplicateColumns)
   t.is(duplicateErrors.length, 1)
-  t.assert(
-    duplicateErrors[0].message.includes('Column "payer_name" duplicated')
+  t.is(
+    duplicateErrors[0].message,
+    "Column payer_name duplicated in header. You must review and revise your column headers so that each header appears only once in the third row."
   )
   // if a column is missing, that's an error
   const missingBase = columns.slice(1)
