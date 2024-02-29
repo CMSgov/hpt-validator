@@ -103,7 +103,7 @@ export async function validateCsv(
     } else if (index === 2) {
       dataColumns = cleanColumnNames(row)
       errors.push(...validator.validateColumns(dataColumns))
-      if (errors.length > 0) {
+      if (errors.some((err) => !err.warning)) {
         resolve({
           valid: false,
           errors: errors.map(csvErrorToValidationError).concat({
