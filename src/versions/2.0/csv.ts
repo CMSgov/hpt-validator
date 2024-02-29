@@ -71,11 +71,12 @@ const ERRORS = {
   ALLOWED_VALUES: (
     column: string,
     value: string,
-    allowedValues: readonly string[]
+    allowedValues: readonly string[],
+    suffix = ""
   ) =>
     `"${column}" value "${value}" is not one of the allowed values: ${allowedValues
       .map((t) => `"${t}"`)
-      .join(", ")}`,
+      .join(", ")}${suffix}`,
   INVALID_DATE: (column: string, value: string) =>
     `"${column}" value "${value}" is not a valid YYYY-MM-DD date`,
   INVALID_NUMBER: (column: string, value: string) =>
@@ -342,13 +343,17 @@ export function validateRow(
     )
   )
 
-  if ((row["drug_unit_of_measurement"] || "").trim()) {
+  if (
+    (row["drug_unit_of_measurement"] || "").trim() ||
+    (row["drug_type_of_measurement"] || "").trim()
+  ) {
     errors.push(
-      ...validateOptionalFloatField(
+      ...validateRequiredFloatField(
         row,
         "drug_unit_of_measurement",
         index,
-        columns.indexOf("drug_unit_of_measurement")
+        columns.indexOf("drug_unit_of_measurement"),
+        ' when "drug_type_of_measurement" is present'
       )
     )
     errors.push(
@@ -357,7 +362,8 @@ export function validateRow(
         "drug_type_of_measurement",
         index,
         columns.indexOf("drug_type_of_measurement"),
-        DRUG_UNITS
+        DRUG_UNITS,
+        ' when "drug_unit_of_measurement" is present'
       )
     )
   }
@@ -938,10 +944,13 @@ function validateRequiredEnumField(
   field: string,
   rowIndex: number,
   columnIndex: number,
-  allowedValues: readonly string[]
+  allowedValues: readonly string[],
+  suffix = ""
 ) {
   if (!(row[field] || "").trim()) {
-    return [csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field))]
+    return [
+      csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field, suffix)),
+    ]
   } else {
     const uppercaseValue = row[field].toUpperCase()
     if (
