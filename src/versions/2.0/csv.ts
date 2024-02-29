@@ -62,8 +62,8 @@ const ERRORS = {
   HEADER_COLUMN_MISSING: (column: string) =>
     `Header column should be "${column}", but it is not present`,
   HEADER_COLUMN_BLANK: (column: string) => `"${column}" is blank`,
-  HEADER_STATE_CODE: (column: string, stateCode: string) =>
-    `Header column "${column}" includes an invalid state code "${stateCode}"`,
+  HEADER_STATE_CODE: (stateCode: string) =>
+    `${stateCode} is not an allowed value for state abbreviation. You must fill in the state or territory abbreviation even if there is no license number to encode. See the table found here for the list of valid values for state and territory abbreviations https://github.com/CMSgov/hospital-price-transparency/blob/master/documentation/CSV/state_codes.md`,
   DUPLICATE_HEADER_COLUMN: (column: string) =>
     `Column ${column} duplicated in header`,
   COLUMN_MISSING: (column: string, format: string) =>
@@ -131,7 +131,7 @@ export function validateHeaderColumns(columns: string[]): {
                 rowIndex,
                 index,
                 requiredColumn,
-                ERRORS.HEADER_STATE_CODE(column, splitColumn[1])
+                ERRORS.HEADER_STATE_CODE(splitColumn[1])
               )
             )
             return false
@@ -350,20 +350,6 @@ export function validateRow(
         DRUG_UNITS
       )
     )
-    // if (!DRUG_UNITS.includes(row["drug_type_of_measurement"] as DrugUnit)) {
-    //   errors.push(
-    //     csvErr(
-    //       index,
-    //       columns.indexOf("drug_type_of_measurement"),
-    //       "drug_type_of_measurement",
-    //       ERRORS.ALLOWED_VALUES(
-    //         "drug_type_of_measurement",
-    //         row["drug_type_of_measurement"],
-    //         DRUG_UNITS as unknown as string[]
-    //       )
-    //     )
-    //   )
-    // }
   }
 
   const chargeFields = [

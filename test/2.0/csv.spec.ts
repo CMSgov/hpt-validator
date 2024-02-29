@@ -51,9 +51,10 @@ test("validateHeaderColumns", (t) => {
   )
   const invalidStateErrors = validateHeaderColumns(invalidStateColumns)
   t.is(invalidStateErrors.errors.length, 2)
-  t.is(
-    invalidStateErrors.errors[0].message,
-    'Header column "license_number | ZZ" includes an invalid state code "ZZ"'
+  t.assert(
+    invalidStateErrors.errors[0].message.includes(
+      "ZZ is not an allowed value for state abbreviation"
+    )
   )
 })
 
