@@ -67,6 +67,8 @@ const ERRORS = {
     `Column ${column} duplicated in header`,
   COLUMN_MISSING: (column: string, format: string) =>
     `Column ${column} is missing, but it is required for ${format} format`,
+  DUPLICATE_COLUMN: (column: string) =>
+    `Column ${column} duplicated in header. You must review and revise your column headers so that each header appears only once in the third row.`,
   ALLOWED_VALUES: (
     column: string,
     value: string,
@@ -231,24 +233,39 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
   const remainingColumns = baseColumns.concat(
     tall ? getTallColumns() : getWideColumns(columns)
   )
+  const discoveredColumns: string[] = []
+  const duplicateErrors: CsvValidationError[] = []
 
-  columns.forEach((column) => {
+  columns.forEach((column, index) => {
     const matchingColumnIndex = remainingColumns.findIndex((requiredColumn) =>
       sepColumnsEqual(column, requiredColumn)
     )
     if (matchingColumnIndex > -1) {
+      discoveredColumns[index] = column
       remainingColumns.splice(matchingColumnIndex, 1)
+    } else {
+      const existingColumn = discoveredColumns.find((discovered) => {
+        return discovered != null && sepColumnsEqual(discovered, column)
+      })
+      if (existingColumn) {
+        duplicateErrors.push(
+          csvErr(rowIndex, index, "column", ERRORS.DUPLICATE_COLUMN(column))
+        )
+      }
     }
   })
 
-  return remainingColumns.map((requiredColumn) => {
-    return csvErr(
-      rowIndex,
-      columns.length,
-      requiredColumn,
-      ERRORS.COLUMN_MISSING(requiredColumn, schemaFormat)
-    )
-  })
+  return [
+    ...duplicateErrors,
+    ...remainingColumns.map((requiredColumn) => {
+      return csvErr(
+        rowIndex,
+        columns.length,
+        requiredColumn,
+        ERRORS.COLUMN_MISSING(requiredColumn, schemaFormat)
+      )
+    }),
+  ]
 }
 
 /** @private */
