@@ -382,7 +382,7 @@ export function validateRow(
   }
 
   if (wide) {
-    errors.push(...validateWideFields(row, index, columns))
+    errors.push(...validateWideFields(row, index, columns, foundCode))
   } else {
     errors.push(...validateTallFields(row, index, columns))
   }
@@ -507,7 +507,8 @@ function validateModifierRow(
 export function validateWideFields(
   row: { [key: string]: string },
   index: number,
-  columns: string[]
+  columns: string[],
+  foundCodes: boolean
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   // TODO: Is checking that all are present covered in checking columns?
@@ -600,6 +601,72 @@ export function validateWideFields(
       )
     }
   })
+
+  // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+  // then a corresponding valid value for the payer name, plan name, and standard charge methodology
+  // must also be encoded.
+  payersPlans.forEach(([payer, plan]) => {
+    if (
+      (
+        row[`standard_charge | ${payer} | ${plan} | negotiated_dollar`] || ""
+      ).trim().length > 0 ||
+      (
+        row[`standard_charge | ${payer} | ${plan} | negotiated_percentage`] || ""
+      ).trim().length > 0 ||
+      (
+        row[`standard_charge | ${payer} | ${plan} | negotiated_algorithm`] || ""
+      ).trim().length > 0
+  ){
+    errors.push(
+      ...validateRequiredEnumField(
+        row,
+        `standard_charge | ${payer} | ${plan} | methodology`,
+        index,
+        columns.indexOf(`standard_charge | ${payer} | ${plan} | methodology`),
+        STANDARD_CHARGE_METHODOLOGY
+      )
+    )
+  }
+  })
+
+  // If the "standard charge methodology" encoded value is "other", there must be a
+  // corresponding explanation found in the "additional notes" for the associated
+  // payer-specific negotiated charge.
+  payersPlans.forEach(([payer, plan]) => {
+    if (
+      (
+        row[`standard_charge | ${payer} | ${plan} | methodology`] || ""
+      ).trim().match("other")
+    ) {
+      errors.push(
+        ...validateRequiredField(
+          row,
+          `additional_payer_notes | ${payer} | ${plan}`,
+          index,
+          columns.indexOf(`additional_payer_notes | ${payer} | ${plan}`),
+          " additional_payer",
+        ),
+      )
+    }
+  })
+
+  // If an item or service is encoded, a corresponding valid value must be encoded for
+  // at least one of the following: "Gross Charge", "Discounted Cash Price",
+  // "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
+  // "Payer-Specific Negotiated Charge: Algorithm".
+  payersPlans.forEach(([payer, plan]) => {
+    if(
+      foundCodes &&
+      (row["standard_charge | gross"] || "").trim().length > 0 ||
+      (row[`standard_charge | ${payer} | ${plan} | discounted_cash`] || "").trim().length > 0 ||
+      (row[`standard_charge | ${payer} | ${plan} | negotiated_dollar`] || "").trim().length > 0 ||
+      (row[`standard_charge | ${payer} | ${plan} | negotiated_percentage`] || "").trim().length > 0 ||
+      (row[`standard_charge | ${payer} | ${plan} | negotiated_algorithm`] || "").trim().length > 0
+    ){
+      // ? validate a required row ?
+    }
+  })
+
   return errors
 }
 
@@ -702,15 +769,106 @@ export function validateTallFields(
     })
   }
 
-  errors.push(
-    ...validateRequiredEnumField(
-      row,
-      "standard_charge | methodology",
-      index,
-      columns.indexOf("standard_charge | methodology"),
-      STANDARD_CHARGE_METHODOLOGY
+  // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+  // then a corresponding valid value for the payer name, plan name, and standard charge methodology
+  // must also be encoded.
+  if (
+    (row["standard_charge | negotiated_dollar"] || "").trim().length > 0 ||
+    (row["standard_charge | negotiated_percentage"] || "").trim().length > 0 ||
+    (row["standard_charge | negotiated_algorithm"] || "").trim().length > 0
+  ){
+    errors.push(
+      ...validateRequiredField(
+        row,
+        "plan_name",
+        index,
+        columns.indexOf("plan_name"),
+        " plan_name required"
+      )
     )
-  )
+
+    errors.push(
+      ...validateRequiredField(
+        row,
+        "payer_name",
+        index,
+        columns.indexOf("payer_name"),
+        " payer_name required"
+      )
+    )
+
+    errors.push(
+      ...validateRequiredEnumField(
+        row,
+        "standard_charge | methodology",
+        index,
+        columns.indexOf("standard_charge | methodology"),
+        STANDARD_CHARGE_METHODOLOGY
+      )
+    )
+  }
+
+  //If the "standard charge methodology" encoded value is "other", there must be a
+  // corresponding explanation found in the "additional notes" for the associated
+  // payer-specific negotiated charge.
+  const methodologyCols = columns
+    .filter((column) => {
+      return /^standard_charge \| methodology$/.test(column)
+    })
+    .map((methodologyColumn) => row[methodologyColumn])
+  if (methodologyCols.some((methodology) => matchesString(methodology, "other"))){
+    errors.push(
+      ...validateRequiredField(
+        row,
+        "additional_generic_notes",
+        index,
+        columns.indexOf("additional_generic_notes"),
+        ' additional_generic_notes required if methodology set to "other"'
+      )
+    )
+  }
+  // trying to accomplish conditional #3 same as above, better? only one necessary
+  if ((row["standard_charge | negotiated_algorithm"] || "").match("other")){
+        errors.push(
+      ...validateRequiredField(
+        row,
+        "additional_generic_notes",
+        index,
+        columns.indexOf("additional_generic_notes"),
+        ' additional_generic_notes required if methodology set to "other"'
+      )
+    )
+  }
+
+  // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
+  // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount",
+  // "Payer-Specific Negotiated Charge: Percentage", "Payer-Specific Negotiated Charge: Algorithm".
+  const codeColumns = columns.filter((column) => {
+    return /^code \| \d+$/.test(column)
+  })
+  let foundCode = false
+  codeColumns.forEach((codeColumn) => {
+    const codeTypeColumn = `${codeColumn} | type`
+
+    if (row[codeTypeColumn] != null) {
+      const trimCode = row[codeColumn].trim()
+      const trimType = row[codeTypeColumn].trim()
+      if(trimCode.length > 0 && trimType.length > 0){
+        foundCode = true
+        if (
+          foundCode &&
+          (row["standard_charge | gross"] || "").trim().length > 0 ||
+          (row["standard_charge | discounted_cash"] || "").trim().length > 0 ||
+          (row["standard_charge | negotiated_dollar"] || "").trim().length > 0 ||
+          (row["standard_charge | negotiated_percentage"] || "").trim().length > 0 ||
+          (row["standard_charge | negotiated_algorithm"] || "").trim().length > 0
+        ){
+          // ? validate required row ?
+        }
+
+      }
+    }
+  })
 
   // Conditional checks are here. Some have date-dependent enforcement.
   const enforceConditionals = new Date().getFullYear() >= 2025
