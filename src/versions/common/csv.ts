@@ -56,7 +56,9 @@ export function objectFromKeysValues(
   keys: string[],
   values: string[]
 ): { [key: string]: string } {
-  return Object.fromEntries(keys.map((key, index) => [key, values[index]]))
+  return Object.fromEntries(
+    keys.map((key, index) => [key, (values[index] ?? "").trim()])
+  )
 }
 
 export function rowIsEmpty(row: string[]): boolean {
@@ -87,14 +89,6 @@ export function getCodeCount(columns: string[]): number {
   )
 }
 
-export function isEmptyString(value: string) {
-  return value.trim().length === 0
-}
-
-export function isNonEmptyString(value: string) {
-  return value.trim().length > 0
-}
-
 export function isValidDate(value: string) {
   // required format is YYYY-MM-DD
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -116,5 +110,5 @@ export function isValidDate(value: string) {
 }
 
 export function matchesString(value: string, target: string) {
-  return value.trim().toLocaleUpperCase() === target.trim().toLocaleUpperCase()
+  return value.toLocaleUpperCase() === target.toLocaleUpperCase()
 }

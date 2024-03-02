@@ -195,7 +195,7 @@ export function validateHeaderRow(
 
   headers.forEach((header, index) => {
     if (header != null) {
-      const value = row[index]?.trim() ?? ""
+      const value = row[index] || ""
       if (!value) {
         errors.push(
           csvErr(rowIndex, index, header, ERRORS.HEADER_COLUMN_BLANK(header))
@@ -291,9 +291,9 @@ export function validateRow(
     // if the type column is missing, we already created an error when checking the columns
     // if both columns exist, we can check the values
     if (row[codeTypeColumn] != null) {
-      const trimCode = row[codeColumn].trim()
-      const trimType = row[codeTypeColumn].trim()
-      if (trimCode.length === 0 && trimType.length > 0) {
+      const code = row[codeColumn]
+      const codeType = row[codeTypeColumn]
+      if (code.length === 0 && codeType.length > 0) {
         foundCode = true
         errors.push(
           csvErr(
@@ -303,7 +303,7 @@ export function validateRow(
             ERRORS.REQUIRED(codeColumn)
           )
         )
-      } else if (trimCode.length > 0 && trimType.length === 0) {
+      } else if (code.length > 0 && codeType.length === 0) {
         foundCode = true
         errors.push(
           csvErr(
@@ -313,7 +313,7 @@ export function validateRow(
             ERRORS.REQUIRED(codeTypeColumn)
           )
         )
-      } else if (trimCode.length > 0 && trimType.length > 0) {
+      } else if (code.length > 0 && codeType.length > 0) {
         foundCode = true
       }
       errors.push(
@@ -328,7 +328,7 @@ export function validateRow(
     }
   })
 
-  const modifierPresent = (row["modifiers"] || "").trim().length > 0
+  const modifierPresent = (row["modifiers"] || "").length > 0
   if (modifierPresent && !foundCode) {
     errors.push(...validateModifierRow(row, index, columns, wide))
     return errors
@@ -360,10 +360,7 @@ export function validateRow(
     )
   )
 
-  if (
-    (row["drug_unit_of_measurement"] || "").trim() ||
-    (row["drug_type_of_measurement"] || "").trim()
-  ) {
+  if (row["drug_unit_of_measurement"] || row["drug_type_of_measurement"]) {
     errors.push(
       ...validateRequiredFloatField(
         row,
@@ -576,8 +573,8 @@ export function validateWideFields(
     } else if (field.includes("standard_charge")) {
       if (
         field.includes(" | percent") &&
-        !row[field].trim() &&
-        !row[field.replace(" | percent", "")].trim()
+        !row[field] &&
+        !row[field.replace(" | percent", "")]
       ) {
         errors.push(
           csvErr(
@@ -599,7 +596,7 @@ export function validateWideFields(
   const dollarChargeColumns = columns.filter((column) =>
     column.endsWith("| negotiated_dollar")
   )
-  if (dollarChargeColumns.some((column) => row[column].trim().length > 0)) {
+  if (dollarChargeColumns.some((column) => row[column].length > 0)) {
     ;["standard_charge | min", "standard_charge | max"].forEach((field) => {
       errors.push(
         ...validateRequiredField(
@@ -618,17 +615,16 @@ export function validateWideFields(
   const payersPlans = getPayersPlans(columns)
   payersPlans.forEach(([payer, plan]) => {
     if (
-      (
-        row[`standard_charge | ${payer} | ${plan} | negotiated_dollar`] || ""
-      ).trim().length === 0 &&
+      (row[`standard_charge | ${payer} | ${plan} | negotiated_dollar`] || "")
+        .length === 0 &&
       ((
         row[`standard_charge | ${payer} | ${plan} | negotiated_percentage`] ||
         ""
-      ).trim().length > 0 ||
+      ).length > 0 ||
         (
           row[`standard_charge | ${payer} | ${plan} | negotiated_algorithm`] ||
           ""
-        ).trim().length > 0)
+        ).length > 0)
     ) {
       errors.push(
         ...validateRequiredFloatField(
@@ -748,7 +744,7 @@ export function validateTallFields(
   // If there is a "payer specific negotiated charge" encoded as a dollar amount,
   // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
   // min and max have already been checked for valid float format, so this checks only if they are present.
-  if ((row["standard_charge | negotiated_dollar"] || "").trim().length > 0) {
+  if ((row["standard_charge | negotiated_dollar"] || "").length > 0) {
     ;["standard_charge | min", "standard_charge | max"].forEach((field) => {
       errors.push(
         ...validateRequiredField(
@@ -765,9 +761,9 @@ export function validateTallFields(
   // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
   // then a corresponding "Estimated Allowed Amount" must also be encoded. Required beginning 1/1/2025.
   if (
-    (row["standard_charge | negotiated_dollar"] || "").trim().length === 0 &&
-    ((row["standard_charge | negotiated_percentage"] || "").trim().length > 0 ||
-      (row["standard_charge | negotiated_algorithm"] || "").trim().length > 0)
+    (row["standard_charge | negotiated_dollar"] || "").length === 0 &&
+    ((row["standard_charge | negotiated_percentage"] || "").length > 0 ||
+      (row["standard_charge | negotiated_algorithm"] || "").length > 0)
   ) {
     errors.push(
       ...validateRequiredFloatField(
@@ -883,7 +879,7 @@ function validateRequiredField(
   columnIndex: number,
   suffix = ``
 ): CsvValidationError[] {
-  if (!(row[field] || "").trim()) {
+  if (!(row[field] || "")) {
     return [
       csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field, suffix)),
     ]
@@ -900,7 +896,7 @@ function validateOneOfRequiredField(
 ): CsvValidationError[] {
   if (
     fields.every((field) => {
-      return (row[field] || "").trim().length === 0
+      return (row[field] || "").length === 0
     })
   ) {
     return [
@@ -922,7 +918,7 @@ function validateRequiredFloatField(
   columnIndex: number,
   suffix = ""
 ): CsvValidationError[] {
-  if (!/^\d+(\.\d+)?$/g.test((row[field] || "").trim())) {
+  if (!/^\d+(\.\d+)?$/g.test(row[field] || "")) {
     return [
       csvErr(
         rowIndex,
@@ -941,9 +937,9 @@ function validateOptionalFloatField(
   rowIndex: number,
   columnIndex: number
 ): CsvValidationError[] {
-  if (!(row[field] || "").trim()) {
+  if (!(row[field] || "")) {
     return []
-  } else if (!/^\d+(\.\d+)?$/g.test(row[field].trim())) {
+  } else if (!/^\d+(\.\d+)?$/g.test(row[field])) {
     return [
       csvErr(
         rowIndex,
@@ -964,7 +960,7 @@ function validateRequiredEnumField(
   allowedValues: readonly string[],
   suffix = ""
 ) {
-  if (!(row[field] || "").trim()) {
+  if (!(row[field] || "")) {
     return [
       csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field, suffix)),
     ]
@@ -993,7 +989,7 @@ function validateOptionalEnumField(
   columnIndex: number,
   allowedValues: readonly string[]
 ) {
-  if (!(row[field] || "").trim()) {
+  if (!(row[field] || "")) {
     return []
   } else {
     const uppercaseValue = row[field].toUpperCase()
