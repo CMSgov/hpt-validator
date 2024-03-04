@@ -7,6 +7,7 @@ import {
   HEADER_COLUMNS,
   BASE_COLUMNS,
   TALL_COLUMNS,
+  NEW_2025_COLUMNS,
 } from "../../src/versions/2.0/csv.js"
 
 const VALID_HEADER_COLUMNS = HEADER_COLUMNS.map((c) =>
@@ -21,6 +22,15 @@ test("validateHeaderColumns", (t) => {
     emptyResult.errors[0].message,
     'Header column "hospital_name" is miscoded or missing. You must include this header and confirm that it is encoded as specified in the data dictionary.'
   )
+  const enforce2025 = new Date().getFullYear() >= 2025
+  emptyResult.errors.forEach((err) => {
+    if (NEW_2025_COLUMNS.includes(err.field || "")) {
+      t.assert(!!err.warning === enforce2025)
+    } else {
+      t.assert(err.warning == null)
+    }
+  })
+
   const basicResult = validateHeaderColumns(VALID_HEADER_COLUMNS)
   t.is(basicResult.errors.length, 0)
   t.deepEqual(basicResult.columns, VALID_HEADER_COLUMNS)
@@ -211,6 +221,7 @@ test("validateRow tall", (t) => {
     "standard_charge | methodology": "fee schedule",
     estimated_amount: "",
   }
+  const enforce2025 = new Date().getFullYear() >= 2025
   const basicResult = validateRow(basicRow, 5, columns, false)
   t.is(basicResult.length, 0)
   // description must not be empty
@@ -245,6 +256,7 @@ test("validateRow tall", (t) => {
     emptyDrugUnitResult[0].message,
     'A value is required for "drug_unit_of_measurement" when "drug_type_of_measurement" is present. You must encode the missing information.'
   )
+  t.assert(emptyDrugUnitResult[0].warning === !enforce2025)
   const wrongDrugUnitRow = { ...basicRow, drug_unit_of_measurement: "-4" }
   const wrongDrugUnitResult = validateRow(wrongDrugUnitRow, 10, columns, false)
   t.is(wrongDrugUnitResult.length, 1)
@@ -252,6 +264,7 @@ test("validateRow tall", (t) => {
     wrongDrugUnitResult[0].message,
     '"drug_unit_of_measurement" value "-4" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
+  t.assert(wrongDrugUnitResult[0].warning === !enforce2025)
   // drug_type_of_measurement must be one of DRUG_UNITS if present
   const emptyDrugTypeRow = { ...basicRow, drug_type_of_measurement: "" }
   const emptyDrugTypeResult = validateRow(emptyDrugTypeRow, 12, columns, false)
@@ -260,6 +273,7 @@ test("validateRow tall", (t) => {
     emptyDrugTypeResult[0].message,
     'A value is required for "drug_type_of_measurement" when "drug_unit_of_measurement" is present. You must encode the missing information.'
   )
+  t.assert(emptyDrugTypeResult[0].warning === !enforce2025)
   const wrongDrugTypeRow = { ...basicRow, drug_type_of_measurement: "KG" }
   const wrongDrugTypeResult = validateRow(wrongDrugTypeRow, 12, columns, false)
   t.is(wrongDrugTypeResult.length, 1)
@@ -267,6 +281,7 @@ test("validateRow tall", (t) => {
     wrongDrugTypeResult[0].message,
     '"drug_type_of_measurement" value "KG" is not one of the allowed valid values. You must encode one of these valid values: GR, ME, ML, UN, F2, EA, GM'
   )
+  t.assert(wrongDrugTypeResult[0].warning === !enforce2025)
   // standard_charge | gross must be positive number if present
   const emptyGrossRow = { ...basicRow, "standard_charge | gross": "" }
   const emptyGrossResult = validateRow(emptyGrossRow, 13, columns, false)
@@ -906,6 +921,40 @@ test("validateRow tall conditionals", (t) => {
     modifierWithWrongTypesErrors[2].message,
     '"standard_charge | methodology" value "secret" is not one of the allowed valid values. You must encode one of these valid values: case rate, fee schedule, percent of total billed charges, per diem, other'
   )
+})
+
+test("validateColumns wide", (t) => {
+  const columns = [
+    ...BASE_COLUMNS,
+    "code | 1",
+    "code | 1 | type",
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar",
+    "standard_charge | Payer One | Basic Plan | negotiated_percentage",
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm",
+    "standard_charge | Payer One | Basic Plan | methodology",
+    "estimated_amount | Payer One | Basic Plan",
+    "additional_payer_notes | Payer One | Basic Plan",
+  ]
+  t.is(validateColumns(columns).length, 0)
+  // any order is okay
+  const reverseColumns = [...columns].reverse()
+  t.is(validateColumns(reverseColumns).length, 0)
+  // the full group of columns for a payer and plan must appear
+  // estimated amount is only required in 2025
+  const enforce2025 = new Date().getFullYear() >= 2025
+  const someColumnsMissing = columns.slice(0, -2)
+  const someColumnsMissingErrors = validateColumns(someColumnsMissing)
+  t.is(someColumnsMissingErrors.length, 2)
+  t.is(
+    someColumnsMissingErrors[0].message,
+    "Column estimated_amount | Payer One | Basic Plan is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary."
+  )
+  t.is(someColumnsMissingErrors[0].warning, enforce2025 ? undefined : true)
+  t.is(
+    someColumnsMissingErrors[1].message,
+    "Column additional_payer_notes | Payer One | Basic Plan is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary."
+  )
+  t.is(someColumnsMissingErrors[1].warning, undefined)
 })
 
 test("validateRow wide conditionals", (t) => {

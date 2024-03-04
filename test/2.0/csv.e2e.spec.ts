@@ -92,3 +92,50 @@ test("validateCsvWideMissingMissingRequiredColumnError", async (t) => {
     },
   ])
 })
+
+test("validate columns with date-dependent enforcement", async (t) => {
+  const result = await validateCsv(
+    loadFixtureStream("/2.0/sample-wide-missing-new-columns.csv"),
+    "v2.0"
+  )
+  const enforce2025 = new Date().getFullYear() >= 2025
+  if (enforce2025) {
+    t.is(result.valid, false)
+    t.deepEqual(result.errors, [
+      {
+        path: "Y3",
+        field: "drug_unit_of_measurement",
+        message:
+          "Column drug_unit_of_measurement is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
+      },
+      {
+        path: "Y3",
+        field: "drug_type_of_measurement",
+        message:
+          "Column drug_type_of_measurement is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
+      },
+      {
+        path: "A1",
+        message: "Errors were seen in headers so rows were not evaluated",
+      },
+    ])
+  } else {
+    t.is(result.valid, true)
+    t.deepEqual(result.errors, [
+      {
+        path: "Y3",
+        field: "drug_unit_of_measurement",
+        message:
+          "Column drug_unit_of_measurement is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
+        warning: true,
+      },
+      {
+        path: "Y3",
+        field: "drug_type_of_measurement",
+        message:
+          "Column drug_type_of_measurement is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
+        warning: true,
+      },
+    ])
+  }
+})

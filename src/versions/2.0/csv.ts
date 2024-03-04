@@ -58,6 +58,13 @@ export const TALL_COLUMNS = [
   "estimated_amount", // positive number or blank
 ]
 
+export const NEW_2025_COLUMNS = [
+  "estimated_amount",
+  "drug_unit_of_measurement",
+  "drug_type_of_measurement",
+  "modifiers",
+]
+
 const ERRORS = {
   HEADER_COLUMN_MISSING: (column: string) =>
     `Header column "${column}" is miscoded or missing. You must include this header and confirm that it is encoded as specified in the data dictionary.`,
@@ -243,6 +250,7 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
   const remainingColumns = baseColumns.concat(
     tall ? getTallColumns() : getWideColumns(columns)
   )
+  const enforce2025 = new Date().getFullYear() >= 2025
   const discoveredColumns: string[] = []
   const duplicateErrors: CsvValidationError[] = []
 
@@ -268,12 +276,20 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
   return [
     ...duplicateErrors,
     ...remainingColumns.map((requiredColumn) => {
-      return csvErr(
+      const problem = csvErr(
         rowIndex,
         columns.length,
         requiredColumn,
         ERRORS.COLUMN_MISSING(requiredColumn)
       )
+      if (
+        !enforce2025 &&
+        (NEW_2025_COLUMNS.includes(requiredColumn) ||
+          requiredColumn.startsWith("estimated_amount |"))
+      ) {
+        problem.warning = true
+      }
+      return problem
     }),
   ]
 }
@@ -286,6 +302,8 @@ export function validateRow(
   wide = false
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
+  // Some columns and conditional checks have date-dependent enforcement.
+  const enforce2025 = new Date().getFullYear() >= 2025
 
   const requiredFields = ["description"]
   requiredFields.forEach((field) =>
@@ -384,7 +402,7 @@ export function validateRow(
         index,
         columns.indexOf("drug_unit_of_measurement"),
         ' when "drug_type_of_measurement" is present'
-      )
+      ).map((err) => (enforce2025 ? err : { ...err, warning: true }))
     )
     errors.push(
       ...validateRequiredEnumField(
@@ -394,7 +412,7 @@ export function validateRow(
         columns.indexOf("drug_type_of_measurement"),
         DRUG_UNITS,
         ' when "drug_unit_of_measurement" is present'
-      )
+      ).map((err) => (enforce2025 ? err : { ...err, warning: true }))
     )
   }
 
@@ -410,8 +428,6 @@ export function validateRow(
     )
   )
 
-  // Some conditional checks have date-dependent enforcement.
-  const enforceConditionals = new Date().getFullYear() >= 2025
   // If code type is NDC, then the corresponding drug unit of measure and
   // drug type of measure data elements must be encoded. Required beginning 1/1/2025.
   const allCodeTypes = columns
@@ -436,7 +452,7 @@ export function validateRow(
           columns.indexOf(invalidFields[0]),
           invalidFields[0],
           ERRORS.NDC_DRUG_MEASURE(),
-          !enforceConditionals
+          !enforce2025
         )
       )
     }
@@ -462,7 +478,7 @@ function validateModifierRow(
   // If a modifier is encoded without an item or service, then a description and one of the following
   // is the minimum information required:
   // additional_generic_notes, additional_payer_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
-
+  const enforce2025 = new Date().getFullYear() >= 2025
   if (wide) {
     const payersPlans = getPayersPlans(columns)
     const payersPlansColumns: string[] = payersPlans
@@ -549,7 +565,7 @@ function validateModifierRow(
       "drug_unit_of_measurement",
       index,
       columns.indexOf("drug_unit_of_measurement")
-    )
+    ).map((err) => (enforce2025 ? err : { ...err, warning: true }))
   )
   errors.push(
     ...validateOptionalEnumField(
@@ -558,7 +574,7 @@ function validateModifierRow(
       index,
       columns.indexOf("drug_type_of_measurement"),
       DRUG_UNITS
-    )
+    ).map((err) => (enforce2025 ? err : { ...err, warning: true }))
   )
 
   const chargeFields = [
@@ -838,6 +854,7 @@ export function validateTallFields(
   foundCode: boolean
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
+  const enforce2025 = new Date().getFullYear() >= 2025
   // first, some type checks
   const floatChargeFields = [
     "standard_charge | negotiated_dollar",
@@ -1000,7 +1017,7 @@ export function validateTallFields(
         "estimated_amount",
         index,
         columns.indexOf("estimated_amount")
-      )
+      ).map((err) => (enforce2025 ? err : { ...err, warning: true }))
     )
   }
 
