@@ -395,6 +395,240 @@ test("validateRow tall conditionals", (t) => {
     "standard_charge | methodology": "fee schedule",
     estimated_amount: "",
   }
+  // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+  // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
+  const dollarWithInfoRow = {
+    ...basicRow,
+    "standard_charge | negotiated_dollar": "500",
+  }
+  const dollarWithInfoErrors = validateRow(dollarWithInfoRow, 5, columns, false)
+  t.is(dollarWithInfoErrors.length, 0)
+  const dollarMissingInfoRow = {
+    ...basicRow,
+    "standard_charge | negotiated_dollar": "500",
+    payer_name: "",
+    plan_name: "",
+    "standard_charge | methodology": "",
+  }
+  const dollarMissingInfoErrors = validateRow(
+    dollarMissingInfoRow,
+    6,
+    columns,
+    false
+  )
+  t.is(dollarMissingInfoErrors.length, 3)
+  t.assert(
+    dollarMissingInfoErrors[0].message.includes(
+      '"payer_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  t.assert(
+    dollarMissingInfoErrors[1].message.includes(
+      '"plan_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  t.assert(
+    dollarMissingInfoErrors[2].message.includes(
+      '"standard_charge | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  const percentageWithInfoRow = {
+    ...basicRow,
+    "standard_charge | negotiated_percentage": "85",
+    estimated_amount: "60",
+  }
+  const percentageWithInfoErrors = validateRow(
+    percentageWithInfoRow,
+    7,
+    columns,
+    false
+  )
+  t.is(percentageWithInfoErrors.length, 0)
+  const percentageMissingInfoRow = {
+    ...basicRow,
+    "standard_charge | negotiated_percentage": "85",
+    estimated_amount: "60",
+    payer_name: "",
+    plan_name: "",
+    "standard_charge | methodology": "",
+  }
+  const percentageMissingInfoErrors = validateRow(
+    percentageMissingInfoRow,
+    8,
+    columns,
+    false
+  )
+  t.is(percentageMissingInfoErrors.length, 3)
+  t.assert(
+    percentageMissingInfoErrors[0].message.includes(
+      '"payer_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  t.assert(
+    percentageMissingInfoErrors[1].message.includes(
+      '"plan_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  t.assert(
+    percentageMissingInfoErrors[2].message.includes(
+      '"standard_charge | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+
+  const algorithmWithInfoRow = {
+    ...basicRow,
+    "standard_charge | negotiated_algorithm": "85",
+    estimated_amount: "60",
+  }
+  const algorithmWithInfoErrors = validateRow(
+    algorithmWithInfoRow,
+    9,
+    columns,
+    false
+  )
+  t.is(algorithmWithInfoErrors.length, 0)
+  const algorithmMissingInfoRow = {
+    ...basicRow,
+    "standard_charge | negotiated_algorithm": "standard method function",
+    estimated_amount: "60",
+    payer_name: "",
+    plan_name: "",
+    "standard_charge | methodology": "",
+  }
+  const algorithmMissingInfoErrors = validateRow(
+    algorithmMissingInfoRow,
+    10,
+    columns,
+    false
+  )
+  t.is(algorithmMissingInfoErrors.length, 3)
+  t.assert(
+    algorithmMissingInfoErrors[0].message.includes(
+      '"payer_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  t.assert(
+    algorithmMissingInfoErrors[1].message.includes(
+      '"plan_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  t.assert(
+    algorithmMissingInfoErrors[2].message.includes(
+      '"standard_charge | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+
+  // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
+  // in the "additional notes" for the associated payer-specific negotiated charge.
+  const otherWithNotesRow = {
+    ...basicRow,
+    "standard_charge | negotiated_percentage": "80",
+    estimated_amount: "150",
+    "standard_charge | methodology": "other",
+    additional_generic_notes: "explanation of methodology",
+  }
+  const otherWithNotesErrors = validateRow(
+    otherWithNotesRow,
+    11,
+    columns,
+    false
+  )
+  t.is(otherWithNotesErrors.length, 0)
+  const otherWithoutNotesRow = {
+    ...basicRow,
+    "standard_charge | negotiated_percentage": "80",
+    estimated_amount: "150",
+    "standard_charge | methodology": "other",
+  }
+  const otherWithoutNotesErrors = validateRow(
+    otherWithoutNotesRow,
+    12,
+    columns,
+    false
+  )
+  t.is(otherWithoutNotesErrors.length, 1)
+  t.is(
+    otherWithoutNotesErrors[0].message,
+    'If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found in the "additional notes" for the associated payer-specific negotiated charge.'
+  )
+
+  // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
+  // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
+  // "Payer-Specific Negotiated Charge: Algorithm".
+  const itemNoChargeRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+    "standard_charge | discounted_cash": "",
+  }
+  const itemNoChargeErrors = validateRow(itemNoChargeRow, 28, columns, false)
+  t.is(itemNoChargeErrors.length, 1)
+  t.is(
+    itemNoChargeErrors[0].message,
+    'If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following: "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage", "Payer-Specific Negotiated Charge: Algorithm".'
+  )
+  const itemGrossChargeRow = {
+    ...basicRow,
+    "standard_charge | discounted_cash": "",
+  }
+  const itemGrossChargeErrors = validateRow(
+    itemGrossChargeRow,
+    29,
+    columns,
+    false
+  )
+  t.is(itemGrossChargeErrors.length, 0)
+  const itemDiscountedChargeRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+  }
+  const itemDiscountedChargeErrors = validateRow(
+    itemDiscountedChargeRow,
+    30,
+    columns,
+    false
+  )
+  t.is(itemDiscountedChargeErrors.length, 0)
+  const itemNegotiatedDollarRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+    "standard_charge | discounted_cash": "",
+    "standard_charge | negotiated_dollar": "83",
+  }
+  const itemNegotiatedDollarErrors = validateRow(
+    itemNegotiatedDollarRow,
+    31,
+    columns,
+    false
+  )
+  t.is(itemNegotiatedDollarErrors.length, 0)
+  const itemNegotiatedPercentageRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+    "standard_charge | discounted_cash": "",
+    "standard_charge | negotiated_percentage": "24",
+    estimated_amount: "25",
+  }
+  const itemNegotiatedPercentageErrors = validateRow(
+    itemNegotiatedPercentageRow,
+    32,
+    columns,
+    false
+  )
+  t.is(itemNegotiatedPercentageErrors.length, 0)
+  const itemNegotiatedAlgorithmRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+    "standard_charge | discounted_cash": "",
+    "standard_charge | negotiated_algorithm": "check appendix B",
+    estimated_amount: "25",
+  }
+  const itemNegotiatedAlgorithmErrors = validateRow(
+    itemNegotiatedAlgorithmRow,
+    33,
+    columns,
+    false
+  )
+  t.is(itemNegotiatedAlgorithmErrors.length, 0)
 
   // If there is a "payer specific negotiated charge" encoded as a dollar amount,
   // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
@@ -722,11 +956,313 @@ test("validateRow wide conditionals", (t) => {
     "standard_charge | Payer Two | Special Plan | methodology": "",
     "additional_payer_notes | Payer Two | Special Plan": "",
   }
+
+  // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+  // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
+  // Since the wide format incorporates payer name and plan name into the column name, only methodology is checked.
+  const dollarWithMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar": "552",
+    "standard_charge | Payer One | Basic Plan | methodology": "fee schedule",
+  }
+  const dollarWithMethodologyErrors = validateRow(
+    dollarWithMethodologyRow,
+    5,
+    columns,
+    true
+  )
+  t.is(dollarWithMethodologyErrors.length, 0)
+  const dollarNoMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar": "552",
+  }
+  const dollarNoMethodologyErrors = validateRow(
+    dollarNoMethodologyRow,
+    6,
+    columns,
+    true
+  )
+  t.is(dollarNoMethodologyErrors.length, 1)
+  t.assert(
+    dollarNoMethodologyErrors[0].message.includes(
+      '"standard_charge | Payer One | Basic Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  const dollarWrongMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar": "552",
+    "standard_charge | Payer Two | Special Plan | methodology": "fee schedule",
+  }
+  const dollarWrongMethodologyErrors = validateRow(
+    dollarWrongMethodologyRow,
+    7,
+    columns,
+    true
+  )
+  t.is(dollarWrongMethodologyErrors.length, 1)
+  t.assert(
+    dollarWrongMethodologyErrors[0].message.includes(
+      '"standard_charge | Payer One | Basic Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  const percentageWithMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer Two | Special Plan | negotiated_percentage": "50",
+    "estimated_amount | Payer Two | Special Plan": "244",
+    "standard_charge | Payer Two | Special Plan | methodology": "fee schedule",
+  }
+  const percentageWithMethodologyErrors = validateRow(
+    percentageWithMethodologyRow,
+    8,
+    columns,
+    true
+  )
+  t.is(percentageWithMethodologyErrors.length, 0)
+  const percentageNoMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer Two | Special Plan | negotiated_percentage": "50",
+    "estimated_amount | Payer Two | Special Plan": "244",
+  }
+  const percentageNoMethodologyErrors = validateRow(
+    percentageNoMethodologyRow,
+    9,
+    columns,
+    true
+  )
+  t.is(percentageNoMethodologyErrors.length, 1)
+  t.assert(
+    percentageNoMethodologyErrors[0].message.includes(
+      '"standard_charge | Payer Two | Special Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  const percentageWrongMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer Two | Special Plan | negotiated_percentage": "50",
+    "estimated_amount | Payer Two | Special Plan": "244",
+    "standard_charge | Payer One | Basic Plan | methodology": "fee schedule",
+  }
+  const percentageWrongMethodologyErrors = validateRow(
+    percentageWrongMethodologyRow,
+    10,
+    columns,
+    true
+  )
+  t.is(percentageWrongMethodologyErrors.length, 1)
+  t.assert(
+    percentageWrongMethodologyErrors[0].message.includes(
+      '"standard_charge | Payer Two | Special Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  const algorithmWithMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm":
+      "consult the appendix",
+    "estimated_amount | Payer One | Basic Plan": "245",
+    "standard_charge | Payer One | Basic Plan | methodology": "fee schedule",
+  }
+  const algorithmWithMethodologyErrors = validateRow(
+    algorithmWithMethodologyRow,
+    11,
+    columns,
+    true
+  )
+  t.is(algorithmWithMethodologyErrors.length, 0)
+  const algorithmNoMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm":
+      "consult the appendix",
+    "estimated_amount | Payer One | Basic Plan": "245",
+  }
+  const algorithmNoMethodologyErrors = validateRow(
+    algorithmNoMethodologyRow,
+    12,
+    columns,
+    true
+  )
+  t.is(algorithmNoMethodologyErrors.length, 1)
+  t.assert(
+    algorithmNoMethodologyErrors[0].message.includes(
+      '"standard_charge | Payer One | Basic Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  const algorithmWrongMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm":
+      "consult the appendix",
+    "estimated_amount | Payer One | Basic Plan": "245",
+    "standard_charge | Payer Two | Special Plan | methodology": "fee schedule",
+  }
+  const algorithmWrongMethodologyErrors = validateRow(
+    algorithmWrongMethodologyRow,
+    12,
+    columns,
+    true
+  )
+  t.is(algorithmWrongMethodologyErrors.length, 1)
+  t.assert(
+    algorithmWrongMethodologyErrors[0].message.includes(
+      '"standard_charge | Payer One | Basic Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+    )
+  )
+  const algorithmInvalidMethodologyRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm":
+      "consult the appendix",
+    "estimated_amount | Payer One | Basic Plan": "245",
+    "standard_charge | Payer One | Basic Plan | methodology":
+      "special methodology",
+  }
+  const algorithmInvalidMethodologyErrors = validateRow(
+    algorithmInvalidMethodologyRow,
+    13,
+    columns,
+    true
+  )
+  t.is(algorithmInvalidMethodologyErrors.length, 1)
+  t.assert(
+    algorithmInvalidMethodologyErrors[0].message.includes(
+      '"standard_charge | Payer One | Basic Plan | methodology" value "special methodology" is not one of the allowed values'
+    )
+  )
+
+  // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
+  // in the "additional notes" for the associated payer-specific negotiated charge.
+  const otherWithNotesRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_percentage": "80",
+    "estimated_amount | Payer One | Basic Plan": "150",
+    "standard_charge | Payer One | Basic Plan | methodology": "other",
+    "additional_payer_notes | Payer One | Basic Plan":
+      "explanation of methodology",
+  }
+  const otherWithNotesErrors = validateRow(otherWithNotesRow, 51, columns, true)
+  t.is(otherWithNotesErrors.length, 0)
+  const otherWithoutNotesRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_percentage": "80",
+    "estimated_amount | Payer One | Basic Plan": "150",
+    "standard_charge | Payer One | Basic Plan | methodology": "other",
+    "additional_payer_notes | Payer One | Basic Plan": "",
+  }
+  const otherWithoutNotesErrors = validateRow(
+    otherWithoutNotesRow,
+    52,
+    columns,
+    true
+  )
+  t.is(otherWithoutNotesErrors.length, 1)
+  t.is(
+    otherWithoutNotesErrors[0].message,
+    'If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found in the "additional notes" for the associated payer-specific negotiated charge.'
+  )
+  const otherWrongNotesRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_percentage": "80",
+    "estimated_amount | Payer One | Basic Plan": "150",
+    "standard_charge | Payer One | Basic Plan | methodology": "other",
+    "additional_payer_notes | Payer Two | Special Plan": "important notes here",
+  }
+  const otherWrongNotesErrors = validateRow(
+    otherWrongNotesRow,
+    53,
+    columns,
+    true
+  )
+  t.is(otherWrongNotesErrors.length, 1)
+  t.is(
+    otherWrongNotesErrors[0].message,
+    'If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found in the "additional notes" for the associated payer-specific negotiated charge.'
+  )
+
+  // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
+  // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
+  // "Payer-Specific Negotiated Charge: Algorithm".
+  const itemNoChargeRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+    "standard_charge | discounted_cash": "",
+  }
+  const itemNoChargeErrors = validateRow(itemNoChargeRow, 54, columns, true)
+  t.is(itemNoChargeErrors.length, 1)
+  t.is(
+    itemNoChargeErrors[0].message,
+    'If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following: "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage", "Payer-Specific Negotiated Charge: Algorithm".'
+  )
+
+  const itemGrossChargeRow = {
+    ...basicRow,
+    "standard_charge | discounted_cash": "",
+  }
+  const itemGrossChargeErrors = validateRow(
+    itemGrossChargeRow,
+    55,
+    columns,
+    true
+  )
+  t.is(itemGrossChargeErrors.length, 0)
+  const itemDiscountedChargeRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+  }
+  const itemDiscountedChargeErrors = validateRow(
+    itemDiscountedChargeRow,
+    56,
+    columns,
+    true
+  )
+  t.is(itemDiscountedChargeErrors.length, 0)
+  const itemNegotiatedDollarRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+    "standard_charge | discounted_cash": "",
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar": "83",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
+  }
+  const itemNegotiatedDollarErrors = validateRow(
+    itemNegotiatedDollarRow,
+    57,
+    columns,
+    true
+  )
+  t.is(itemNegotiatedDollarErrors.length, 0)
+  const itemNegotiatedPercentageRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+    "standard_charge | discounted_cash": "",
+    "standard_charge | Payer Two | Special Plan | negotiated_percentage": "24",
+    "standard_charge | Payer Two | Special Plan | methodology": "case rate",
+    "estimated_amount | Payer Two | Special Plan": "25",
+  }
+  const itemNegotiatedPercentageErrors = validateRow(
+    itemNegotiatedPercentageRow,
+    58,
+    columns,
+    true
+  )
+  t.is(itemNegotiatedPercentageErrors.length, 0)
+  const itemNegotiatedAlgorithmRow = {
+    ...basicRow,
+    "standard_charge | gross": "",
+    "standard_charge | discounted_cash": "",
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm":
+      "check appendix B",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
+    "estimated_amount | Payer One | Basic Plan": "25",
+  }
+  const itemNegotiatedAlgorithmErrors = validateRow(
+    itemNegotiatedAlgorithmRow,
+    59,
+    columns,
+    true
+  )
+  t.is(itemNegotiatedAlgorithmErrors.length, 0)
+
   // If there is a "payer specific negotiated charge" encoded as a dollar amount,
   // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
   const dollarNoBoundsRow = {
     ...basicRow,
     "standard_charge | Payer One | Basic Plan | negotiated_dollar": "300",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
     "standard_charge | min": "",
     "standard_charge | max": "",
   }
@@ -745,6 +1281,7 @@ test("validateRow wide conditionals", (t) => {
   const percentageNoBoundsRow = {
     ...basicRow,
     "standard_charge | Payer One | Basic Plan | negotiated_percentage": "80",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
     "standard_charge | min": "",
     "standard_charge | max": "",
     "estimated_amount | Payer One | Basic Plan": "160",
@@ -760,6 +1297,7 @@ test("validateRow wide conditionals", (t) => {
     ...basicRow,
     "standard_charge | Payer One | Basic Plan | negotiated_algorithm":
       "standard logarithm table",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
     "standard_charge | min": "",
     "standard_charge | max": "",
     "estimated_amount | Payer One | Basic Plan": "160",
@@ -779,6 +1317,7 @@ test("validateRow wide conditionals", (t) => {
   const percentageWithEstimateRow = {
     ...basicRow,
     "standard_charge | Payer One | Basic Plan | negotiated_percentage": "80",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
     "estimated_amount | Payer One | Basic Plan": "160",
   }
   const percentageWithEstimateErrors = validateRow(
@@ -791,6 +1330,7 @@ test("validateRow wide conditionals", (t) => {
   const percentageNoEstimateRow = {
     ...basicRow,
     "standard_charge | Payer One | Basic Plan | negotiated_percentage": "80",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
   }
   const percentageNoEstimateErrors = validateRow(
     percentageNoEstimateRow,
@@ -808,6 +1348,7 @@ test("validateRow wide conditionals", (t) => {
   const percentageWrongEstimateRow = {
     ...basicRow,
     "standard_charge | Payer One | Basic Plan | negotiated_percentage": "80",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
     "estimated_amount | Payer Two | Special Plan": "55",
   }
   const percentageWrongEstimateErrors = validateRow(
@@ -827,6 +1368,7 @@ test("validateRow wide conditionals", (t) => {
     ...basicRow,
     "standard_charge | Payer Two | Special Plan | negotiated_algorithm":
       "useful function",
+    "standard_charge | Payer Two | Special Plan | methodology": "case rate",
     "estimated_amount | Payer Two | Special Plan": "55",
   }
   const algorithmWithEstimateErrors = validateRow(
@@ -840,6 +1382,7 @@ test("validateRow wide conditionals", (t) => {
     ...basicRow,
     "standard_charge | Payer Two | Special Plan | negotiated_algorithm":
       "useful function",
+    "standard_charge | Payer Two | Special Plan | methodology": "case rate",
   }
   const algorithmNoEstimateErrors = validateRow(
     algorithmNoEstimateRow,
@@ -858,6 +1401,7 @@ test("validateRow wide conditionals", (t) => {
     ...basicRow,
     "standard_charge | Payer Two | Special Plan | negotiated_algorithm":
       "useful function",
+    "standard_charge | Payer Two | Special Plan | methodology": "case rate",
     "estimated_amount | Payer One | Basic Plan": "55",
   }
   const algorithmWrongEstimateErrors = validateRow(
@@ -880,6 +1424,7 @@ test("validateRow wide conditionals", (t) => {
     ...basicRow,
     "code | 1 | type": "NDC",
     "standard_charge | Payer One | Basic Plan | negotiated_dollar": "300",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
     drug_unit_of_measurement: "",
     drug_type_of_measurement: "",
   }
@@ -907,6 +1452,7 @@ test("validateRow wide conditionals", (t) => {
     "code | 2": "12345",
     "code | 2 | type": "NDC",
     "standard_charge | Payer One | Basic Plan | negotiated_dollar": "300",
+    "standard_charge | Payer One | Basic Plan | methodology": "case rate",
     drug_unit_of_measurement: "",
     drug_type_of_measurement: "",
   }
