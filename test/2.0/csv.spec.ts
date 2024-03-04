@@ -17,6 +17,10 @@ test("validateHeaderColumns", (t) => {
   const emptyResult = validateHeaderColumns([])
   t.is(emptyResult.errors.length, HEADER_COLUMNS.length)
   t.is(emptyResult.columns.length, 0)
+  t.is(
+    emptyResult.errors[0].message,
+    'Header column "hospital_name" is miscoded or missing. You must include this header and confirm that it is encoded as specified in the data dictionary.'
+  )
   const basicResult = validateHeaderColumns(VALID_HEADER_COLUMNS)
   t.is(basicResult.errors.length, 0)
   t.deepEqual(basicResult.columns, VALID_HEADER_COLUMNS)
@@ -43,7 +47,7 @@ test("validateHeaderColumns", (t) => {
   t.is(duplicateResult.errors.length, 1)
   t.is(
     duplicateResult.errors[0].message,
-    "Column hospital_location duplicated in header"
+    "Column hospital_location duplicated in header. You must review and revise your column headers so that each header appears only once in the first row."
   )
   t.deepEqual(duplicateResult.columns, VALID_HEADER_COLUMNS)
   const invalidStateColumns = HEADER_COLUMNS.map((c) =>
@@ -75,6 +79,20 @@ test("validateHeaderRow", (t) => {
     ]).length,
     0
   )
+  const missingNameErrors = validateHeaderRow(VALID_HEADER_COLUMNS, [
+    "",
+    "2022-01-01",
+    "1.0.0",
+    "Woodlawn",
+    "123 Address",
+    "001 | MD",
+    "true",
+  ])
+  t.is(missingNameErrors.length, 1)
+  t.is(
+    missingNameErrors[0].message,
+    'A value is required for "hospital_name". You must encode the missing information.'
+  )
   // last_updated_on must be a valid date
   const invalidDateResult = validateHeaderRow(VALID_HEADER_COLUMNS, [
     "name",
@@ -86,7 +104,10 @@ test("validateHeaderRow", (t) => {
     "true",
   ])
   t.is(invalidDateResult.length, 1)
-  t.assert(invalidDateResult[0].message.includes("not a valid YYYY-MM-DD date"))
+  t.is(
+    invalidDateResult[0].message,
+    '"last_updated_on" value "2022-14-01" is not in a valid ISO 8601 format. You must encode the date using this format: YYYY-MM-DD'
+  )
   // affirmation must be true
   const wrongAffirmationResult = validateHeaderRow(VALID_HEADER_COLUMNS, [
     "name",
@@ -98,7 +119,10 @@ test("validateHeaderRow", (t) => {
     "yes",
   ])
   t.is(wrongAffirmationResult.length, 1)
-  t.assert(wrongAffirmationResult[0].message.includes("allowed value"))
+  t.is(
+    wrongAffirmationResult[0].message,
+    '"To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated." value "yes" is not one of the allowed valid values. You must encode one of these valid values: true, false'
+  )
 })
 
 test("validateColumns tall", (t) => {
@@ -133,17 +157,26 @@ test("validateColumns tall", (t) => {
   const missingBase = columns.slice(1)
   const missingBaseResult = validateColumns(missingBase)
   t.is(missingBaseResult.length, 1)
-  t.assert(missingBaseResult[0].message.includes("description is missing"))
+  t.is(
+    missingBaseResult[0].message,
+    "Column description is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary."
+  )
   // this also applies to code columns, where code|i means that code|i|type must appear
   const missingCode = [...columns, "code | 2"]
   const missingCodeResult = validateColumns(missingCode)
   t.is(missingCodeResult.length, 1)
-  t.assert(missingCodeResult[0].message.includes("code | 2 | type is missing"))
+  t.is(
+    missingCodeResult[0].message,
+    "Column code | 2 | type is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary."
+  )
   // code|i|type means that code|i must be present
   const missingType = [...columns, "code | 2 | type"]
   const missingTypeResult = validateColumns(missingType)
   t.is(missingTypeResult.length, 1)
-  t.assert(missingTypeResult[0].message.includes("code | 2 is missing"))
+  t.is(
+    missingTypeResult[0].message,
+    "Column code | 2 is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary."
+  )
 })
 
 test("validateRow tall", (t) => {
@@ -184,54 +217,55 @@ test("validateRow tall", (t) => {
   const noDescriptionRow = { ...basicRow, description: "" }
   const noDescriptionResult = validateRow(noDescriptionRow, 6, columns, false)
   t.is(noDescriptionResult.length, 1)
-  t.assert(noDescriptionResult[0].message.includes('"description" is required'))
+  t.is(
+    noDescriptionResult[0].message,
+    'A value is required for "description". You must encode the missing information.'
+  )
   // setting must not be empty
   const noSettingRow = { ...basicRow, setting: "" }
   const noSettingResult = validateRow(noSettingRow, 7, columns, false)
   t.is(noSettingResult.length, 1)
-  t.assert(noSettingResult[0].message.includes('"setting" is required'))
+  t.is(
+    noSettingResult[0].message,
+    'A value is required for "setting". You must encode the missing information.'
+  )
   // setting must be one of CHARGE_SETTINGS
   const wrongSettingRow = { ...basicRow, setting: "everywhere" }
   const wrongSettingResult = validateRow(wrongSettingRow, 8, columns, false)
   t.is(wrongSettingResult.length, 1)
-  t.assert(
-    wrongSettingResult[0].message.includes(
-      '"setting" value "everywhere" is not one of the allowed values'
-    )
+  t.is(
+    wrongSettingResult[0].message,
+    '"setting" value "everywhere" is not one of the allowed valid values. You must encode one of these valid values: inpatient, outpatient, both'
   )
   // drug_unit_of_measurement must be positive number if present
   const emptyDrugUnitRow = { ...basicRow, drug_unit_of_measurement: "" }
   const emptyDrugUnitResult = validateRow(emptyDrugUnitRow, 9, columns, false)
   t.is(emptyDrugUnitResult.length, 1)
-  t.assert(
-    emptyDrugUnitResult[0].message.includes(
-      '"drug_unit_of_measurement" is required to be a positive number when "drug_type_of_measurement" is present'
-    )
+  t.is(
+    emptyDrugUnitResult[0].message,
+    'A value is required for "drug_unit_of_measurement" when "drug_type_of_measurement" is present. You must encode the missing information.'
   )
   const wrongDrugUnitRow = { ...basicRow, drug_unit_of_measurement: "-4" }
   const wrongDrugUnitResult = validateRow(wrongDrugUnitRow, 10, columns, false)
   t.is(wrongDrugUnitResult.length, 1)
-  t.assert(
-    wrongDrugUnitResult[0].message.includes(
-      '"drug_unit_of_measurement" is required to be a positive number when "drug_type_of_measurement" is present'
-    )
+  t.is(
+    wrongDrugUnitResult[0].message,
+    '"drug_unit_of_measurement" value "-4" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
   // drug_type_of_measurement must be one of DRUG_UNITS if present
   const emptyDrugTypeRow = { ...basicRow, drug_type_of_measurement: "" }
   const emptyDrugTypeResult = validateRow(emptyDrugTypeRow, 12, columns, false)
   t.is(emptyDrugTypeResult.length, 1)
-  t.assert(
-    emptyDrugTypeResult[0].message.includes(
-      '"drug_type_of_measurement" is required when "drug_unit_of_measurement" is present'
-    )
+  t.is(
+    emptyDrugTypeResult[0].message,
+    'A value is required for "drug_type_of_measurement" when "drug_unit_of_measurement" is present. You must encode the missing information.'
   )
   const wrongDrugTypeRow = { ...basicRow, drug_type_of_measurement: "KG" }
   const wrongDrugTypeResult = validateRow(wrongDrugTypeRow, 12, columns, false)
   t.is(wrongDrugTypeResult.length, 1)
-  t.assert(
-    wrongDrugTypeResult[0].message.includes(
-      '"drug_type_of_measurement" value "KG" is not one of the allowed values'
-    )
+  t.is(
+    wrongDrugTypeResult[0].message,
+    '"drug_type_of_measurement" value "KG" is not one of the allowed valid values. You must encode one of these valid values: GR, ME, ML, UN, F2, EA, GM'
   )
   // standard_charge | gross must be positive number if present
   const emptyGrossRow = { ...basicRow, "standard_charge | gross": "" }
@@ -240,10 +274,9 @@ test("validateRow tall", (t) => {
   const wrongGrossRow = { ...basicRow, "standard_charge | gross": "3,000" }
   const wrongGrossResult = validateRow(wrongGrossRow, 14, columns, false)
   t.is(wrongGrossResult.length, 1)
-  t.assert(
-    wrongGrossResult[0].message.includes(
-      '"standard_charge | gross" value "3,000" is not a valid positive number'
-    )
+  t.is(
+    wrongGrossResult[0].message,
+    '"standard_charge | gross" value "3,000" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
   // standard_charge | discounted_cash must be positive number if present
   const emptyDiscountedRow = {
@@ -268,10 +301,9 @@ test("validateRow tall", (t) => {
     false
   )
   t.is(wrongDiscountedResult.length, 1)
-  t.assert(
-    wrongDiscountedResult[0].message.includes(
-      '"standard_charge | discounted_cash" value "300.25.1" is not a valid positive number'
-    )
+  t.is(
+    wrongDiscountedResult[0].message,
+    '"standard_charge | discounted_cash" value "300.25.1" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
   // standard_charge | min must be positive number if present
   const emptyMinRow = {
@@ -289,10 +321,9 @@ test("validateRow tall", (t) => {
   }
   const wrongMinResult = validateRow(wrongMinRow, 18, columns, false)
   t.is(wrongMinResult.length, 1)
-  t.assert(
-    wrongMinResult[0].message.includes(
-      '"standard_charge | min" value "-5" is not a valid positive number'
-    )
+  t.is(
+    wrongMinResult[0].message,
+    '"standard_charge | min" value "-5" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
   // standard_charge | max must be positive number if present
   const emptyMaxRow = {
@@ -310,19 +341,17 @@ test("validateRow tall", (t) => {
   }
   const wrongMaxResult = validateRow(wrongMaxRow, 20, columns, false)
   t.is(wrongMaxResult.length, 1)
-  t.assert(
-    wrongMaxResult[0].message.includes(
-      '"standard_charge | max" value "-2" is not a valid positive number'
-    )
+  t.is(
+    wrongMaxResult[0].message,
+    '"standard_charge | max" value "-2" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
   // no code pairs is invalid
   const noCodesRow = { ...basicRow, "code | 1": "", "code | 1 | type": "" }
   const noCodesResult = validateRow(noCodesRow, 21, columns, false)
   t.is(noCodesResult.length, 1)
-  t.assert(
-    noCodesResult[0].message.includes(
-      "At least one code and code type must be specified"
-    )
+  t.is(
+    noCodesResult[0].message,
+    "If a standard charge is encoded, there must be a corresponding code and code type pairing. The code and code type pairing do not need to be in the first code and code type columns (i.e., code|1 and code|1|type)."
   )
   // a code pair not in the first column is valid
   const secondCodeRow = {
@@ -338,28 +367,25 @@ test("validateRow tall", (t) => {
   const noTypeRow = { ...basicRow, "code | 1 | type": "" }
   const noTypeResult = validateRow(noTypeRow, 23, columns, false)
   t.is(noTypeResult.length, 1)
-  t.assert(
-    noTypeResult[0].message.includes(
-      '"code | 1 | type" is required' // should this be a unique message instead?
-    )
+  t.is(
+    noTypeResult[0].message,
+    'A value is required for "code | 1 | type". You must encode the missing information.'
   )
   // a code type without a code is invalid
   const onlyTypeRow = { ...basicRow, "code | 1": "" }
   const onlyTypeResult = validateRow(onlyTypeRow, 24, columns, false)
   t.is(onlyTypeResult.length, 1)
-  t.assert(
-    onlyTypeResult[0].message.includes(
-      '"code | 1" is required' // should this be a unique message instead?
-    )
+  t.is(
+    onlyTypeResult[0].message,
+    'A value is required for "code | 1". You must encode the missing information.'
   )
   // a code type must be one of BILLING_CODE_TYPES
   const wrongTypeRow = { ...basicRow, "code | 1 | type": "GUS" }
   const wrongTypeResult = validateRow(wrongTypeRow, 25, columns, false)
   t.is(wrongTypeResult.length, 1)
-  t.assert(
-    wrongTypeResult[0].message.includes(
-      '"code | 1 | type" value "GUS" is not one of the allowed values'
-    )
+  t.is(
+    wrongTypeResult[0].message,
+    '"code | 1 | type" value "GUS" is not one of the allowed valid values. You must encode one of these valid values: CPT, HCPCS, ICD, DRG, MS-DRG, R-DRG, S-DRG, APS-DRG, AP-DRG, APR-DRG, APC, NDC, HIPPS, LOCAL, EAPG, CDT, RC, CDM, TRIS-DRG'
   )
 })
 
@@ -419,17 +445,17 @@ test("validateRow tall conditionals", (t) => {
   t.is(dollarMissingInfoErrors.length, 3)
   t.assert(
     dollarMissingInfoErrors[0].message.includes(
-      '"payer_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "payer_name" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   t.assert(
     dollarMissingInfoErrors[1].message.includes(
-      '"plan_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "plan_name" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   t.assert(
     dollarMissingInfoErrors[2].message.includes(
-      '"standard_charge | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   const percentageWithInfoRow = {
@@ -461,17 +487,17 @@ test("validateRow tall conditionals", (t) => {
   t.is(percentageMissingInfoErrors.length, 3)
   t.assert(
     percentageMissingInfoErrors[0].message.includes(
-      '"payer_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "payer_name" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   t.assert(
     percentageMissingInfoErrors[1].message.includes(
-      '"plan_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "plan_name" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   t.assert(
     percentageMissingInfoErrors[2].message.includes(
-      '"standard_charge | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
 
@@ -504,17 +530,17 @@ test("validateRow tall conditionals", (t) => {
   t.is(algorithmMissingInfoErrors.length, 3)
   t.assert(
     algorithmMissingInfoErrors[0].message.includes(
-      '"payer_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "payer_name" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   t.assert(
     algorithmMissingInfoErrors[1].message.includes(
-      '"plan_name" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "plan_name" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   t.assert(
     algorithmMissingInfoErrors[2].message.includes(
-      '"standard_charge | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
 
@@ -639,16 +665,10 @@ test("validateRow tall conditionals", (t) => {
     "standard_charge | max": "",
   }
   const dollarNoBoundsErrors = validateRow(dollarNoBoundsRow, 5, columns, false)
-  t.is(dollarNoBoundsErrors.length, 2)
-  t.assert(
-    dollarNoBoundsErrors[0].message.includes(
-      '"standard_charge | min" is required when a negotiated dollar amount is present'
-    )
-  )
-  t.assert(
-    dollarNoBoundsErrors[1].message.includes(
-      '"standard_charge | max" is required when a negotiated dollar amount is present'
-    )
+  t.is(dollarNoBoundsErrors.length, 1)
+  t.is(
+    dollarNoBoundsErrors[0].message,
+    'If there is a "payer specific negotiated charge" encoded as a dollar amount, there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.'
   )
   const percentageNoBoundsRow = {
     ...basicRow,
@@ -706,10 +726,9 @@ test("validateRow tall conditionals", (t) => {
     false
   )
   t.is(percentageNoEstimateErrors.length, 1)
-  t.assert(
-    percentageNoEstimateErrors[0].message.includes(
-      '"estimated_amount" is required to be a positive number when a negotiated percentage or algorithm is present, but negotiated dollar is not present'
-    )
+  t.is(
+    percentageNoEstimateErrors[0].message,
+    'If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm, then a corresponding "Estimated Allowed Amount" must also be encoded.'
   )
   t.is(percentageNoEstimateErrors[0].warning, !enforceConditionals)
   const algorithmWithEstimateRow = {
@@ -736,10 +755,9 @@ test("validateRow tall conditionals", (t) => {
     false
   )
   t.is(algorithmNoEstimateErrors.length, 1)
-  t.assert(
-    algorithmNoEstimateErrors[0].message.includes(
-      '"estimated_amount" is required to be a positive number when a negotiated percentage or algorithm is present, but negotiated dollar is not present'
-    )
+  t.is(
+    algorithmNoEstimateErrors[0].message,
+    'If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm, then a corresponding "Estimated Allowed Amount" must also be encoded.'
   )
   t.is(algorithmNoEstimateErrors[0].warning, !enforceConditionals)
 
@@ -758,19 +776,12 @@ test("validateRow tall conditionals", (t) => {
     columns,
     false
   )
-  t.is(ndcNoMeasurementErrors.length, 2)
-  t.assert(
-    ndcNoMeasurementErrors[0].message.includes(
-      '"drug_unit_of_measurement" is required when an NDC code is present'
-    )
-  )
-  t.assert(
-    ndcNoMeasurementErrors[1].message.includes(
-      '"drug_type_of_measurement" is required when an NDC code is present'
-    )
+  t.is(ndcNoMeasurementErrors.length, 1)
+  t.is(
+    ndcNoMeasurementErrors[0].message,
+    "If code type is NDC, then the corresponding drug unit of measure and drug type of measure data element must be encoded."
   )
   t.is(ndcNoMeasurementErrors[0].warning, !enforceConditionals)
-  t.is(ndcNoMeasurementErrors[1].warning, !enforceConditionals)
   const ndcSecondNoMeasurementRow = {
     ...basicRow,
     "code | 2": "12345",
@@ -785,19 +796,12 @@ test("validateRow tall conditionals", (t) => {
     columns,
     false
   )
-  t.is(ndcSecondNoMeasurementErrors.length, 2)
-  t.assert(
-    ndcSecondNoMeasurementErrors[0].message.includes(
-      '"drug_unit_of_measurement" is required when an NDC code is present'
-    )
-  )
-  t.assert(
-    ndcSecondNoMeasurementErrors[1].message.includes(
-      '"drug_type_of_measurement" is required when an NDC code is present'
-    )
+  t.is(ndcSecondNoMeasurementErrors.length, 1)
+  t.is(
+    ndcSecondNoMeasurementErrors[0].message,
+    "If code type is NDC, then the corresponding drug unit of measure and drug type of measure data element must be encoded."
   )
   t.is(ndcSecondNoMeasurementErrors[0].warning, !enforceConditionals)
-  t.is(ndcSecondNoMeasurementErrors[1].warning, !enforceConditionals)
   // If a modifier is encoded without an item or service, then a description and one of the following
   // is the minimum information required:
   // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
@@ -814,10 +818,9 @@ test("validateRow tall conditionals", (t) => {
     false
   )
   t.is(invalidModifierErrors.length, 1)
-  t.assert(
-    invalidModifierErrors[0].message.includes(
-      'at least one of "additional_generic_notes", "standard_charge | negotiated_dollar", "standard_charge | negotiated_percentage", "standard_charge | negotiated_algorithm" is required for tall format when a modifier is encoded without an item or service'
-    )
+  t.is(
+    invalidModifierErrors[0].message,
+    "If a modifier is encoded without an item or service, then a description and one of the following is the minimum information required: additional_payer_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm."
   )
   const modifierWithNotesRow = {
     ...basicRow,
@@ -891,20 +894,17 @@ test("validateRow tall conditionals", (t) => {
     false
   )
   t.is(modifierWithWrongTypesErrors.length, 3)
-  t.assert(
-    modifierWithWrongTypesErrors[0].message.includes(
-      '"standard_charge | negotiated_dollar" value "$100" is not a valid positive number'
-    )
+  t.is(
+    modifierWithWrongTypesErrors[0].message,
+    '"standard_charge | negotiated_dollar" value "$100" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
-  t.assert(
-    modifierWithWrongTypesErrors[1].message.includes(
-      '"standard_charge | negotiated_percentage" value "15%" is not a valid positive number'
-    )
+  t.is(
+    modifierWithWrongTypesErrors[1].message,
+    '"standard_charge | negotiated_percentage" value "15%" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
-  t.assert(
-    modifierWithWrongTypesErrors[2].message.includes(
-      '"standard_charge | methodology" value "secret" is not one of the allowed values'
-    )
+  t.is(
+    modifierWithWrongTypesErrors[2].message,
+    '"standard_charge | methodology" value "secret" is not one of the allowed valid values. You must encode one of these valid values: case rate, fee schedule, percent of total billed charges, per diem, other'
   )
 })
 
@@ -985,7 +985,7 @@ test("validateRow wide conditionals", (t) => {
   t.is(dollarNoMethodologyErrors.length, 1)
   t.assert(
     dollarNoMethodologyErrors[0].message.includes(
-      '"standard_charge | Payer One | Basic Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | Payer One | Basic Plan | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   const dollarWrongMethodologyRow = {
@@ -1002,7 +1002,7 @@ test("validateRow wide conditionals", (t) => {
   t.is(dollarWrongMethodologyErrors.length, 1)
   t.assert(
     dollarWrongMethodologyErrors[0].message.includes(
-      '"standard_charge | Payer One | Basic Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | Payer One | Basic Plan | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   const percentageWithMethodologyRow = {
@@ -1032,7 +1032,7 @@ test("validateRow wide conditionals", (t) => {
   t.is(percentageNoMethodologyErrors.length, 1)
   t.assert(
     percentageNoMethodologyErrors[0].message.includes(
-      '"standard_charge | Payer Two | Special Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | Payer Two | Special Plan | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   const percentageWrongMethodologyRow = {
@@ -1050,7 +1050,7 @@ test("validateRow wide conditionals", (t) => {
   t.is(percentageWrongMethodologyErrors.length, 1)
   t.assert(
     percentageWrongMethodologyErrors[0].message.includes(
-      '"standard_charge | Payer Two | Special Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | Payer Two | Special Plan | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   const algorithmWithMethodologyRow = {
@@ -1082,7 +1082,7 @@ test("validateRow wide conditionals", (t) => {
   t.is(algorithmNoMethodologyErrors.length, 1)
   t.assert(
     algorithmNoMethodologyErrors[0].message.includes(
-      '"standard_charge | Payer One | Basic Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | Payer One | Basic Plan | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   const algorithmWrongMethodologyRow = {
@@ -1101,7 +1101,7 @@ test("validateRow wide conditionals", (t) => {
   t.is(algorithmWrongMethodologyErrors.length, 1)
   t.assert(
     algorithmWrongMethodologyErrors[0].message.includes(
-      '"standard_charge | Payer One | Basic Plan | methodology" is required when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
+      'A value is required for "standard_charge | Payer One | Basic Plan | methodology" when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm'
     )
   )
   const algorithmInvalidMethodologyRow = {
@@ -1121,7 +1121,7 @@ test("validateRow wide conditionals", (t) => {
   t.is(algorithmInvalidMethodologyErrors.length, 1)
   t.assert(
     algorithmInvalidMethodologyErrors[0].message.includes(
-      '"standard_charge | Payer One | Basic Plan | methodology" value "special methodology" is not one of the allowed values'
+      '"standard_charge | Payer One | Basic Plan | methodology" value "special methodology" is not one of the allowed valid values'
     )
   )
 
@@ -1267,16 +1267,10 @@ test("validateRow wide conditionals", (t) => {
     "standard_charge | max": "",
   }
   const dollarNoBoundsErrors = validateRow(dollarNoBoundsRow, 5, columns, true)
-  t.is(dollarNoBoundsErrors.length, 2)
-  t.assert(
-    dollarNoBoundsErrors[0].message.includes(
-      '"standard_charge | min" is required when a negotiated dollar amount is present'
-    )
-  )
-  t.assert(
-    dollarNoBoundsErrors[1].message.includes(
-      '"standard_charge | max" is required when a negotiated dollar amount is present'
-    )
+  t.is(dollarNoBoundsErrors.length, 1)
+  t.is(
+    dollarNoBoundsErrors[0].message,
+    'If there is a "payer specific negotiated charge" encoded as a dollar amount, there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.'
   )
   const percentageNoBoundsRow = {
     ...basicRow,
@@ -1339,10 +1333,9 @@ test("validateRow wide conditionals", (t) => {
     true
   )
   t.is(percentageNoEstimateErrors.length, 1)
-  t.assert(
-    percentageNoEstimateErrors[0].message.includes(
-      '"estimated_amount | Payer One | Basic Plan" is required to be a positive number when a negotiated percentage or algorithm is present, but negotiated dollar is not present'
-    )
+  t.is(
+    percentageNoEstimateErrors[0].message,
+    'If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm, then a corresponding "Estimated Allowed Amount" must also be encoded.'
   )
   t.is(percentageNoEstimateErrors[0].warning, !enforceConditionals)
   const percentageWrongEstimateRow = {
@@ -1358,10 +1351,9 @@ test("validateRow wide conditionals", (t) => {
     true
   )
   t.is(percentageWrongEstimateErrors.length, 1)
-  t.assert(
-    percentageWrongEstimateErrors[0].message.includes(
-      '"estimated_amount | Payer One | Basic Plan" is required to be a positive number when a negotiated percentage or algorithm is present, but negotiated dollar is not present'
-    )
+  t.is(
+    percentageWrongEstimateErrors[0].message,
+    'If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm, then a corresponding "Estimated Allowed Amount" must also be encoded.'
   )
   t.is(percentageWrongEstimateErrors[0].warning, !enforceConditionals)
   const algorithmWithEstimateRow = {
@@ -1391,10 +1383,9 @@ test("validateRow wide conditionals", (t) => {
     true
   )
   t.is(algorithmNoEstimateErrors.length, 1)
-  t.assert(
-    algorithmNoEstimateErrors[0].message.includes(
-      '"estimated_amount | Payer Two | Special Plan" is required to be a positive number when a negotiated percentage or algorithm is present, but negotiated dollar is not present'
-    )
+  t.is(
+    algorithmNoEstimateErrors[0].message,
+    'If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm, then a corresponding "Estimated Allowed Amount" must also be encoded.'
   )
   t.is(algorithmNoEstimateErrors[0].warning, !enforceConditionals)
   const algorithmWrongEstimateRow = {
@@ -1411,10 +1402,9 @@ test("validateRow wide conditionals", (t) => {
     true
   )
   t.is(algorithmWrongEstimateErrors.length, 1)
-  t.assert(
-    algorithmWrongEstimateErrors[0].message.includes(
-      '"estimated_amount | Payer Two | Special Plan" is required to be a positive number when a negotiated percentage or algorithm is present, but negotiated dollar is not present'
-    )
+  t.is(
+    algorithmWrongEstimateErrors[0].message,
+    'If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm, then a corresponding "Estimated Allowed Amount" must also be encoded.'
   )
   t.is(algorithmWrongEstimateErrors[0].warning, !enforceConditionals)
 
@@ -1434,19 +1424,12 @@ test("validateRow wide conditionals", (t) => {
     columns,
     true
   )
-  t.is(ndcNoMeasurementErrors.length, 2)
-  t.assert(
-    ndcNoMeasurementErrors[0].message.includes(
-      '"drug_unit_of_measurement" is required when an NDC code is present'
-    )
-  )
-  t.assert(
-    ndcNoMeasurementErrors[1].message.includes(
-      '"drug_type_of_measurement" is required when an NDC code is present'
-    )
+  t.is(ndcNoMeasurementErrors.length, 1)
+  t.is(
+    ndcNoMeasurementErrors[0].message,
+    "If code type is NDC, then the corresponding drug unit of measure and drug type of measure data element must be encoded."
   )
   t.is(ndcNoMeasurementErrors[0].warning, !enforceConditionals)
-  t.is(ndcNoMeasurementErrors[1].warning, !enforceConditionals)
   const ndcSecondNoMeasurementRow = {
     ...basicRow,
     "code | 2": "12345",
@@ -1462,19 +1445,12 @@ test("validateRow wide conditionals", (t) => {
     columns,
     true
   )
-  t.is(ndcSecondNoMeasurementErrors.length, 2)
-  t.assert(
-    ndcSecondNoMeasurementErrors[0].message.includes(
-      '"drug_unit_of_measurement" is required when an NDC code is present'
-    )
-  )
-  t.assert(
-    ndcSecondNoMeasurementErrors[1].message.includes(
-      '"drug_type_of_measurement" is required when an NDC code is present'
-    )
+  t.is(ndcSecondNoMeasurementErrors.length, 1)
+  t.is(
+    ndcSecondNoMeasurementErrors[0].message,
+    "If code type is NDC, then the corresponding drug unit of measure and drug type of measure data element must be encoded."
   )
   t.is(ndcSecondNoMeasurementErrors[0].warning, !enforceConditionals)
-  t.is(ndcSecondNoMeasurementErrors[1].warning, !enforceConditionals)
 
   // If a modifier is encoded without an item or service, then a description and one of the following
   // is the minimum information required:
@@ -1493,10 +1469,9 @@ test("validateRow wide conditionals", (t) => {
     true
   )
   t.is(invalidModifierErrors.length, 1)
-  t.assert(
-    invalidModifierErrors[0].message.includes(
-      'at least one of "additional_generic_notes", "standard_charge | Payer One | Basic Plan | negotiated_dollar", "standard_charge | Payer One | Basic Plan | negotiated_percentage", "standard_charge | Payer One | Basic Plan | negotiated_algorithm", "additional_payer_notes | Payer One | Basic Plan", "standard_charge | Payer Two | Special Plan | negotiated_dollar", "standard_charge | Payer Two | Special Plan | negotiated_percentage", "standard_charge | Payer Two | Special Plan | negotiated_algorithm", "additional_payer_notes | Payer Two | Special Plan" is required for wide format when a modifier is encoded without an item or service'
-    )
+  t.is(
+    invalidModifierErrors[0].message,
+    "If a modifier is encoded without an item or service, then a description and one of the following is the minimum information required: additional_payer_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm."
   )
   const modifierWithGenericNotesRow = {
     ...basicRow,
@@ -1587,19 +1562,16 @@ test("validateRow wide conditionals", (t) => {
     true
   )
   t.is(modifierWithWrongTypesErrors.length, 3)
-  t.assert(
-    modifierWithWrongTypesErrors[0].message.includes(
-      '"standard_charge | Payer One | Basic Plan | negotiated_dollar" value "$100" is not a valid positive number'
-    )
+  t.is(
+    modifierWithWrongTypesErrors[0].message,
+    '"standard_charge | Payer One | Basic Plan | negotiated_dollar" value "$100" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
-  t.assert(
-    modifierWithWrongTypesErrors[1].message.includes(
-      '"standard_charge | Payer One | Basic Plan | negotiated_percentage" value "15%" is not a valid positive number'
-    )
+  t.is(
+    modifierWithWrongTypesErrors[1].message,
+    '"standard_charge | Payer One | Basic Plan | negotiated_percentage" value "15%" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
-  t.assert(
-    modifierWithWrongTypesErrors[2].message.includes(
-      '"standard_charge | Payer Two | Special Plan | methodology" value "secret" is not one of the allowed values'
-    )
+  t.is(
+    modifierWithWrongTypesErrors[2].message,
+    '"standard_charge | Payer Two | Special Plan | methodology" value "secret" is not one of the allowed valid values. You must encode one of these valid values: case rate, fee schedule, percent of total billed charges, per diem, other'
   )
 })

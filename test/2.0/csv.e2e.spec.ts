@@ -31,7 +31,7 @@ test("validateCsvWideHeaderError", async (t) => {
       path: "BA1",
       field: "hospital_location",
       message:
-        'Header column should be "hospital_location", but it is not present',
+        'Header column "hospital_location" is miscoded or missing. You must include this header and confirm that it is encoded as specified in the data dictionary.',
     },
     {
       path: "A1",
@@ -47,7 +47,12 @@ test("validateCsvWideMissingValueError", async (t) => {
   )
   t.is(result.valid, false)
   t.deepEqual(result.errors, [
-    { path: "B4", field: "code | 1", message: '"code | 1" is required' },
+    {
+      path: "B4",
+      field: "code | 1",
+      message:
+        'A value is required for "code | 1". You must encode the missing information.',
+    },
   ])
 })
 
@@ -62,7 +67,7 @@ test("validateCsvWideMissingEnumError", async (t) => {
       path: "C4",
       field: "code | 1 | type",
       message:
-        '"code | 1 | type" value "ms-drgg" is not one of the allowed values: "CPT", "HCPCS", "ICD", "DRG", "MS-DRG", "R-DRG", "S-DRG", "APS-DRG", "AP-DRG", "APR-DRG", "APC", "NDC", "HIPPS", "LOCAL", "EAPG", "CDT", "RC", "CDM", "TRIS-DRG"',
+        '"code | 1 | type" value "ms-drgg" is not one of the allowed valid values. You must encode one of these valid values: CPT, HCPCS, ICD, DRG, MS-DRG, R-DRG, S-DRG, APS-DRG, AP-DRG, APR-DRG, APC, NDC, HIPPS, LOCAL, EAPG, CDT, RC, CDM, TRIS-DRG',
     },
   ])
 })
@@ -79,7 +84,7 @@ test("validateCsvWideMissingMissingRequiredColumnError", async (t) => {
       field:
         "standard_charge | platform_health_insurance | ppo | negotiated_dollar",
       message:
-        "Column standard_charge | platform_health_insurance | ppo | negotiated_dollar is missing, but it is required for wide format",
+        "Column standard_charge | platform_health_insurance | ppo | negotiated_dollar is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
     },
     {
       path: "A1",
