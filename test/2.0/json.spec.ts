@@ -166,3 +166,51 @@ test("validateJsonConditionals", async (t) => {
     },
   ])
 })
+
+test("validateJson estimated amount conditional", async (t) => {
+  const enforce2025 = new Date().getFullYear() >= 2025
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-error-estimate.json"),
+    "v2.0"
+  )
+  t.is(result.valid, true)
+  t.is(result.errors.length, 2)
+  t.deepEqual(result.errors, [
+    {
+      path: "/standard_charges/0/payers_information/3",
+      field: "3",
+      message: "must have required property 'estimated_amount'",
+      warning: enforce2025 ? undefined : true,
+    },
+    {
+      path: "/standard_charges/0/payers_information/3",
+      field: "3",
+      message: 'must match "then" schema',
+      warning: enforce2025 ? undefined : true,
+    },
+  ])
+})
+
+test("validateJson NDC drug information conditional", async (t) => {
+  const enforce2025 = new Date().getFullYear() >= 2025
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-error-ndc.json"),
+    "v2.0"
+  )
+  t.is(result.valid, true)
+  t.is(result.errors.length, 2)
+  t.deepEqual(result.errors, [
+    {
+      path: "",
+      field: "",
+      message: "must have required property 'drug_information'",
+      warning: enforce2025 ? undefined : true,
+    },
+    {
+      path: "",
+      field: "",
+      message: 'must match "then" schema',
+      warning: enforce2025 ? undefined : true,
+    },
+  ])
+})
