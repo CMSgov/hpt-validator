@@ -340,10 +340,16 @@ export async function validateJson(
           errors.push(
             ...(validator.errors as ErrorObject[])
               .map(errorObjectToValidationError)
-              .map((error) => ({
-                ...error,
-                path: error.path.replace(/\/0\//gi, `/${key}/`),
-              }))
+              .map((error) => {
+                const pathPrefix = stack
+                  .filter((se) => se.key)
+                  .map((se) => se.key)
+                  .join("/")
+                return {
+                  ...error,
+                  path: `/${pathPrefix}/${key}${error.path}`,
+                }
+              })
           )
         }
         if (options.onValueCallback) {
