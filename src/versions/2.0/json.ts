@@ -142,6 +142,9 @@ const STANDARD_CHARGE_DEFINITIONS = {
       required: ["methodology"],
     },
     then: {
+      properties: {
+        additional_payer_notes: { type: "string", minLength: 1 },
+      },
       required: ["additional_payer_notes"],
     },
   },
