@@ -177,13 +177,13 @@ test("validateJson estimated amount conditional", async (t) => {
   t.is(result.errors.length, 2)
   t.deepEqual(result.errors, [
     {
-      path: "/standard_charges/0/payers_information/3",
+      path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
       field: "3",
       message: "must have required property 'estimated_amount'",
       warning: enforce2025 ? undefined : true,
     },
     {
-      path: "/standard_charges/0/payers_information/3",
+      path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
       field: "3",
       message: 'must match "then" schema',
       warning: enforce2025 ? undefined : true,
@@ -201,13 +201,13 @@ test("validateJson NDC drug information conditional", async (t) => {
   t.is(result.errors.length, 2)
   t.deepEqual(result.errors, [
     {
-      path: "",
+      path: "/standard_charge_information/0",
       field: "",
       message: "must have required property 'drug_information'",
       warning: enforce2025 ? undefined : true,
     },
     {
-      path: "",
+      path: "/standard_charge_information/0",
       field: "",
       message: 'must match "then" schema',
       warning: enforce2025 ? undefined : true,
@@ -225,13 +225,13 @@ test("validateJson 2025 properties", async (t) => {
   t.is(result.errors.length, 3)
   t.deepEqual(result.errors, [
     {
-      path: "/drug_information",
+      path: "/standard_charge_information/0/drug_information",
       field: "drug_information",
       message: "must have required property 'type'",
       warning: enforce2025 ? undefined : true,
     },
     {
-      path: "/standard_charges/1/payers_information/1/estimated_amount",
+      path: "/standard_charge_information/1/standard_charges/0/payers_information/1/estimated_amount",
       field: "estimated_amount",
       message: "must be number",
       warning: enforce2025 ? undefined : true,

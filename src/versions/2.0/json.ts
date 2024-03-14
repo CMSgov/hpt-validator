@@ -391,9 +391,7 @@ export async function validateJson(
     // TODO: currently this is still storing the full array of items in "parent", but we
     // would need to override some internals to get around that
     parser.onValue = ({ value, key, stack }) => {
-      if (stack.length > 2 || key === "standard_charge_information") {
-        return
-      }
+      if (stack.length > 2 || key === "standard_charge_information") return
       if (typeof key === "string") {
         metadata[key] = value
       } else {
@@ -406,10 +404,16 @@ export async function validateJson(
                 ? errorObjectToValidationError
                 : errorObjectToValidationErrorWithWarnings
             )
-            .map((error) => ({
-              ...error,
-              path: error.path.replace(/\/0\//gi, `/${key}/`),
-            }))
+            .map((error) => {
+              const pathPrefix = stack
+                .filter((se) => se.key)
+                .map((se) => se.key)
+                .join("/")
+              return {
+                ...error,
+                path: `/${pathPrefix}/${key}${error.path}`,
+              }
+            })
           // if warning list is already full, don't add the new warnings
           if (
             options.maxErrors != null &&
