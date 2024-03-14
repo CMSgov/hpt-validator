@@ -115,6 +115,25 @@ const STANDARD_CHARGE_DEFINITIONS = {
       },
     },
     required: ["description", "code_information", "standard_charges"],
+    if: {
+      type: "object",
+      properties: {
+        code_information: {
+          type: "array",
+          contains: {
+            type: "object",
+            properties: {
+              type: {
+                const: "NDC",
+              },
+            },
+          },
+        },
+      },
+    },
+    then: {
+      required: ["drug_information"],
+    },
   },
   payers_information: {
     type: "object",
@@ -132,18 +151,38 @@ const STANDARD_CHARGE_DEFINITIONS = {
       },
     },
     required: ["payer_name", "plan_name", "methodology"],
-
-    if: {
-      properties: {
-        methodology: {
-          const: "other",
+    allOf: [
+      {
+        if: {
+          properties: {
+            methodology: {
+              const: "other",
+            },
+          },
+          required: ["methodology"],
+        },
+        then: {
+          properties: {
+            additional_payer_notes: { type: "string", minLength: 1 },
+          },
+          required: ["additional_payer_notes"],
         },
       },
-      required: ["methodology"],
-    },
-    then: {
-      required: ["additional_payer_notes"],
-    },
+      {
+        if: {
+          anyOf: [
+            { required: ["standard_charge_percentage"] },
+            { required: ["standard_charge_algorithm"] },
+          ],
+          not: {
+            required: ["standard_charge_dollar"],
+          },
+        },
+        then: {
+          required: ["estimated_amount"], // Required beginning 1/1/2025
+        },
+      },
+    ],
   },
 }
 
@@ -164,6 +203,26 @@ const STANDARD_CHARGE_PROPERTIES = {
     },
   },
   required: ["description", "code_information", "standard_charges"],
+
+  if: {
+    type: "object",
+    properties: {
+      code_information: {
+        type: "array",
+        contains: {
+          type: "object",
+          properties: {
+            type: {
+              const: "NDC",
+            },
+          },
+        },
+      },
+    },
+  },
+  then: {
+    required: ["drug_information"],
+  },
 }
 
 export const STANDARD_CHARGE_SCHEMA = {
@@ -324,6 +383,9 @@ export async function validateJson(
   let valid = true
   let hasCharges = false
   const errors: ValidationError[] = []
+  const enforce2025 = new Date().getFullYear() >= 2025
+  let warningCount = 0
+  let errorCount = 0
 
   return new Promise(async (resolve, reject) => {
     // TODO: currently this is still storing the full array of items in "parent", but we
@@ -336,21 +398,42 @@ export async function validateJson(
         // is this where I need to put another check for the modifier information?
         hasCharges = true
         if (!validator.validate(STANDARD_CHARGE_SCHEMA, value)) {
-          valid = false
-          errors.push(
-            ...(validator.errors as ErrorObject[])
-              .map(errorObjectToValidationError)
-              .map((error) => {
-                const pathPrefix = stack
-                  .filter((se) => se.key)
-                  .map((se) => se.key)
-                  .join("/")
-                return {
-                  ...error,
-                  path: `/${pathPrefix}/${key}${error.path}`,
-                }
-              })
-          )
+          let validationErrors = (validator.errors as ErrorObject[])
+            .map(
+              enforce2025
+                ? errorObjectToValidationError
+                : errorObjectToValidationErrorWithWarnings
+            )
+            .map((error) => {
+              const pathPrefix = stack
+                .filter((se) => se.key)
+                .map((se) => se.key)
+                .join("/")
+              return {
+                ...error,
+                path: `/${pathPrefix}/${key}${error.path}`,
+              }
+            })
+          // if warning list is already full, don't add the new warnings
+          if (
+            options.maxErrors != null &&
+            options.maxErrors > 0 &&
+            warningCount > options.maxErrors
+          ) {
+            validationErrors = validationErrors.filter(
+              (error) => error.warning !== true
+            )
+            errors.push(...validationErrors)
+            errorCount += validationErrors.length
+          } else {
+            errors.push(...validationErrors)
+            const additionalWarningCount = validationErrors.filter(
+              (err) => err.warning
+            ).length
+            warningCount += additionalWarningCount
+            errorCount += validationErrors.length - additionalWarningCount
+          }
+          valid = errorCount === 0
         }
         if (options.onValueCallback) {
           options.onValueCallback(value)
@@ -358,11 +441,11 @@ export async function validateJson(
         if (
           options.maxErrors &&
           options.maxErrors > 0 &&
-          errors.length > options.maxErrors
+          errorCount > options.maxErrors
         ) {
           resolve({
             valid: false,
-            errors: errors.slice(0, options.maxErrors),
+            errors: errors,
           })
           parser.end()
         }
@@ -377,12 +460,31 @@ export async function validateJson(
           metadata
         )
       ) {
-        valid = false
-        errors.push(
-          ...(validator.errors as ErrorObject[]).map(
-            errorObjectToValidationError
-          )
+        let validationErrors = (validator.errors as ErrorObject[]).map(
+          enforce2025
+            ? errorObjectToValidationError
+            : errorObjectToValidationErrorWithWarnings
         )
+        // if warning list is already full, don't add the new warnings
+        if (
+          options.maxErrors != null &&
+          options.maxErrors > 0 &&
+          warningCount > options.maxErrors
+        ) {
+          validationErrors = validationErrors.filter(
+            (error) => error.warning !== true
+          )
+          errors.push(...validationErrors)
+          errorCount += validationErrors.length
+        } else {
+          errors.push(...validationErrors)
+          const additionalWarningCount = validationErrors.filter(
+            (err) => err.warning
+          ).length
+          warningCount += additionalWarningCount
+          errorCount += validationErrors.length - additionalWarningCount
+        }
+        valid = errorCount === 0
       }
       resolve({
         valid,
@@ -402,4 +504,54 @@ export async function validateJson(
 
 export const JsonValidatorTwoZero = {
   validateJson,
+}
+
+function errorObjectToValidationErrorWithWarnings(
+  error: ErrorObject,
+  index: number,
+  errors: ErrorObject[]
+): ValidationError {
+  const validationError = errorObjectToValidationError(error)
+  // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+  // then a corresponding "Estimated Allowed Amount" must also be encoded. Required beginning 1/1/2025.
+  // two validation errors occur for this conditional: one for the "required" keyword, one for the "if" keyword
+  if (
+    error.schemaPath ===
+    "#/definitions/payers_information/allOf/1/then/required"
+  ) {
+    validationError.warning = true
+  } else if (
+    error.schemaPath === "#/definitions/payers_information/allOf/1/if" &&
+    index > 0 &&
+    errors[index - 1].schemaPath ===
+      "#/definitions/payers_information/allOf/1/then/required"
+  ) {
+    validationError.warning = true
+  }
+  // If code type is NDC, then the corresponding drug unit of measure and drug type of measure data elements
+  // must be encoded. Required beginning 1/1/2025.
+  // two validation errors occur for this conditional: one for the "required" keyword, one for the "if" keyword
+  else if (
+    error.schemaPath === "#/then/required" &&
+    error.params.missingProperty === "drug_information"
+  ) {
+    validationError.warning = true
+  } else if (
+    error.schemaPath === "#/if" &&
+    index > 0 &&
+    errors[index - 1].schemaPath === "#/then/required" &&
+    errors[index - 1].params.missingProperty === "drug_information"
+  ) {
+    validationError.warning = true
+  }
+  // Any error involving the properties that are new for 2025 are warnings.
+  // These properties are: drug_information, modifier_information, estimated_amount
+  else if (
+    error.instancePath.includes("/drug_information") ||
+    error.instancePath.includes("/modifier_information") ||
+    error.instancePath.includes("/estimated_amount")
+  ) {
+    validationError.warning = true
+  }
+  return validationError
 }

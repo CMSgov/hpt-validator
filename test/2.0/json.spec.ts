@@ -166,3 +166,81 @@ test("validateJsonConditionals", async (t) => {
     },
   ])
 })
+
+test("validateJson estimated amount conditional", async (t) => {
+  const enforce2025 = new Date().getFullYear() >= 2025
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-error-estimate.json"),
+    "v2.0"
+  )
+  t.is(result.valid, !enforce2025)
+  t.is(result.errors.length, 2)
+  t.deepEqual(result.errors, [
+    {
+      path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
+      field: "3",
+      message: "must have required property 'estimated_amount'",
+      warning: enforce2025 ? undefined : true,
+    },
+    {
+      path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
+      field: "3",
+      message: 'must match "then" schema',
+      warning: enforce2025 ? undefined : true,
+    },
+  ])
+})
+
+test("validateJson NDC drug information conditional", async (t) => {
+  const enforce2025 = new Date().getFullYear() >= 2025
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-error-ndc.json"),
+    "v2.0"
+  )
+  t.is(result.valid, !enforce2025)
+  t.is(result.errors.length, 2)
+  t.deepEqual(result.errors, [
+    {
+      path: "/standard_charge_information/0",
+      field: "",
+      message: "must have required property 'drug_information'",
+      warning: enforce2025 ? undefined : true,
+    },
+    {
+      path: "/standard_charge_information/0",
+      field: "",
+      message: 'must match "then" schema',
+      warning: enforce2025 ? undefined : true,
+    },
+  ])
+})
+
+test("validateJson 2025 properties", async (t) => {
+  const enforce2025 = new Date().getFullYear() >= 2025
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-2025-properties.json"),
+    "v2.0"
+  )
+  t.is(result.valid, !enforce2025)
+  t.is(result.errors.length, 3)
+  t.deepEqual(result.errors, [
+    {
+      path: "/standard_charge_information/0/drug_information",
+      field: "drug_information",
+      message: "must have required property 'type'",
+      warning: enforce2025 ? undefined : true,
+    },
+    {
+      path: "/standard_charge_information/1/standard_charges/0/payers_information/1/estimated_amount",
+      field: "estimated_amount",
+      message: "must be number",
+      warning: enforce2025 ? undefined : true,
+    },
+    {
+      path: "/modifier_information/0",
+      field: "0",
+      message: "must have required property 'modifier_payer_information'",
+      warning: enforce2025 ? undefined : true,
+    },
+  ])
+})

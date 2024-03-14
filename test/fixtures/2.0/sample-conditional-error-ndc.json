@@ -25,7 +25,7 @@
         },
         {
           "code": "175869",
-          "type": "LOCAL"
+          "type": "NDC"
         }
       ],
       "standard_charges": [
@@ -82,6 +82,8 @@
           "setting": "outpatient",
           "gross_charge": 150,
           "discounted_cash": 125,
+          "minimum": 98.98,
+          "maximum": 98.98,
           "payers_information": [
             {
               "payer_name": "Platform Health Insurance",
@@ -114,36 +116,34 @@
         {
           "gross_charge": 2500,
           "discounted_cash": 2250,
-          "minimum": 2000,
+          "minimum": 1200,
+          "maximum": 2000,
           "setting": "inpatient",
           "payers_information": [
             {
               "payer_name": "Platform Health Insurance",
               "plan_name": "PPO",
-              "standard_charge_dollar": 115,
+              "standard_charge_dollar": 1500,
               "methodology": "per diem"
             },
             {
               "payer_name": "Region Health Insurance",
               "plan_name": "HMO",
-              "standard_charge_percentage": 115,
-              "estimated_amount": 22243.34,
+              "standard_charge_dollar": 2000,
               "methodology": "per diem",
               "additional_payer_notes": "per diem, days 1-3"
             },
             {
               "payer_name": "Region Health Insurance",
               "plan_name": "HMO",
-              "standard_charge_percentage": 115,
-              "estimated_amount": 22243.34,
+              "standard_charge_dollar": 1800,
               "methodology": "per diem",
               "additional_payer_notes": "per diem, days 4-5"
             },
             {
               "payer_name": "Region Health Insurance",
               "plan_name": "HMO",
-              "standard_charge_percentage": 115,
-              "estimated_amount": 22243.34,
+              "standard_charge_dollar": 1200,
               "methodology": "per diem",
               "additional_payer_notes": "per diem, days 6+"
             }
@@ -164,6 +164,7 @@
           "gross_charge": 13000,
           "discounted_cash": 12000,
           "minimum": 8000,
+          "maximum": 10000,
           "setting": "outpatient",
           "payers_information": [
             {
