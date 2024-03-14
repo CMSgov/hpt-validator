@@ -116,9 +116,12 @@ const STANDARD_CHARGE_DEFINITIONS = {
     },
     required: ["description", "code_information", "standard_charges"],
     if: {
+      type: "object",
       properties: {
         code_information: {
+          type: "array",
           contains: {
+            type: "object",
             properties: {
               type: {
                 const: "NDC",
@@ -159,6 +162,9 @@ const STANDARD_CHARGE_DEFINITIONS = {
           required: ["methodology"],
         },
         then: {
+          properties: {
+            additional_payer_notes: { type: "string", minLength: 1 },
+          },
           required: ["additional_payer_notes"],
         },
       },
@@ -199,9 +205,12 @@ const STANDARD_CHARGE_PROPERTIES = {
   required: ["description", "code_information", "standard_charges"],
 
   if: {
+    type: "object",
     properties: {
       code_information: {
+        type: "array",
         contains: {
+          type: "object",
           properties: {
             type: {
               const: "NDC",
@@ -447,12 +456,31 @@ export async function validateJson(
           metadata
         )
       ) {
-        valid = false
-        errors.push(
-          ...(validator.errors as ErrorObject[]).map(
-            errorObjectToValidationError
-          )
+        let validationErrors = (validator.errors as ErrorObject[]).map(
+          enforce2025
+            ? errorObjectToValidationError
+            : errorObjectToValidationErrorWithWarnings
         )
+        // if warning list is already full, don't add the new warnings
+        if (
+          options.maxErrors != null &&
+          options.maxErrors > 0 &&
+          warningCount > options.maxErrors
+        ) {
+          validationErrors = validationErrors.filter(
+            (error) => error.warning !== true
+          )
+          errors.push(...validationErrors)
+          errorCount += validationErrors.length
+        } else {
+          errors.push(...validationErrors)
+          const additionalWarningCount = validationErrors.filter(
+            (err) => err.warning
+          ).length
+          warningCount += additionalWarningCount
+          errorCount += validationErrors.length - additionalWarningCount
+        }
+        valid = errorCount === 0
       }
       resolve({
         valid,
@@ -509,6 +537,15 @@ function errorObjectToValidationErrorWithWarnings(
     index > 0 &&
     errors[index - 1].schemaPath === "#/then/required" &&
     errors[index - 1].params.missingProperty === "drug_information"
+  ) {
+    validationError.warning = true
+  }
+  // Any error involving the properties that are new for 2025 are warnings.
+  // These properties are: drug_information, modifier_information, estimated_amount
+  else if (
+    error.instancePath.includes("/drug_information") ||
+    error.instancePath.includes("/modifier_information") ||
+    error.instancePath.includes("/estimated_amount")
   ) {
     validationError.warning = true
   }
