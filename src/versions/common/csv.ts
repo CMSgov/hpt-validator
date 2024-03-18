@@ -40,7 +40,7 @@ export function sepColumnsEqual(colA: string, colB: string) {
 export const ASCII_UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 export function csvCellName(row: number, column: number): string {
-  return `${csvColumnName(column)}${row + 1}`
+  return `${(column ?? -1) >= 0 ? csvColumnName(column) : "row "}${row + 1}`
 }
 
 export function csvColumnName(column: number): string {
