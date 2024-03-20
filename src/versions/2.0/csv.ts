@@ -195,7 +195,7 @@ export function validateHeaderColumns(columns: string[]): {
       ...remainingColumns.map((requiredColumn) => {
         return csvErr(
           rowIndex,
-          columns.length,
+          -1,
           requiredColumn,
           ERRORS.HEADER_COLUMN_MISSING(requiredColumn)
         )
@@ -278,7 +278,7 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
     ...remainingColumns.map((requiredColumn) => {
       const problem = csvErr(
         rowIndex,
-        columns.length,
+        -1,
         requiredColumn,
         ERRORS.COLUMN_MISSING(requiredColumn)
       )

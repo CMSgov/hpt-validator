@@ -28,7 +28,7 @@ test("validateCsvWideHeaderError", async (t) => {
   t.is(result.valid, false)
   t.deepEqual(result.errors, [
     {
-      path: "BA1",
+      path: "row 1",
       field: "hospital_location",
       message:
         'Header column "hospital_location" is miscoded or missing. You must include this header and confirm that it is encoded as specified in the data dictionary.',
@@ -80,7 +80,7 @@ test("validateCsvWideMissingMissingRequiredColumnError", async (t) => {
   t.is(result.valid, false)
   t.deepEqual(result.errors, [
     {
-      path: "BA3",
+      path: "row 3",
       field:
         "standard_charge | platform_health_insurance | ppo | negotiated_dollar",
       message:
@@ -103,13 +103,13 @@ test("validate columns with date-dependent enforcement", async (t) => {
     t.is(result.valid, false)
     t.deepEqual(result.errors, [
       {
-        path: "Y3",
+        path: "row 3",
         field: "drug_unit_of_measurement",
         message:
           "Column drug_unit_of_measurement is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
       },
       {
-        path: "Y3",
+        path: "row 3",
         field: "drug_type_of_measurement",
         message:
           "Column drug_type_of_measurement is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
@@ -123,14 +123,14 @@ test("validate columns with date-dependent enforcement", async (t) => {
     t.is(result.valid, true)
     t.deepEqual(result.errors, [
       {
-        path: "Y3",
+        path: "row 3",
         field: "drug_unit_of_measurement",
         message:
           "Column drug_unit_of_measurement is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
         warning: true,
       },
       {
-        path: "Y3",
+        path: "row 3",
         field: "drug_type_of_measurement",
         message:
           "Column drug_type_of_measurement is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary.",
