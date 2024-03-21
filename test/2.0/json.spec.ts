@@ -20,6 +20,15 @@ test("validateJson empty", async (t) => {
   t.deepEqual(result.errors.length, 8)
 })
 
+test("validateJson syntactically invalid", async (t) => {
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-invalid.json"),
+    "v2.0"
+  )
+  t.is(result.valid, false)
+  t.deepEqual(result.errors.length, 1)
+})
+
 test("validateJson maxErrors", async (t) => {
   const result = await validateJson(
     loadFixtureStream("/2.0/sample-empty.json"),

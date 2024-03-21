@@ -269,7 +269,7 @@ export async function validateJson(
     parser.onError = (e) => reject(e)
 
     // TODO: Assuming this must be awaited?
-    await parseJson(jsonInput, parser, reject)
+    await parseJson(jsonInput, parser)
   })
 }
 
