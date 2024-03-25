@@ -504,7 +504,7 @@ export async function validateJson(
         errors: [
           {
             path: "",
-            message: `JSON parsing error: ${e.message}. Please check that your file is well-formatted JSON.`,
+            message: `JSON parsing error: ${e.message}. The validator is unable to review a syntactically invalid JSON file. Please ensure that your file is well-formatted JSON.`,
           },
         ],
       })
