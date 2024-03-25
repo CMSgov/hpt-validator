@@ -387,7 +387,7 @@ export async function validateJson(
   let warningCount = 0
   let errorCount = 0
 
-  return new Promise(async (resolve, reject) => {
+  return new Promise(async (resolve) => {
     // TODO: currently this is still storing the full array of items in "parent", but we
     // would need to override some internals to get around that
     parser.onValue = ({ value, key, stack }) => {
@@ -495,10 +495,22 @@ export async function validateJson(
       })
     }
 
-    parser.onError = (e) => reject(e)
+    parser.onError = (e) => {
+      parser.onEnd = () => null
+      parser.onError = () => null
+      parser.end()
+      resolve({
+        valid: false,
+        errors: [
+          {
+            path: "",
+            message: `JSON parsing error: ${e.message}. The validator is unable to review a syntactically invalid JSON file. Please ensure that your file is well-formatted JSON.`,
+          },
+        ],
+      })
+    }
 
-    // TODO: Assuming this must be awaited?
-    await parseJson(jsonInput, parser, reject)
+    parseJson(jsonInput, parser)
   })
 }
 
