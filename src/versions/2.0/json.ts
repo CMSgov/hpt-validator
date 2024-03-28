@@ -16,6 +16,7 @@ import {
   STANDARD_CHARGE_METHODOLOGY,
 } from "./types.js"
 import { errorObjectToValidationError, parseJson } from "../common/json.js"
+import { addErrorsToList } from "../../utils.js"
 
 const STANDARD_CHARGE_DEFINITIONS = {
   code_information: {
@@ -384,48 +385,9 @@ export async function validateJson(
   let hasCharges = false
   const errors: ValidationError[] = []
   const enforce2025 = new Date().getFullYear() >= 2025
-  let warningCount = 0
-  let errorCount = 0
-
-  const addErrorsToList = (validationErrors: ValidationError[]) => {
-    // if warning list is already full, don't add the new warnings
-    if (
-      options.maxErrors != null &&
-      options.maxErrors > 0 &&
-      warningCount >= options.maxErrors
-    ) {
-      validationErrors = validationErrors.filter(
-        (error) => error.warning !== true
-      )
-      // only add enough to reach the limit
-      if (errorCount + validationErrors.length > options.maxErrors) {
-        validationErrors.slice(0, options.maxErrors - errorCount)
-      }
-      errors.push(...validationErrors)
-      errorCount += validationErrors.length
-    } else {
-      validationErrors.forEach((error) => {
-        if (error.warning) {
-          if (
-            options.maxErrors == null ||
-            options.maxErrors <= 0 ||
-            warningCount < options.maxErrors
-          ) {
-            errors.push(error)
-            warningCount++
-          }
-        } else {
-          if (
-            options.maxErrors == null ||
-            options.maxErrors <= 0 ||
-            errorCount < options.maxErrors
-          ) {
-            errors.push(error)
-            errorCount++
-          }
-        }
-      })
-    }
+  const counts = {
+    errors: 0,
+    warnings: 0,
   }
 
   return new Promise(async (resolve) => {
@@ -455,8 +417,8 @@ export async function validateJson(
                 path: `/${pathPrefix}/${key}${error.path}`,
               }
             })
-          addErrorsToList(validationErrors)
-          valid = errorCount === 0
+          addErrorsToList(validationErrors, errors, options.maxErrors, counts)
+          valid = counts.errors === 0
         }
         if (options.onValueCallback) {
           options.onValueCallback(value)
@@ -464,7 +426,7 @@ export async function validateJson(
         if (
           options.maxErrors &&
           options.maxErrors > 0 &&
-          errorCount >= options.maxErrors
+          counts.errors >= options.maxErrors
         ) {
           resolve({
             valid: false,
@@ -488,8 +450,8 @@ export async function validateJson(
             ? errorObjectToValidationError
             : errorObjectToValidationErrorWithWarnings
         )
-        addErrorsToList(validationErrors)
-        valid = errorCount === 0
+        addErrorsToList(validationErrors, errors, options.maxErrors, counts)
+        valid = counts.errors === 0
       }
       resolve({
         valid,
