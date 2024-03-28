@@ -14,6 +14,7 @@ import {
 } from "./versions/common/csv.js"
 import { CsvValidatorOneOne } from "./versions/1.1/csv.js"
 import { CsvValidatorTwoZero } from "./versions/2.0/csv.js"
+import { addErrorsToList } from "./utils.js"
 
 import Papa from "papaparse"
 
@@ -49,6 +50,10 @@ export async function validateCsv(
 ): Promise<ValidationResult> {
   let index = 0
   const errors: CsvValidationError[] = []
+  const counts = {
+    errors: 0,
+    warnings: 0,
+  }
   let headerColumns: string[]
   let dataColumns: string[]
   let tall = false
@@ -99,11 +104,21 @@ export async function validateCsv(
     if (index === 0) {
       headerColumns = row
     } else if (index === 1) {
-      errors.push(...validator.validateHeader(headerColumns, row))
+      addErrorsToList(
+        validator.validateHeader(headerColumns, row),
+        errors,
+        options.maxErrors,
+        counts
+      )
     } else if (index === 2) {
       dataColumns = cleanColumnNames(row)
-      errors.push(...validator.validateColumns(dataColumns))
-      if (errors.some((err) => !err.warning)) {
+      addErrorsToList(
+        validator.validateColumns(dataColumns),
+        errors,
+        options.maxErrors,
+        counts
+      )
+      if (counts.errors > 0) {
         resolve({
           valid: false,
           errors: errors.map(csvErrorToValidationError).concat({
@@ -117,8 +132,12 @@ export async function validateCsv(
       }
     } else {
       const cleanRow = objectFromKeysValues(dataColumns, row)
-      errors.push(...validator.validateRow(cleanRow, index, dataColumns, !tall))
-
+      addErrorsToList(
+        validator.validateRow(cleanRow, index, dataColumns, !tall),
+        errors,
+        options.maxErrors,
+        counts
+      )
       if (options.onValueCallback) {
         options.onValueCallback(cleanRow)
       }
@@ -127,13 +146,11 @@ export async function validateCsv(
     if (
       options.maxErrors &&
       options.maxErrors > 0 &&
-      errors.length > options.maxErrors
+      counts.errors >= options.maxErrors
     ) {
       resolve({
         valid: false,
-        errors: errors
-          .map(csvErrorToValidationError)
-          .slice(0, options.maxErrors),
+        errors: errors.map(csvErrorToValidationError),
       })
       parser.abort()
     }
@@ -156,7 +173,7 @@ export async function validateCsv(
       })
     } else {
       resolve({
-        valid: !errors.some(({ warning }) => !warning),
+        valid: counts.errors === 0,
         errors: errors.map(csvErrorToValidationError),
       })
     }
