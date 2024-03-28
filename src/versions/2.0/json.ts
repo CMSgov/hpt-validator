@@ -387,6 +387,47 @@ export async function validateJson(
   let warningCount = 0
   let errorCount = 0
 
+  const addErrorsToList = (validationErrors: ValidationError[]) => {
+    // if warning list is already full, don't add the new warnings
+    if (
+      options.maxErrors != null &&
+      options.maxErrors > 0 &&
+      warningCount >= options.maxErrors
+    ) {
+      validationErrors = validationErrors.filter(
+        (error) => error.warning !== true
+      )
+      // only add enough to reach the limit
+      if (errorCount + validationErrors.length > options.maxErrors) {
+        validationErrors.slice(0, options.maxErrors - errorCount)
+      }
+      errors.push(...validationErrors)
+      errorCount += validationErrors.length
+    } else {
+      validationErrors.forEach((error) => {
+        if (error.warning) {
+          if (
+            options.maxErrors == null ||
+            options.maxErrors <= 0 ||
+            warningCount < options.maxErrors
+          ) {
+            errors.push(error)
+            warningCount++
+          }
+        } else {
+          if (
+            options.maxErrors == null ||
+            options.maxErrors <= 0 ||
+            errorCount < options.maxErrors
+          ) {
+            errors.push(error)
+            errorCount++
+          }
+        }
+      })
+    }
+  }
+
   return new Promise(async (resolve) => {
     // TODO: currently this is still storing the full array of items in "parent", but we
     // would need to override some internals to get around that
@@ -398,7 +439,7 @@ export async function validateJson(
         // is this where I need to put another check for the modifier information?
         hasCharges = true
         if (!validator.validate(STANDARD_CHARGE_SCHEMA, value)) {
-          let validationErrors = (validator.errors as ErrorObject[])
+          const validationErrors = (validator.errors as ErrorObject[])
             .map(
               enforce2025
                 ? errorObjectToValidationError
@@ -414,25 +455,7 @@ export async function validateJson(
                 path: `/${pathPrefix}/${key}${error.path}`,
               }
             })
-          // if warning list is already full, don't add the new warnings
-          if (
-            options.maxErrors != null &&
-            options.maxErrors > 0 &&
-            warningCount > options.maxErrors
-          ) {
-            validationErrors = validationErrors.filter(
-              (error) => error.warning !== true
-            )
-            errors.push(...validationErrors)
-            errorCount += validationErrors.length
-          } else {
-            errors.push(...validationErrors)
-            const additionalWarningCount = validationErrors.filter(
-              (err) => err.warning
-            ).length
-            warningCount += additionalWarningCount
-            errorCount += validationErrors.length - additionalWarningCount
-          }
+          addErrorsToList(validationErrors)
           valid = errorCount === 0
         }
         if (options.onValueCallback) {
@@ -441,7 +464,7 @@ export async function validateJson(
         if (
           options.maxErrors &&
           options.maxErrors > 0 &&
-          errorCount > options.maxErrors
+          errorCount >= options.maxErrors
         ) {
           resolve({
             valid: false,
@@ -460,38 +483,17 @@ export async function validateJson(
           metadata
         )
       ) {
-        let validationErrors = (validator.errors as ErrorObject[]).map(
+        const validationErrors = (validator.errors as ErrorObject[]).map(
           enforce2025
             ? errorObjectToValidationError
             : errorObjectToValidationErrorWithWarnings
         )
-        // if warning list is already full, don't add the new warnings
-        if (
-          options.maxErrors != null &&
-          options.maxErrors > 0 &&
-          warningCount > options.maxErrors
-        ) {
-          validationErrors = validationErrors.filter(
-            (error) => error.warning !== true
-          )
-          errors.push(...validationErrors)
-          errorCount += validationErrors.length
-        } else {
-          errors.push(...validationErrors)
-          const additionalWarningCount = validationErrors.filter(
-            (err) => err.warning
-          ).length
-          warningCount += additionalWarningCount
-          errorCount += validationErrors.length - additionalWarningCount
-        }
+        addErrorsToList(validationErrors)
         valid = errorCount === 0
       }
       resolve({
         valid,
-        errors:
-          options.maxErrors && options.maxErrors > 0
-            ? errors.slice(0, options.maxErrors)
-            : errors,
+        errors,
       })
     }
 

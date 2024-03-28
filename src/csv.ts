@@ -49,6 +49,8 @@ export async function validateCsv(
 ): Promise<ValidationResult> {
   let index = 0
   const errors: CsvValidationError[] = []
+  let warningCount = 0
+  let errorCount = 0
   let headerColumns: string[]
   let dataColumns: string[]
   let tall = false
@@ -69,6 +71,47 @@ export async function validateCsv(
     })
   } else {
     validator = requestedValidator
+  }
+
+  const addErrorsToList = (validationErrors: CsvValidationError[]) => {
+    // if warning list is already full, don't add the new warnings
+    if (
+      options.maxErrors != null &&
+      options.maxErrors > 0 &&
+      warningCount >= options.maxErrors
+    ) {
+      validationErrors = validationErrors.filter(
+        (error) => error.warning !== true
+      )
+      // only add enough to reach the limit
+      if (errorCount + validationErrors.length > options.maxErrors) {
+        validationErrors.slice(0, options.maxErrors - errorCount)
+      }
+      errors.push(...validationErrors)
+      errorCount += validationErrors.length
+    } else {
+      validationErrors.forEach((error) => {
+        if (error.warning) {
+          if (
+            options.maxErrors == null ||
+            options.maxErrors <= 0 ||
+            warningCount < options.maxErrors
+          ) {
+            errors.push(error)
+            warningCount++
+          }
+        } else {
+          if (
+            options.maxErrors == null ||
+            options.maxErrors <= 0 ||
+            errorCount < options.maxErrors
+          ) {
+            errors.push(error)
+            errorCount++
+          }
+        }
+      })
+    }
   }
 
   const handleParseStep = (
@@ -99,11 +142,11 @@ export async function validateCsv(
     if (index === 0) {
       headerColumns = row
     } else if (index === 1) {
-      errors.push(...validator.validateHeader(headerColumns, row))
+      addErrorsToList(validator.validateHeader(headerColumns, row))
     } else if (index === 2) {
       dataColumns = cleanColumnNames(row)
-      errors.push(...validator.validateColumns(dataColumns))
-      if (errors.some((err) => !err.warning)) {
+      addErrorsToList(validator.validateColumns(dataColumns))
+      if (errorCount > 0) {
         resolve({
           valid: false,
           errors: errors.map(csvErrorToValidationError).concat({
@@ -117,8 +160,9 @@ export async function validateCsv(
       }
     } else {
       const cleanRow = objectFromKeysValues(dataColumns, row)
-      errors.push(...validator.validateRow(cleanRow, index, dataColumns, !tall))
-
+      addErrorsToList(
+        validator.validateRow(cleanRow, index, dataColumns, !tall)
+      )
       if (options.onValueCallback) {
         options.onValueCallback(cleanRow)
       }
@@ -127,13 +171,11 @@ export async function validateCsv(
     if (
       options.maxErrors &&
       options.maxErrors > 0 &&
-      errors.length > options.maxErrors
+      errorCount >= options.maxErrors
     ) {
       resolve({
         valid: false,
-        errors: errors
-          .map(csvErrorToValidationError)
-          .slice(0, options.maxErrors),
+        errors: errors.map(csvErrorToValidationError),
       })
       parser.abort()
     }
@@ -156,7 +198,7 @@ export async function validateCsv(
       })
     } else {
       resolve({
-        valid: !errors.some(({ warning }) => !warning),
+        valid: errorCount == 0,
         errors: errors.map(csvErrorToValidationError),
       })
     }
