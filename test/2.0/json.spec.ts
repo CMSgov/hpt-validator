@@ -92,43 +92,63 @@ test("validateJsonConditionals", async (t) => {
     "v2.0"
   )
   t.is(result2.valid, false)
-  t.deepEqual(result2.errors.length, 7)
+  t.deepEqual(result2.errors.length, 11)
   t.deepEqual(result2.errors, [
     {
-      path: "/standard_charge_information/1/standard_charges/0",
-      field: "0",
-      message: "must have required property 'gross_charge'",
+      path: '/standard_charge_information/0/standard_charges/0',
+      field: '0',
+      message: "must have required property 'gross_charge'"
     },
     {
-      path: "/standard_charge_information/1/standard_charges/0",
-      field: "0",
-      message: "must have required property 'discounted_cash'",
+      path: '/standard_charge_information/0/standard_charges/0',
+      field: '0',
+      message: "must have required property 'discounted_cash'"
     },
     {
-      path: "/standard_charge_information/1/standard_charges/0/payers_information/0",
-      field: "0",
-      message: "must have required property 'standard_charge_dollar'",
+      path: '/standard_charge_information/0/standard_charges/0',
+      field: '0',
+      message: "must have required property 'payers_information'"
     },
     {
-      path: "/standard_charge_information/1/standard_charges/0/payers_information/0",
-      field: "0",
-      message: "must have required property 'standard_charge_algorithm'",
+      path: '/standard_charge_information/0/standard_charges/0',
+      field: '0',
+      message: 'must match a schema in anyOf'
     },
     {
-      path: "/standard_charge_information/1/standard_charges/0/payers_information/0",
-      field: "0",
-      message: "must have required property 'standard_charge_percentage'",
+      path: '/standard_charge_information/1/standard_charges/0',
+      field: '0',
+      message: "must have required property 'gross_charge'"
     },
     {
-      path: "/standard_charge_information/1/standard_charges/0/payers_information/0",
-      field: "0",
-      message: "must match a schema in anyOf",
+      path: '/standard_charge_information/1/standard_charges/0',
+      field: '0',
+      message: "must have required property 'discounted_cash'"
     },
     {
-      path: "/standard_charge_information/1/standard_charges/0",
-      field: "0",
-      message: "must match a schema in anyOf",
+      path: '/standard_charge_information/1/standard_charges/0/payers_information/0',
+      field: '0',
+      message: "must have required property 'standard_charge_dollar'"
     },
+    {
+      path: '/standard_charge_information/1/standard_charges/0/payers_information/0',
+      field: '0',
+      message: "must have required property 'standard_charge_algorithm'"
+    },
+    {
+      path: '/standard_charge_information/1/standard_charges/0/payers_information/0',
+      field: '0',
+      message: "must have required property 'standard_charge_percentage'"
+    },
+    {
+      path: '/standard_charge_information/1/standard_charges/0/payers_information/0',
+      field: '0',
+      message: 'must match a schema in anyOf'
+    },
+    {
+      path: '/standard_charge_information/1/standard_charges/0',
+      field: '0',
+      message: 'must match a schema in anyOf'
+    }
   ])
 
   const result3 = await validateJson(
