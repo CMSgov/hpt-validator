@@ -145,7 +145,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
       standard_charge_dollar: { type: "number", exclusiveMinimum: 0 },
       standard_charge_algorithm: { type: "string" },
       standard_charge_percentage: { type: "number", exclusiveMinimum: 0 },
-      estimated_amount: { type: "number", exclusiveMinimum: 0 },
+      estimated_amount: { type: "number" },
       methodology: {
         enum: STANDARD_CHARGE_METHODOLOGY,
         type: "string",
