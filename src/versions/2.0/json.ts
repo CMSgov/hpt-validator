@@ -79,6 +79,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
             },
           },
         },
+        required: ["payers_information"],
       },
     ],
     if: {
@@ -94,6 +95,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
           },
         },
       },
+      required: ["payers_information"],
     },
     else: {
       required: ["minimum", "maximum"],

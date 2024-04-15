@@ -35,40 +35,8 @@
         {
           "minimum": 20000,
           "maximum": 20000,
-          "setting": "inpatient",
-          "payers_information": [
-            {
-              "payer_name": "Platform Health Insurance",
-              "plan_name": "PPO",
-              "standard_charge_dollar": 20000,
-              "standard_charge_algorithm": "MS-DRG",
-              "estimated_amount": 22243.34,
-              "methodology": "case rate"
-            },
-            {
-              "payer_name": "Platform Health Insurance",
-              "plan_name": "PPO",
-              "standard_charge_dollar": 20000,
-              "standard_charge_algorithm": "https://www.cms.gov/Outreach-and-Education/Medicare-Learning-Network-MLN/MLNProducts/html/images/OP.jpg",
-              "estimated_amount": 22243.34,
-              "methodology": "case rate"
-            },
-            {
-              "payer_name": "Platform Health Insurance",
-              "plan_name": "PPO",
-              "standard_charge_dollar": 20000,
-              "standard_charge_algorithm": "The adjusted base payment rate indicated in the standard_charge|negotiated_dollar data element may be further adjusted for additional factors including transfers and outliers.",
-              "estimated_amount": 22243.34,
-              "methodology": "case rate"
-            },
-            {
-              "payer_name": "Region Health Insurance",
-              "plan_name": "HMO",
-              "standard_charge_percentage": 50,
-              "estimated_amount": 23145.98,
-              "methodology": "percent of total billed charges"
-            }
-          ]
+          "setting": "inpatient"
+          
         }
       ]
     },
