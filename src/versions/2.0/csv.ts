@@ -858,7 +858,8 @@ export function validateWideFields(
           ERRORS.INVALID_NUMBER(
             `estimated_amount | ${payer} | ${plan}`,
             row[`estimated_amount | ${payer} | ${plan}`]
-          )
+          ),
+          !enforceConditionals
         )
       )
     }
