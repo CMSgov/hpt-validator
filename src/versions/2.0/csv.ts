@@ -715,27 +715,6 @@ export function validateWideFields(
       )
     }
   }
-  // payersPlans.forEach(([payer, plan]) => {
-  //   if (
-  //     (foundCodes &&
-  //       (row["standard_charge | gross"] || "").trim().length > 0) ||
-  //     (
-  //       row[`standard_charge | ${payer} | ${plan} | discounted_cash`] || ""
-  //     ).trim().length > 0 ||
-  //     (
-  //       row[`standard_charge | ${payer} | ${plan} | negotiated_dollar`] || ""
-  //     ).trim().length > 0 ||
-  //     (
-  //       row[`standard_charge | ${payer} | ${plan} | negotiated_percentage`] ||
-  //       ""
-  //     ).trim().length > 0 ||
-  //     (
-  //       row[`standard_charge | ${payer} | ${plan} | negotiated_algorithm`] || ""
-  //     ).trim().length > 0
-  //   ) {
-  //     // ? validate a required row ?
-  //   }
-  // })
 
   // If there is a "payer specific negotiated charge" encoded as a dollar amount,
   // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
@@ -803,6 +782,88 @@ export function validateWideFields(
     }
   })
 
+  // Ensuring that the numeric values are greater than zero.
+  payersPlans.forEach(([payer, plan]) => {
+    if (
+      (
+        row[`standard_charge | ${payer} | ${plan} | negotiated_dollar`] || ""
+      ).trim().length > 0 &&
+      validateRequiredFloatField(
+        row,
+        `standard_charge | ${payer} | ${plan} | negotiated_dollar`,
+        index,
+        columns.indexOf(
+          `standard_charge | ${payer} | ${plan} | negotiated_dollar`
+        )
+      ).length > 0
+    ) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(
+            `standard_charge | ${payer} | ${plan} | negotiated_dollar`
+          ),
+          `standard_charge | ${payer} | ${plan} | negotiated_dollar`,
+          ERRORS.INVALID_NUMBER(
+            `standard_charge | ${payer} | ${plan} | negotiated_dollar`,
+            row[`standard_charge | ${payer} | ${plan} | negotiated_dollar`]
+          )
+        )
+      )
+    }
+
+    if (
+      (
+        row[`standard_charge | ${payer} | ${plan} | negotiated_percentage`] ||
+        ""
+      ).trim().length > 0 &&
+      validateRequiredFloatField(
+        row,
+        `standard_charge | ${payer} | ${plan} | negotiated_percentage`,
+        index,
+        columns.indexOf(
+          `standard_charge | ${payer} | ${plan} | negotiated_percentage`
+        )
+      ).length > 0
+    ) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(
+            `standard_charge | ${payer} | ${plan} | negotiated_percentage`
+          ),
+          `standard_charge | ${payer} | ${plan} | negotiated_percentage`,
+          ERRORS.INVALID_NUMBER(
+            `standard_charge | ${payer} | ${plan} | negotiated_percentage`,
+            row[`standard_charge | ${payer} | ${plan} | negotiated_percentage`]
+          )
+        )
+      )
+    }
+
+    if (
+      (row[`estimated_amount | ${payer} | ${plan}`] || "").trim().length > 0 &&
+      validateRequiredFloatField(
+        row,
+        `estimated_amount | ${payer} | ${plan}`,
+        index,
+        columns.indexOf(`estimated_amount | ${payer} | ${plan}`)
+      ).length > 0
+    ) {
+      errors.push(
+        csvErr(
+          index,
+          columns.indexOf(`estimated_amount | ${payer} | ${plan}`),
+          `estimated_amount | ${payer} | ${plan}`,
+          ERRORS.INVALID_NUMBER(
+            `estimated_amount | ${payer} | ${plan}`,
+            row[`estimated_amount | ${payer} | ${plan}`]
+          ),
+          !enforceConditionals
+        )
+      )
+    }
+  })
   return errors
 }
 
@@ -1164,7 +1225,11 @@ function validateRequiredFloatField(
     return [
       csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field, suffix)),
     ]
-  } else if (!/^\d+(\.\d+)?$/g.test(row[field].trim())) {
+    // We wrap the three alternative patterns (\d+\.\d+|\.\d+|\d+) within a non-capturing group (?: ... ). This group acts as a container but doesn't capture any matched text during the regex search.
+  } else if (
+    !/^(?:\d+\.\d+|\.\d+|\d+)$/g.test(row[field].trim()) ||
+    parseFloat(row[field].trim()) <= 0
+  ) {
     return [
       csvErr(
         rowIndex,
@@ -1185,7 +1250,10 @@ function validateOptionalFloatField(
 ): CsvValidationError[] {
   if (!(row[field] || "").trim()) {
     return []
-  } else if (!/^\d+(\.\d+)?$/g.test(row[field].trim())) {
+  } else if (
+    !/^(?:\d+\.\d+|\.\d+|\d+)$/g.test(row[field].trim()) ||
+    parseFloat(row[field].trim()) <= 0
+  ) {
     return [
       csvErr(
         rowIndex,
