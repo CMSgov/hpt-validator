@@ -1623,4 +1623,21 @@ test("validateRow wide conditionals", (t) => {
     modifierWithWrongTypesErrors[2].message,
     '"standard_charge | Payer Two | Special Plan | methodology" value "secret" is not one of the allowed valid values. You must encode one of these valid values: case rate, fee schedule, percent of total billed charges, per diem, other'
   )
+
+  const zeroNumericRow = {
+    ...basicRow,
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar": "0",
+    "standard_charge | Payer One | Basic Plan | negotiated_percentage": "0",
+    "standard_charge | Payer One | Basic Plan | methodology": "per diem",
+  }
+  const zeroNumericRowErrors = validateRow(zeroNumericRow, 22, columns, true)
+  t.is(zeroNumericRowErrors.length, 2)
+  t.is(
+    zeroNumericRowErrors[0].message,
+    '"standard_charge | Payer One | Basic Plan | negotiated_dollar" value "0" is not a positive number. You must encode a positive, non-zero, numeric value.'
+  )
+  t.is(
+    zeroNumericRowErrors[1].message,
+    '"standard_charge | Payer One | Basic Plan | negotiated_percentage" value "0" is not a positive number. You must encode a positive, non-zero, numeric value.'
+  )
 })
