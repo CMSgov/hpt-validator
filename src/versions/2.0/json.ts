@@ -79,7 +79,7 @@ const STANDARD_CHARGE_DEFINITIONS = {
             },
           },
         },
-         required: ["payers_information"],
+        required: ["payers_information"],
       },
     ],
     if: {

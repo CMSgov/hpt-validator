@@ -273,3 +273,11 @@ test("validateJson 2025 properties", async (t) => {
     },
   ])
 })
+
+test("validateJson minimum not required if there are no payer-specific standard charges", async (t) => {
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-conditional-valid-minimum.json"),
+    "v2.0"
+  )
+  t.is(result.valid, true)
+})

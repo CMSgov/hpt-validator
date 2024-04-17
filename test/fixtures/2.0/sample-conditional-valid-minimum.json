@@ -1,0 +1,42 @@
+{
+  "hospital_name": "West Mercy Hospital",
+  "last_updated_on": "2024-07-01",
+  "version": "2.0.0",
+  "hospital_location": [
+    "West Mercy Hospital",
+    "West Mercy Surgical Center"
+  ],
+  "hospital_address": [
+    "12 Main Street, Fullerton, CA  92832",
+    "23 Ocean Ave, San Jose, CA 94088"
+  ],
+  "license_information": {
+    "license_number": "50056",
+    "state": "CA"
+  },
+  "affirmation": {
+    "affirmation": "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.",
+    "confirm_affirmation": true
+  },
+  "standard_charge_information": [
+    {
+      "description": "Major hip and knee joint replacement or reattachment of lower extremity without mcc",
+      "code_information": [
+        {
+          "code": "470",
+          "type": "MS-DRG"
+        },
+        {
+          "code": "175869",
+          "type": "LOCAL"
+        }
+      ],
+      "standard_charges": [
+        {
+          "setting": "inpatient",
+          "gross_charge": 1000
+        }
+      ]
+    }
+  ]
+}
