@@ -87,16 +87,15 @@ const STANDARD_CHARGE_DEFINITIONS = {
       properties: {
         payers_information: {
           type: "array",
-          items: {
+          contains: {
             type: "object",
-            not: {
-              required: ["standard_charge_dollar"],
-            },
+            required: ["standard_charge_dollar"],
           },
         },
       },
+      required: ["payers_information"],
     },
-    else: {
+    then: {
       required: ["minimum", "maximum"],
     },
   },
