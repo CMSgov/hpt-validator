@@ -171,7 +171,7 @@ test("validateJsonConditionals", async (t) => {
     {
       path: "/standard_charge_information/1/standard_charges/0",
       field: "0",
-      message: 'must match "else" schema',
+      message: 'must match "then" schema',
     },
     {
       path: "/standard_charge_information/2/standard_charges/0",
@@ -181,7 +181,7 @@ test("validateJsonConditionals", async (t) => {
     {
       path: "/standard_charge_information/2/standard_charges/0",
       field: "0",
-      message: 'must match "else" schema',
+      message: 'must match "then" schema',
     },
     {
       path: "/standard_charge_information/3/standard_charges/0",
@@ -191,7 +191,7 @@ test("validateJsonConditionals", async (t) => {
     {
       path: "/standard_charge_information/3/standard_charges/0",
       field: "0",
-      message: 'must match "else" schema',
+      message: 'must match "then" schema',
     },
   ])
 })
