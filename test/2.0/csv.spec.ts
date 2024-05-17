@@ -118,6 +118,28 @@ test("validateHeaderRow", (t) => {
     invalidDateResult[0].message,
     '"last_updated_on" value "2022-14-01" is not in a valid ISO 8601 format. You must encode the date using this format: YYYY-MM-DD'
   )
+  // last_updated_on is allowed to be MM/DD/YYYY
+  const dateResult1 = validateHeaderRow(VALID_HEADER_COLUMNS, [
+    "name",
+    "01/07/2024",
+    "1.0.0",
+    "Woodlawn",
+    "123 Address",
+    "001 | MD",
+    "true",
+  ])
+  t.is(dateResult1.length, 0)
+  // last_updated_on is allowed to be M/D/YYYY
+  const dateResult2 = validateHeaderRow(VALID_HEADER_COLUMNS, [
+    "name",
+    "1/7/2024",
+    "1.0.0",
+    "Woodlawn",
+    "123 Address",
+    "001 | MD",
+    "true",
+  ])
+  t.is(dateResult2.length, 0)
   // affirmation must be true
   const wrongAffirmationResult = validateHeaderRow(VALID_HEADER_COLUMNS, [
     "name",
