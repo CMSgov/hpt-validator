@@ -35,7 +35,7 @@ test("validateCsvWideHeaderError", async (t) => {
     },
     {
       path: "A1",
-      message: "Errors were seen in headers so rows were not evaluated",
+      message: "Errors were found in the headers or values in rows 1 through 3, so the remaining rows were not evaluated.",
     },
   ])
 })
@@ -88,7 +88,7 @@ test("validateCsvWideMissingMissingRequiredColumnError", async (t) => {
     },
     {
       path: "A1",
-      message: "Errors were seen in headers so rows were not evaluated",
+      message: "Errors were found in the headers or values in rows 1 through 3, so the remaining rows were not evaluated.",
     },
   ])
 })
