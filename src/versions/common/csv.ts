@@ -117,10 +117,10 @@ export function isValidDate(value: string) {
       expectedMonth === parsedDate.getUTCMonth() &&
       expectedDate === parsedDate.getUTCDate()
     )
-  } else if (dateMatch2 != null){
+  } else if (dateMatch2 != null) {
     const matchYear = dateMatch2[1]
     const matchMonth = dateMatch2[2]
-    const matchDate =  dateMatch2[3]
+    const matchDate = dateMatch2[3]
     const expectedYear = parseInt(matchYear)
     const expectedMonth = parseInt(matchMonth) - 1
     const expectedDate = parseInt(matchDate)

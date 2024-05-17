@@ -20,7 +20,8 @@ import Papa from "papaparse"
 
 const ERRORS = {
   INVALID_VERSION: "Invalid version supplied",
-  HEADER_ERRORS: "Errors were found in the headers or values in rows 1 through 3, so the remaining rows were not evaluated.",
+  HEADER_ERRORS:
+    "Errors were found in the headers or values in rows 1 through 3, so the remaining rows were not evaluated.",
   MIN_ROWS: "At least one row must be present",
   HEADER_BLANK: (row: number) =>
     `Required headers must be defined on rows 1 and 3. Row ${row} is blank`,
