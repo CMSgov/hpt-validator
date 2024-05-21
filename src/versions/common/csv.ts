@@ -46,8 +46,8 @@ export function csvCellName(row: number, column: number): string {
 export function csvColumnName(column: number): string {
   let name = ""
   while (column >= 0) {
-    name = ASCII_UPPERCASE[column % 26] + name
-    column = Math.floor(column / 26) - 1
+    name = ASCII_UPPERCASE[column % ASCII_UPPERCASE.length] + name
+    column = Math.floor(column / ASCII_UPPERCASE.length) - 1
   }
   return name
 }
