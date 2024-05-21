@@ -96,15 +96,34 @@ export function isNonEmptyString(value: string) {
 }
 
 export function isValidDate(value: string) {
-  // required format is YYYY-MM-DD
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (match != null) {
+  // required format is YYYY-MM-DD or MM/DD/YYYY or M/D/YYYY or MM/D/YYYY or M/DD/YYYY
+  //const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const dateMatch1 = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  const dateMatch2 = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  if (dateMatch1 != null) {
     // UTC methods are used because "date-only forms are interpreted as a UTC time",
     // as per https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format
     // check that the parsed date matches the input, to guard against e.g. February 31
-    const expectedYear = parseInt(match[1])
-    const expectedMonth = parseInt(match[2]) - 1
-    const expectedDate = parseInt(match[3])
+    const matchYear = dateMatch1[3]
+    const matchMonth = dateMatch1[1]
+    const matchDate = dateMatch1[2]
+    const expectedYear = parseInt(matchYear)
+    const expectedMonth = parseInt(matchMonth) - 1
+    const expectedDate = parseInt(matchDate)
+    const parsedDate = new Date(value)
+    return (
+      expectedYear === parsedDate.getUTCFullYear() &&
+      expectedMonth === parsedDate.getUTCMonth() &&
+      expectedDate === parsedDate.getUTCDate()
+    )
+  } else if (dateMatch2 != null) {
+    const matchYear = dateMatch2[1]
+    const matchMonth = dateMatch2[2]
+    const matchDate = dateMatch2[3]
+    const expectedYear = parseInt(matchYear)
+    const expectedMonth = parseInt(matchMonth) - 1
+    const expectedDate = parseInt(matchDate)
     const parsedDate = new Date(value)
     return (
       expectedYear === parsedDate.getUTCFullYear() &&

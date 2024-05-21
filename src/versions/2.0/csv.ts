@@ -87,7 +87,7 @@ const ERRORS = {
       ", "
     )}`,
   INVALID_DATE: (column: string, value: string) =>
-    `"${column}" value "${value}" is not in a valid ISO 8601 format. You must encode the date using this format: YYYY-MM-DD`,
+    `"${column}" value "${value}" is not in a valid format. You must encode the date using the ISO 8601 format: YYYY-MM-DD or the month/day/year format: MM/DD/YYYY, M/D/YYYY`,
   INVALID_NUMBER: (column: string, value: string) =>
     `"${column}" value "${value}" is not a positive number. You must encode a positive, non-zero, numeric value.`,
   POSITIVE_NUMBER: (column: string, value: string) =>
