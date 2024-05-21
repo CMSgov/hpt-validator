@@ -47,7 +47,7 @@ export function csvColumnName(column: number): string {
   if (column < ASCII_UPPERCASE.length) return ASCII_UPPERCASE[column]
 
   return (
-    ASCII_UPPERCASE[Math.floor(column / ASCII_UPPERCASE.length)] +
+    ASCII_UPPERCASE[Math.floor(column / ASCII_UPPERCASE.length) - 1] +
     csvColumnName(column % ASCII_UPPERCASE.length)
   )
 }
