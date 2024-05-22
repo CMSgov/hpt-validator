@@ -957,6 +957,16 @@ test("validateColumns wide", (t) => {
     "estimated_amount | Payer One | Basic Plan",
     "additional_payer_notes | Payer One | Basic Plan",
   ]
+
+  //The idea is that a column could be misnamed.
+  const additionalColumns = [
+    "standard_charge|[payer_AETNA LIFE AND CAUSAULTY | HMO/PPO]",
+    "standard_charge|[payer_AETNA LIFE AND CAUSAULTY | HMO/PPO] |percent",
+    "standard_charge|[payer_AETNA LIFE AND CAUSAULTY | HMO/PPO] |contracting_method",
+    "additional_payer_notes |[payer_AETNA LIFE AND CAUSAULTY | HMO/PPO]",
+    "standard_charge|[payer_ASR HEALTH BEN CIGNA |  COMMERCIAL]",
+    "standard_charge|[payer_ASR HEALTH BEN CIGNA |  COMMERCIAL]",
+  ]
   t.is(validateColumns(columns).length, 0)
   // any order is okay
   const reverseColumns = [...columns].reverse()
@@ -977,6 +987,11 @@ test("validateColumns wide", (t) => {
     "Column additional_payer_notes | Payer One | Basic Plan is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary."
   )
   t.is(someColumnsMissingErrors[1].warning, undefined)
+
+  const customWideColumns = [...columns, ...additionalColumns]
+
+  const someDuplicateErrors = validateColumns(customWideColumns)
+  t.is(someDuplicateErrors.length, 12)
 })
 
 test("validateRow wide conditionals", (t) => {

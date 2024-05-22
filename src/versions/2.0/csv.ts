@@ -269,6 +269,9 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
         duplicateErrors.push(
           csvErr(rowIndex, index, "column", ERRORS.DUPLICATE_COLUMN(column))
         )
+      } else {
+        // Even if the column isn't part of the calculated remainingColumns, we still want to add it to the discoveredColumns array
+        discoveredColumns[index] = column
       }
     }
   })

@@ -34,7 +34,10 @@ export function cleanColumnNames(columns: string[]) {
 export function sepColumnsEqual(colA: string, colB: string) {
   const cleanA = colA.split("|").map((v) => v.trim().toUpperCase())
   const cleanB = colB.split("|").map((v) => v.trim().toUpperCase())
-  return cleanA.every((a, idx: number) => a === cleanB[idx])
+  return (
+    cleanA.length === cleanB.length &&
+    cleanA.every((a, idx: number) => a === cleanB[idx])
+  )
 }
 
 export const ASCII_UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
