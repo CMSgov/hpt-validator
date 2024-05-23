@@ -47,12 +47,12 @@ export function csvCellName(row: number, column: number): string {
 }
 
 export function csvColumnName(column: number): string {
-  if (column < ASCII_UPPERCASE.length) return ASCII_UPPERCASE[column]
-
-  return (
-    ASCII_UPPERCASE[Math.floor(column / ASCII_UPPERCASE.length) - 1] +
-    csvColumnName(column % ASCII_UPPERCASE.length)
-  )
+  let name = ""
+  while (column >= 0) {
+    name = ASCII_UPPERCASE[column % ASCII_UPPERCASE.length] + name
+    column = Math.floor(column / ASCII_UPPERCASE.length) - 1
+  }
+  return name
 }
 
 export function objectFromKeysValues(
