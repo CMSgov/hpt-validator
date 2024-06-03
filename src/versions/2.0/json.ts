@@ -400,21 +400,22 @@ export async function validateJson(
     errors: 0,
     warnings: 0,
   }
-  // const writeStream = fs.createWriteStream("./data/test2939398.json", {
-  //   encoding: "utf8",
-  // })
+  const writeStream = fs.createWriteStream("./data/tesr_test22.json", {
+    encoding: "utf8",
+  })
 
   return new Promise(async (resolve) => {
-    const jsonObject: any = {}
-    const errorList: any = []
+    writeStream.write("{" + "\n")
 
     parser.onValue = ({ value, key, stack }) => {
-      if (!Boolean(Number(key)) && Number(key) !== 0) {
-        jsonObject[key as any] = value
-      }
-      if (stack.length > 2 || key === "standard_charge_information") return
-      if (typeof key === "string") {
+      if (typeof key === "string" && stack.length < 2 && isNaN(Number(key))) {
         metadata[key] = value
+        writeStream.write(`${JSON.stringify(key)}:${JSON.stringify(value)}, `)
+      } else if (
+        (key as any) === "standard_charge_information" ||
+        stack.length > 2
+      ) {
+        return writeStream.write(`"standard_charge_information: [, `)
       } else {
         hasCharges = true
         if (!validator.validate(STANDARD_CHARGE_SCHEMA, value)) {
@@ -439,24 +440,20 @@ export async function validateJson(
                 const property = (error as any).message.match(
                   /must have required property '(.*?)'/
                 )[1]
-
-                const correctPath = transformPath(
-                  `/${pathPrefix}/${key}${error.path}/${property}`
-                )
-                errorList.push(correctPath)
-
-                // writeStream.write(`${property}:${null}, `)
+                const path = `${error.path}/${property}`
+                const transformedPath = transformPath(path)
+                set(value as any, `${transformedPath}`, null)
+                //   writeStream.write(`${property}:${null}, `)
               }
-
-              //fix this
               return {
                 ...error,
-                path: `/${pathPrefix}/${key}${error.path}------26`,
+                path: `/${pathPrefix}/${key}${error.path}------72`,
               }
             })
           addErrorsToList(validationErrors, errors, options.maxErrors, counts)
           valid = counts.errors === 0
         }
+        // writeStream.write(`${JSON.stringify(value)}, `)
         if (options.onValueCallback) {
           options.onValueCallback(value)
         }
@@ -465,7 +462,7 @@ export async function validateJson(
           options.maxErrors > 0 &&
           counts.errors >= options.maxErrors
         ) {
-          // writeStream.end()
+          writeStream.end()
           resolve({
             valid: false,
             errors: errors,
@@ -489,7 +486,7 @@ export async function validateJson(
             ? errorObjectToValidationError
             : errorObjectToValidationErrorWithWarnings
         )
-        validationErrors.forEach((error) => {
+        validationErrors.forEach((error, index) => {
           if (
             error.message.match(/must have required property '(.*?)'/) &&
             (error as any).message.match(/must have required property '(.*?)'/)
@@ -499,25 +496,19 @@ export async function validateJson(
             const property = (error as any).message.match(
               /must have required property '(.*?)'/
             )[1]
-            // writeStream.write(`${property}:${null}, `)
-            set(jsonObject, property, null)
+            writeStream.write(`${JSON.stringify(property)}:${null}`)
+            if (index < validationErrors.length - 1) {
+              writeStream.write(", ")
+            }
           }
         })
-        errorList.forEach((err: string) => {
-          set(jsonObject, err, null)
-        })
-
-        // dynamic file path
-        fs.writeFileSync(
-          "./data/please_god.json",
-          JSON.stringify(jsonObject, null, 2)
-        )
 
         addErrorsToList(validationErrors, errors, options.maxErrors, counts)
         valid = counts.errors === 0
       }
+      writeStream.write("}" + "\n")
 
-      // writeStream.end()
+      writeStream.end()
       resolve({
         valid,
         errors,
@@ -527,7 +518,7 @@ export async function validateJson(
     parser.onError = (e) => {
       parser.onEnd = () => null
       parser.onError = () => null
-      // writeStream.end()
+      writeStream.end()
       parser.end()
       resolve({
         valid: false,
@@ -540,7 +531,6 @@ export async function validateJson(
       })
     }
 
-    //
     parseJson(jsonInput, parser)
   })
 }
