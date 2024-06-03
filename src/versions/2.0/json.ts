@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Ajv, { ErrorObject } from "ajv"
 import addFormats from "ajv-formats"
 import { JSONParser } from "@streamparser/json"
@@ -17,6 +18,8 @@ import {
 } from "./types.js"
 import { errorObjectToValidationError, parseJson } from "../common/json.js"
 import { addErrorsToList } from "../../utils.js"
+import fs from "fs"
+import set from "lodash/set.js"
 
 const STANDARD_CHARGE_DEFINITIONS = {
   code_information: {
@@ -196,6 +199,7 @@ const STANDARD_CHARGE_PROPERTIES = {
       type: "array",
       items: { $ref: "#/definitions/code_information" },
       minItems: 1,
+      default: "null",
     },
     standard_charges: {
       type: "array",
@@ -369,11 +373,18 @@ export const JSON_SCHEMA = {
   required: [...METADATA_REQUIRED, "standard_charge_information"],
 }
 
+const transformPath = (path: string): string => {
+  const segments = path.split("/").filter(Boolean)
+  return segments
+    .map((segment) => (isNaN(Number(segment)) ? segment : `[${segment}]`))
+    .join(".")
+}
+
 export async function validateJson(
   jsonInput: File | NodeJS.ReadableStream,
   options: JsonValidatorOptions = {}
 ): Promise<ValidationResult> {
-  const validator = new Ajv({ allErrors: true })
+  const validator = new Ajv({ allErrors: true, useDefaults: true })
   addFormats(validator)
   const parser = new JSONParser({
     paths: ["$.*", "$.standard_charge_information.*"],
@@ -389,16 +400,22 @@ export async function validateJson(
     errors: 0,
     warnings: 0,
   }
+  // const writeStream = fs.createWriteStream("./data/test2939398.json", {
+  //   encoding: "utf8",
+  // })
 
   return new Promise(async (resolve) => {
-    // TODO: currently this is still storing the full array of items in "parent", but we
-    // would need to override some internals to get around that
+    const jsonObject: any = {}
+    const errorList: any = []
+
     parser.onValue = ({ value, key, stack }) => {
+      if (!Boolean(Number(key)) && Number(key) !== 0) {
+        jsonObject[key as any] = value
+      }
       if (stack.length > 2 || key === "standard_charge_information") return
       if (typeof key === "string") {
         metadata[key] = value
       } else {
-        // is this where I need to put another check for the modifier information?
         hasCharges = true
         if (!validator.validate(STANDARD_CHARGE_SCHEMA, value)) {
           const validationErrors = (validator.errors as ErrorObject[])
@@ -412,9 +429,29 @@ export async function validateJson(
                 .filter((se) => se.key)
                 .map((se) => se.key)
                 .join("/")
+
+              if (
+                error.message.match(/must have required property '(.*?)'/) &&
+                (error as any).message.match(
+                  /must have required property '(.*?)'/
+                ).length > 0
+              ) {
+                const property = (error as any).message.match(
+                  /must have required property '(.*?)'/
+                )[1]
+
+                const correctPath = transformPath(
+                  `/${pathPrefix}/${key}${error.path}/${property}`
+                )
+                errorList.push(correctPath)
+
+                // writeStream.write(`${property}:${null}, `)
+              }
+
+              //fix this
               return {
                 ...error,
-                path: `/${pathPrefix}/${key}${error.path}`,
+                path: `/${pathPrefix}/${key}${error.path}------26`,
               }
             })
           addErrorsToList(validationErrors, errors, options.maxErrors, counts)
@@ -428,17 +465,19 @@ export async function validateJson(
           options.maxErrors > 0 &&
           counts.errors >= options.maxErrors
         ) {
+          // writeStream.end()
           resolve({
             valid: false,
             errors: errors,
           })
           parser.end()
         }
+
+        // Write the modified value to the output JSON
       }
     }
 
     parser.onEnd = () => {
-      // If no charges present, use the full schema to throw error for missing
       if (
         !validator.validate(
           hasCharges ? METADATA_SCHEMA : JSON_SCHEMA,
@@ -450,9 +489,35 @@ export async function validateJson(
             ? errorObjectToValidationError
             : errorObjectToValidationErrorWithWarnings
         )
+        validationErrors.forEach((error) => {
+          if (
+            error.message.match(/must have required property '(.*?)'/) &&
+            (error as any).message.match(/must have required property '(.*?)'/)
+              .length > 0 &&
+            !error.path
+          ) {
+            const property = (error as any).message.match(
+              /must have required property '(.*?)'/
+            )[1]
+            // writeStream.write(`${property}:${null}, `)
+            set(jsonObject, property, null)
+          }
+        })
+        errorList.forEach((err: string) => {
+          set(jsonObject, err, null)
+        })
+
+        // dynamic file path
+        fs.writeFileSync(
+          "./data/please_god.json",
+          JSON.stringify(jsonObject, null, 2)
+        )
+
         addErrorsToList(validationErrors, errors, options.maxErrors, counts)
         valid = counts.errors === 0
       }
+
+      // writeStream.end()
       resolve({
         valid,
         errors,
@@ -462,6 +527,7 @@ export async function validateJson(
     parser.onError = (e) => {
       parser.onEnd = () => null
       parser.onError = () => null
+      // writeStream.end()
       parser.end()
       resolve({
         valid: false,
@@ -474,6 +540,7 @@ export async function validateJson(
       })
     }
 
+    //
     parseJson(jsonInput, parser)
   })
 }
@@ -516,7 +583,8 @@ function errorObjectToValidationErrorWithWarnings(
     error.schemaPath === "#/if" &&
     index > 0 &&
     errors[index - 1].schemaPath === "#/then/required" &&
-    errors[index - 1].params.missingProperty === "drug_information"
+    errors[index - 1].params.missingProperty ===
+      "drug_information jkjkjkjkjkjkjkjkkjkj"
   ) {
     validationError.warning = true
   }
