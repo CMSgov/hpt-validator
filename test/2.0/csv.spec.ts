@@ -75,8 +75,9 @@ test("validateHeaderColumns", (t) => {
 test("validateHeaderRow", (t) => {
   t.is(
     validateHeaderRow(VALID_HEADER_COLUMNS, []).length,
-    VALID_HEADER_COLUMNS.length
+    VALID_HEADER_COLUMNS.length - 1
   )
+
   t.is(
     validateHeaderRow(VALID_HEADER_COLUMNS, [
       "name",
@@ -103,6 +104,18 @@ test("validateHeaderRow", (t) => {
     missingNameErrors[0].message,
     'A value is required for "hospital_name". You must encode the missing information.'
   )
+
+  const missingLicenseNumberValid = validateHeaderRow(VALID_HEADER_COLUMNS, [
+    "name",
+    "2022-01-01",
+    "1.0.0",
+    "Woodlawn",
+    "123 Address",
+    "",
+    "true",
+  ])
+  t.is(missingLicenseNumberValid.length, 0)
+
   // last_updated_on must be a valid date
   const invalidDateResult = validateHeaderRow(VALID_HEADER_COLUMNS, [
     "name",
