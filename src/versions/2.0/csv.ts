@@ -214,7 +214,7 @@ export function validateHeaderRow(
   const rowIndex = 1
   headers.forEach((header, index) => {
     // we aren't checking the license_number value.
-    if (/^license_number\s\|\s.{2}$/.test(header)) {
+    if (/^license_number\s*\|\s*.{2}$/.test(header)) {
       return
     }
 
