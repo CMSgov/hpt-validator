@@ -212,8 +212,12 @@ export function validateHeaderRow(
 ): CsvValidationError[] {
   const errors: CsvValidationError[] = []
   const rowIndex = 1
-
   headers.forEach((header, index) => {
+    // we aren't checking the license_number value.
+    if (/^license_number\s*\|\s*.{2}$/.test(header)) {
+      return
+    }
+
     if (header != null) {
       const value = row[index]?.trim() ?? ""
       if (!value) {
