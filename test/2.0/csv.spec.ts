@@ -4,6 +4,7 @@ import {
   validateHeaderRow,
   validateColumns,
   validateRow,
+  isAmbiguousFormat,
   HEADER_COLUMNS,
   BASE_COLUMNS,
   TALL_COLUMNS,
@@ -221,6 +222,47 @@ test("validateColumns tall", (t) => {
   t.is(
     missingTypeResult[0].message,
     "Column code | 2 is miscoded or missing from row 3. You must include this column and confirm that it is encoded as specified in the data dictionary."
+  )
+})
+
+test("isAmbiguousFormat", (t) => {
+  const columnsTall = [
+    ...BASE_COLUMNS,
+    ...TALL_COLUMNS,
+    "code | 1",
+    "code | 1 | type",
+    "code | 2",
+    "code | 2 | type",
+  ]
+
+  const columnsWide = [
+    ...BASE_COLUMNS,
+    "code | 1",
+    "code | 1 | type",
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar",
+    "standard_charge | Payer One | Basic Plan | negotiated_percentage",
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm",
+    "standard_charge | Payer One | Basic Plan | methodology",
+    "estimated_amount | Payer One | Basic Plan",
+    "additional_payer_notes | Payer One | Basic Plan",
+  ]
+
+  const columnsAmbiguous = [...BASE_COLUMNS, "code | 1", "code | 1 | type"]
+
+  const basicResultTall = isAmbiguousFormat(columnsTall)
+  t.is(basicResultTall, false)
+
+  const basicResultWide = isAmbiguousFormat(columnsWide)
+  t.is(basicResultWide, false)
+
+  const basicResultAmbiguous = isAmbiguousFormat(columnsAmbiguous)
+  t.is(basicResultAmbiguous, true)
+
+  const basicResultAmbiguousError = validateColumns(columnsAmbiguous)
+  t.is(basicResultAmbiguousError.length, 1)
+  t.is(
+    basicResultAmbiguousError[0].message,
+    "Required payer-specific information data element headers are missing or miscoded from the MRF that does not follow the specifications for the CSV “Tall” or CSV “Wide” format."
   )
 })
 
