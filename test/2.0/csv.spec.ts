@@ -247,7 +247,8 @@ test("isAmbiguousFormat", (t) => {
     "additional_payer_notes | Payer One | Basic Plan",
   ]
 
-  const columnsAmbiguous = [...BASE_COLUMNS, "code | 1", "code | 1 | type"]
+  const columnsAmbiguous1 = [...BASE_COLUMNS, "code | 1", "code | 1 | type"]
+  const columnsAmbiguous2 = [...columnsWide, ...TALL_COLUMNS]
 
   const basicResultTall = isAmbiguousFormat(columnsTall)
   t.is(basicResultTall, false)
@@ -255,13 +256,23 @@ test("isAmbiguousFormat", (t) => {
   const basicResultWide = isAmbiguousFormat(columnsWide)
   t.is(basicResultWide, false)
 
-  const basicResultAmbiguous = isAmbiguousFormat(columnsAmbiguous)
-  t.is(basicResultAmbiguous, true)
+  const basicResultAmbiguous1 = isAmbiguousFormat(columnsAmbiguous1)
+  t.is(basicResultAmbiguous1, true)
 
-  const basicResultAmbiguousError = validateColumns(columnsAmbiguous)
-  t.is(basicResultAmbiguousError.length, 1)
+  const basicResultAmbiguous2 = isAmbiguousFormat(columnsAmbiguous2)
+  t.is(basicResultAmbiguous2, true)
+
+  const basicResultAmbiguousError1 = validateColumns(columnsAmbiguous1)
+  t.is(basicResultAmbiguousError1.length, 1)
   t.is(
-    basicResultAmbiguousError[0].message,
+    basicResultAmbiguousError1[0].message,
+    "Required payer-specific information data element headers are missing or miscoded from the MRF that does not follow the specifications for the CSV “Tall” or CSV “Wide” format."
+  )
+
+  const basicResultAmbiguousError2 = validateColumns(columnsAmbiguous2)
+  t.is(basicResultAmbiguousError2.length, 1)
+  t.is(
+    basicResultAmbiguousError2[0].message,
     "Required payer-specific information data element headers are missing or miscoded from the MRF that does not follow the specifications for the CSV “Tall” or CSV “Wide” format."
   )
 })

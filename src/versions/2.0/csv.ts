@@ -1341,7 +1341,9 @@ export function isTall(columns: string[]): boolean {
 }
 
 export function isAmbiguousFormat(columns: string[]): boolean {
-  if (!isTall(columns) && getPayersPlans(columns).length === 0) {
+  const tall = isTall(columns)
+  const wide = getPayersPlans(columns)
+  if ((!tall && wide.length === 0) || (tall && wide.length > 0)) {
     return true
   }
   return false
