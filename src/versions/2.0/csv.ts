@@ -117,6 +117,8 @@ const ERRORS = {
     'If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found in the "additional notes" for the associated payer-specific negotiated charge.',
   ITEM_REQUIRES_CHARGE: () =>
     'If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following: "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage", "Payer-Specific Negotiated Charge: Algorithm".',
+  AMBIGUOUS_FORMAT: () =>
+    "Required payer-specific information data element headers are missing or miscoded from the MRF that does not follow the specifications for the CSV “Tall” or CSV “Wide” format.",
 }
 
 /** @private */
@@ -248,6 +250,10 @@ export function validateHeaderRow(
 /** @private */
 export function validateColumns(columns: string[]): CsvValidationError[] {
   const rowIndex = 2
+
+  if (isAmbiguousFormat(columns)) {
+    return [csvErr(rowIndex + 1, -1, "", ERRORS.AMBIGUOUS_FORMAT())]
+  }
 
   const tall = isTall(columns)
   const baseColumns = getBaseColumns(columns)
@@ -1334,9 +1340,19 @@ export function isTall(columns: string[]): boolean {
   return ["payer_name", "plan_name"].every((c) => columns.includes(c))
 }
 
+export function isAmbiguousFormat(columns: string[]): boolean {
+  const tall = isTall(columns)
+  const wide = getPayersPlans(columns)
+  if ((!tall && wide.length === 0) || (tall && wide.length > 0)) {
+    return true
+  }
+  return false
+}
+
 export const CsvValidatorTwoZero = {
   validateHeader,
   validateColumns,
   validateRow,
   isTall,
+  isAmbiguousFormat,
 }
