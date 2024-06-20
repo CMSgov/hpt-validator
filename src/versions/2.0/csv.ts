@@ -252,7 +252,7 @@ export function validateColumns(columns: string[]): CsvValidationError[] {
   const rowIndex = 2
 
   if (isAmbiguousFormat(columns)) {
-    return [csvErr(rowIndex + 1, -1, "", ERRORS.AMBIGUOUS_FORMAT())]
+    return [csvErr(rowIndex, -1, "", ERRORS.AMBIGUOUS_FORMAT())]
   }
 
   const tall = isTall(columns)
