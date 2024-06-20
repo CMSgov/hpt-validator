@@ -268,6 +268,9 @@ test("isAmbiguousFormat", (t) => {
     basicResultAmbiguousError1[0].message,
     "Required payer-specific information data element headers are missing or miscoded from the MRF that does not follow the specifications for the CSV “Tall” or CSV “Wide” format."
   )
+  // the ambiguous row error is always in row 3 of the csv
+  // but csv rows are 1-indexed, and error rows are 0-indexed, so we expect 2
+  t.is(basicResultAmbiguousError1[0].row, 2)
 
   const basicResultAmbiguousError2 = validateColumns(columnsAmbiguous2)
   t.is(basicResultAmbiguousError2.length, 1)
@@ -275,6 +278,7 @@ test("isAmbiguousFormat", (t) => {
     basicResultAmbiguousError2[0].message,
     "Required payer-specific information data element headers are missing or miscoded from the MRF that does not follow the specifications for the CSV “Tall” or CSV “Wide” format."
   )
+  t.is(basicResultAmbiguousError2[0].row, 2)
 })
 
 test("validateRow tall", (t) => {
