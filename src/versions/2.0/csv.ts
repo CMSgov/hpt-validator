@@ -226,11 +226,14 @@ export function validateHeaderRow(
         errors.push(
           csvErr(rowIndex, index, header, ERRORS.HEADER_COLUMN_BLANK(header))
         )
-      } else if (header === "last_updated_on" && !isValidDate(value)) {
+      } else if (
+        sepColumnsEqual(header, "last_updated_on") &&
+        !isValidDate(value)
+      ) {
         errors.push(
           csvErr(rowIndex, index, header, ERRORS.INVALID_DATE(header, value))
         )
-      } else if (header === AFFIRMATION) {
+      } else if (sepColumnsEqual(header, AFFIRMATION)) {
         errors.push(
           ...validateRequiredEnumField(
             objectFromKeysValues(headers, row),

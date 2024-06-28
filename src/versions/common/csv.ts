@@ -59,7 +59,9 @@ export function objectFromKeysValues(
   keys: string[],
   values: string[]
 ): { [key: string]: string } {
-  return Object.fromEntries(keys.map((key, index) => [key, values[index]]))
+  return Object.fromEntries(
+    keys.map((key, index) => [key, values[index]]).filter((entry) => entry)
+  )
 }
 
 export function rowIsEmpty(row: string[]): boolean {
