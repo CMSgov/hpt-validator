@@ -34,6 +34,13 @@ test("validateCsvWideHeaderError", async (t) => {
         'Header column "hospital_location" is miscoded or missing. You must include this header and confirm that it is encoded as specified in the data dictionary.',
     },
     {
+      path: "G2",
+      field:
+        "to the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 cfr 180.50, and the information encoded is true, accurate, and complete as of the date indicated.",
+      message:
+        '"to the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 cfr 180.50, and the information encoded is true, accurate, and complete as of the date indicated." value "yes" is not one of the allowed valid values. You must encode one of these valid values: true, false',
+    },
+    {
       path: "A1",
       message:
         "Errors were found in the headers or values in rows 1 through 3, so the remaining rows were not evaluated.",
