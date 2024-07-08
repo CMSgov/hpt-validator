@@ -48,6 +48,15 @@ test("validateCsvWideHeaderError", async (t) => {
   ])
 })
 
+test("validateCsvHeaderEmpty", async (t) => {
+  const result = await validateCsv(
+    loadFixtureStream("/2.0/sample-wide-header-empty.csv"),
+    "v2.0"
+  )
+  t.is(result.valid, false)
+  t.is(result.errors.length, 7)
+})
+
 test("validateCsvWideMissingValueError", async (t) => {
   const result = await validateCsv(
     loadFixtureStream("/2.0/sample-wide-error-missing-value.csv"),
