@@ -97,7 +97,7 @@ export async function validateCsv(
         ],
       })
       parser.abort()
-    } else if (isEmpty) {
+    } else if (isEmpty && index !== 1) {
       ++index
       return
     }
