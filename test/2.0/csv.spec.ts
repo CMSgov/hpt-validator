@@ -91,6 +91,19 @@ test("validateHeaderRow", (t) => {
     ]).length,
     0
   )
+  // leading and trailing spaces are allowed, and comparisons are not case-sensitive
+  t.is(
+    validateHeaderRow(VALID_HEADER_COLUMNS, [
+      "name",
+      "2022-01-01",
+      "1.0.0",
+      "Woodlawn",
+      "123 Address",
+      "001 | MD",
+      " TRUE ",
+    ]).length,
+    0
+  )
   const missingNameErrors = validateHeaderRow(VALID_HEADER_COLUMNS, [
     "",
     "2022-01-01",
