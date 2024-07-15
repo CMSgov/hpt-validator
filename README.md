@@ -23,7 +23,7 @@ npm run test
 ```
 
 #### Node Observations
-If you are running the following command, it has been observed that Node versions 20+ encounter typescript errors. The test suite will run using Node version 19.*.*.
+If you are running the previous command, it has been observed that Node versions 20+ encounter typescript errors. The test suite will run using Node version 19.*.*.
 
 ## Contributing
 
