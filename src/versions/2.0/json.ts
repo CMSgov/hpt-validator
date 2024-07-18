@@ -10,7 +10,6 @@ import {
 } from "../../types.js"
 import {
   BILLING_CODE_TYPES,
-  CHARGE_BILLING_CLASSES,
   CHARGE_SETTINGS,
   DRUG_UNITS,
   STANDARD_CHARGE_METHODOLOGY,
@@ -54,10 +53,6 @@ const STANDARD_CHARGE_DEFINITIONS = {
         type: "array",
         items: { $ref: "#/definitions/payers_information" },
         minItems: 1,
-      },
-      billing_class: {
-        enum: CHARGE_BILLING_CLASSES,
-        type: "string",
       },
       additional_generic_notes: { type: "string" },
     },

@@ -30,14 +30,6 @@ export const CHARGE_SETTINGS = ["inpatient", "outpatient", "both"] as const
 type ChargeSettingTuple = typeof CHARGE_SETTINGS
 export type ChargeSetting = ChargeSettingTuple[number]
 
-export const CHARGE_BILLING_CLASSES = [
-  "professional",
-  "facility",
-  "both",
-] as const
-type ChargeBillingClassTuple = typeof CHARGE_BILLING_CLASSES
-export type ChargeBillingClass = ChargeBillingClassTuple[number]
-
 export const STANDARD_CHARGE_METHODOLOGY = [
   "case rate",
   "fee schedule",
