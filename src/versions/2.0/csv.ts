@@ -1295,10 +1295,7 @@ function validateRequiredEnumField(
       csvErr(rowIndex, columnIndex, field, ERRORS.REQUIRED(field, suffix)),
     ]
   } else {
-    const uppercaseValue = row[field].toUpperCase()
-    if (
-      !allowedValues.some((allowed) => allowed.toUpperCase() === uppercaseValue)
-    ) {
+    if (!allowedValues.some((allowed) => matchesString(row[field], allowed))) {
       return [
         csvErr(
           rowIndex,
