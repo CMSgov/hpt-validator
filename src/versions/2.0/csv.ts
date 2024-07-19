@@ -10,7 +10,6 @@ import {
 } from "../common/csv.js"
 import {
   BILLING_CODE_TYPES,
-  CHARGE_BILLING_CLASSES,
   CHARGE_SETTINGS,
   STANDARD_CHARGE_METHODOLOGY,
   DRUG_UNITS,
@@ -41,11 +40,6 @@ export const BASE_COLUMNS = [
   "standard_charge | min", // positive number or blank
   "standard_charge | max", // positive number or blank
   "additional_generic_notes", // string
-]
-
-export const OPTIONAL_COLUMNS = [
-  "financial_aid_policy", // string
-  "billing_class", // CHARGE_BILLING_CLASSES or blank
 ]
 
 export const TALL_COLUMNS = [
@@ -388,16 +382,6 @@ export function validateRow(
   }
 
   errors.push(
-    ...validateOptionalEnumField(
-      row,
-      "billing_class",
-      index,
-      columns.indexOf("billing_class"),
-      CHARGE_BILLING_CLASSES
-    )
-  )
-
-  errors.push(
     ...validateRequiredEnumField(
       row,
       "setting",
@@ -555,16 +539,6 @@ function validateModifierRow(
   }
 
   // other conditionals don't apply for modifier rows, but any values entered should still be the correct type
-  errors.push(
-    ...validateOptionalEnumField(
-      row,
-      "billing_class",
-      index,
-      columns.indexOf("billing_class"),
-      CHARGE_BILLING_CLASSES
-    )
-  )
-
   errors.push(
     ...validateOptionalEnumField(
       row,
