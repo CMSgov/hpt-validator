@@ -140,6 +140,6 @@ export function isValidDate(value: string) {
 }
 
 export function matchesString(value: string, target: string) {
-  if(typeof value !== 'string') return false
+  if (typeof value !== "string") return false
   return value.trim().toLocaleUpperCase() === target.trim().toLocaleUpperCase()
 }
