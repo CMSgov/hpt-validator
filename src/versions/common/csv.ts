@@ -93,10 +93,12 @@ export function getCodeCount(columns: string[]): number {
 }
 
 export function isEmptyString(value: string) {
+  if (typeof value !== "string") return false
   return value.trim().length === 0
 }
 
 export function isNonEmptyString(value: string) {
+  if (typeof value !== "string") return false
   return value.trim().length > 0
 }
 
