@@ -9,10 +9,8 @@ import {
 import {
   BILLING_CODE_TYPES,
   BillingCodeType,
-  CHARGE_BILLING_CLASSES,
   CHARGE_SETTINGS,
   CONTRACTING_METHODS,
-  ChargeBillingClass,
   ChargeSetting,
   ContractingMethod,
   DRUG_UNITS,
@@ -24,13 +22,11 @@ export const HEADER_COLUMNS = [
   "last_updated_on",
   "version",
   "hospital_location",
-  "financial_aid_policy",
   "license_number | state",
 ]
 
 export const BASE_COLUMNS = [
   "description",
-  "billing_class",
   "setting",
   "drug_unit_of_measurement",
   "drug_type_of_measurement",
@@ -238,23 +234,6 @@ export function validateRow(
           "code | 2 | type",
           row["code | 2 | type"],
           BILLING_CODE_TYPES as unknown as string[]
-        )
-      )
-    )
-  }
-
-  if (
-    !CHARGE_BILLING_CLASSES.includes(row["billing_class"] as ChargeBillingClass)
-  ) {
-    errors.push(
-      csvErr(
-        index,
-        columns.indexOf("billing_class"),
-        "billing_class",
-        ERRORS.ALLOWED_VALUES(
-          "billing_class",
-          row["billing_class"],
-          CHARGE_BILLING_CLASSES as unknown as string[]
         )
       )
     )
@@ -477,7 +456,6 @@ export function getBaseColumns(columns: string[]): string[] {
   return [
     "description",
     ...codeColumns,
-    "billing_class",
     "setting",
     "drug_unit_of_measurement",
     "drug_type_of_measurement",
