@@ -1,8 +1,5 @@
 import test from "ava"
-import {
-  csvColumnName,
-  matchesString,
-} from "../../src/versions/common/csv.js"
+import { csvColumnName, matchesString } from "../../src/versions/common/csv.js"
 
 test("csvColumnName", (t) => {
   t.is(csvColumnName(0), "A")
