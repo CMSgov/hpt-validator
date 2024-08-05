@@ -92,16 +92,6 @@ export function getCodeCount(columns: string[]): number {
   )
 }
 
-export function isEmptyString(value: string) {
-  if (typeof value !== "string") return false
-  return value.trim().length === 0
-}
-
-export function isNonEmptyString(value: string) {
-  if (typeof value !== "string") return false
-  return value.trim().length > 0
-}
-
 export function isValidDate(value: string) {
   // required format is YYYY-MM-DD or MM/DD/YYYY or M/D/YYYY or MM/D/YYYY or M/DD/YYYY
   //const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
