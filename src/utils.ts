@@ -32,8 +32,8 @@ export function addErrorsToList<T extends { warning?: boolean | undefined }>(
   return counts
 }
 
-export function removeBOM(chunk: string): string{
-   // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
+export function removeBOM(chunk: string): string {
+  // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
   const dataBuffer = Buffer.from(chunk)
   if (
     dataBuffer.length > 2 &&
