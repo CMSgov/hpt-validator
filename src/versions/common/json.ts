@@ -1,6 +1,7 @@
 import { ErrorObject } from "ajv"
 import { ValidationError } from "../../types.js"
 import { JSONParser } from "@streamparser/json"
+import { removeBOM } from "../../utils.js"
 
 export async function parseJson(
   jsonInput: File | NodeJS.ReadableStream,
@@ -34,15 +35,7 @@ export async function parseJson(
     jsonStream.on("data", (data: string) => {
       // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
       if (firstChunk) {
-        const dataBuffer = Buffer.from(data)
-        if (
-          dataBuffer.length > 2 &&
-          dataBuffer[0] === 0xef &&
-          dataBuffer[1] === 0xbb &&
-          dataBuffer[2] === 0xbf
-        ) {
-          data = data.trimStart()
-        }
+        data = removeBOM(data)
         firstChunk = false
       }
       parser.write(data)

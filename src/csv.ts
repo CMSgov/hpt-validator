@@ -14,7 +14,7 @@ import {
 } from "./versions/common/csv.js"
 import { CsvValidatorOneOne } from "./versions/1.1/csv.js"
 import { CsvValidatorTwoZero } from "./versions/2.0/csv.js"
-import { addErrorsToList } from "./utils.js"
+import { addErrorsToList, removeBOM } from "./utils.js"
 
 import Papa from "papaparse"
 
@@ -185,17 +185,7 @@ export async function validateCsv(
       header: false,
       // chunkSize: 64 * 1024,
       beforeFirstChunk: (chunk) => {
-        // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
-        const dataBuffer = Buffer.from(chunk)
-        if (
-          dataBuffer.length > 2 &&
-          dataBuffer[0] === 0xef &&
-          dataBuffer[1] === 0xbb &&
-          dataBuffer[2] === 0xbf
-        ) {
-          return chunk.trimStart()
-        }
-        return chunk
+        return removeBOM(chunk)
       },
       step: (row: Papa.ParseStepResult<string[]>, parser: Papa.Parser) => {
         try {
