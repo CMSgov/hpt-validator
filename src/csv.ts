@@ -184,6 +184,19 @@ export async function validateCsv(
     Papa.parse(input, {
       header: false,
       // chunkSize: 64 * 1024,
+      beforeFirstChunk: (chunk) => {
+        // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
+        const dataBuffer = Buffer.from(chunk)
+        if (
+          dataBuffer.length > 2 &&
+          dataBuffer[0] === 0xef &&
+          dataBuffer[1] === 0xbb &&
+          dataBuffer[2] === 0xbf
+        ) {
+          return chunk.trimStart()
+        }
+        return chunk
+      },
       step: (row: Papa.ParseStepResult<string[]>, parser: Papa.Parser) => {
         try {
           handleParseStep(row, resolve, parser)
