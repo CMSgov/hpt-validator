@@ -11,6 +11,15 @@ test("validateJson", async (t) => {
   t.deepEqual(result.errors.length, 0)
 })
 
+test("validateJson BOM", async (t) => {
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-valid-bom.json"),
+    "v2.0"
+  )
+  t.is(result.valid, true)
+  t.deepEqual(result.errors.length, 0)
+})
+
 test("validateJson empty", async (t) => {
   const result = await validateJson(
     loadFixtureStream("/2.0/sample-empty.json"),

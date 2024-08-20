@@ -11,6 +11,16 @@ test("validateCsvTall", async (t) => {
   t.deepEqual(result.errors.length, 0)
 })
 
+test("validateCsvTall quoted column name", async (t) => {
+  // this test shows correct behavior when a file contains a BOM and the first column name is quoted
+  const result = await validateCsv(
+    loadFixtureStream("/2.0/sample-tall-valid-quoted.csv"),
+    "v2.0"
+  )
+  t.is(result.valid, true)
+  t.deepEqual(result.errors.length, 0)
+})
+
 test("validateCsvWide", async (t) => {
   const result = await validateCsv(
     loadFixtureStream("/2.0/sample-wide-valid.csv"),

@@ -14,7 +14,7 @@ import {
 } from "./versions/common/csv.js"
 import { CsvValidatorOneOne } from "./versions/1.1/csv.js"
 import { CsvValidatorTwoZero } from "./versions/2.0/csv.js"
-import { addErrorsToList } from "./utils.js"
+import { addErrorsToList, removeBOM } from "./utils.js"
 
 import Papa from "papaparse"
 
@@ -184,6 +184,9 @@ export async function validateCsv(
     Papa.parse(input, {
       header: false,
       // chunkSize: 64 * 1024,
+      beforeFirstChunk: (chunk) => {
+        return removeBOM(chunk)
+      },
       step: (row: Papa.ParseStepResult<string[]>, parser: Papa.Parser) => {
         try {
           handleParseStep(row, resolve, parser)
