@@ -371,7 +371,17 @@ export async function validateJson(
   const validator = new Ajv({ allErrors: true })
   addFormats(validator)
   const parser = new JSONParser({
-    paths: ["$.*", "$.standard_charge_information.*"],
+    paths: [
+      "$.hospital_name",
+      "$.last_updated_on",
+      "$.license_information",
+      "$.version",
+      "$.hospital_address",
+      "$.hospital_location",
+      "$.affirmation",
+      "$.modifier_information",
+      "$.standard_charge_information.*",
+    ],
     keepStack: false,
   })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
