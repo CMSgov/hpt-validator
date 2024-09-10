@@ -384,7 +384,6 @@ export async function validateJson(
     ],
     keepStack: false,
   })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metadata: { [key: string]: any } = {}
   let valid = true
   let hasCharges = false
@@ -425,7 +424,7 @@ export async function validateJson(
           addErrorsToList(validationErrors, errors, options.maxErrors, counts)
           valid = counts.errors === 0
         }
-        if (options.onValueCallback) {
+        if (options.onValueCallback && value != null) {
           options.onValueCallback(value)
         }
         if (

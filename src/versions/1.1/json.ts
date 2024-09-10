@@ -193,7 +193,6 @@ export async function validateJson(
     paths: ["$.*", "$.standard_charge_information.*"],
     keepStack: false,
   })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metadata: { [key: string]: any } = {}
   let valid = true
   let hasCharges = false
@@ -219,7 +218,7 @@ export async function validateJson(
               }))
           )
         }
-        if (options.onValueCallback) {
+        if (options.onValueCallback && value != null) {
           options.onValueCallback(value)
         }
         if (
