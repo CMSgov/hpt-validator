@@ -2,9 +2,8 @@ import {
   ValidationResult,
   SchemaVersion,
   JsonValidatorOptions,
-} from "./types.js"
-import { JsonValidatorOneOne } from "./versions/1.1/json.js"
-import { JsonValidatorTwoZero } from "./versions/2.0/json.js"
+} from "./types.js";
+import { JsonValidator } from "./validators/JsonValidator.js";
 
 /**
  *
@@ -17,15 +16,6 @@ export async function validateJson(
   version: SchemaVersion,
   options: JsonValidatorOptions = {}
 ): Promise<ValidationResult> {
-  if (version === "v1.1") {
-    return JsonValidatorOneOne.validateJson(jsonInput, options)
-  } else if (version === "v2.0" || version === "v2.0.0") {
-    return JsonValidatorTwoZero.validateJson(jsonInput, options)
-  }
-  return new Promise((resolve) => {
-    resolve({
-      valid: false,
-      errors: [{ path: "/", message: `Invalid version "${version}" supplied` }],
-    })
-  })
+  const validator = new JsonValidator(version);
+  return validator.validate(jsonInput, options);
 }
