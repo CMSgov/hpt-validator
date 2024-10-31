@@ -128,3 +128,27 @@ export const STATE_CODES = [
 ] as const;
 type StateCodeTuple = typeof STATE_CODES;
 export type StateCode = StateCodeTuple[number];
+
+export const BILLING_CODE_TYPES = [
+  "CPT",
+  "HCPCS",
+  "ICD",
+  "DRG",
+  "MS-DRG",
+  "R-DRG",
+  "S-DRG",
+  "APS-DRG",
+  "AP-DRG",
+  "APR-DRG",
+  "APC",
+  "NDC",
+  "HIPPS",
+  "LOCAL",
+  "EAPG",
+  "CDT",
+  "RC",
+  "CDM",
+  "TRIS-DRG",
+] as const;
+type BillingCodeTypeTuple = typeof BILLING_CODE_TYPES;
+export type BillingCodeType = BillingCodeTypeTuple[number];

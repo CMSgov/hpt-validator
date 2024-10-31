@@ -31,11 +31,13 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "lodash": "^4.17.21",
-    "papaparse": "^5.4.1"
+    "papaparse": "^5.4.1",
+    "semver": "^7.6.3"
   },
   "devDependencies": {
     "@types/jest": "^29.5.13",
     "@types/lodash": "^4.17.7",
+    "@types/semver": "^7.5.8",
     "@typescript-eslint/eslint-plugin": "^8.5.0",
     "@typescript-eslint/parser": "^8.5.0",
     "copyfiles": "^2.4.1",
