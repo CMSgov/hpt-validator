@@ -502,14 +502,15 @@ function validateModifierRow(
         " for wide format when a modifier is encoded without an item or service"
       ).length > 0
     ) {
-      errors.push(
-        csvErr(
+      errors.push({
+        ...csvErr(
           index,
           columns.indexOf(modifierRequiredFields[0]),
           modifierRequiredFields[0],
           ERRORS.MODIFIER_EXTRA_INFO()
-        )
-      )
+        ),
+        warning: !enforce2025,
+      })
     }
   } else {
     const modifierRequiredFields = [
@@ -527,14 +528,15 @@ function validateModifierRow(
         " for tall format when a modifier is encoded without an item or service"
       ).length > 0
     ) {
-      errors.push(
-        csvErr(
+      errors.push({
+        ...csvErr(
           index,
           columns.indexOf(modifierRequiredFields[0]),
           modifierRequiredFields[0],
           ERRORS.MODIFIER_EXTRA_INFO()
-        )
-      )
+        ),
+        warning: !enforce2025,
+      })
     }
   }
 
