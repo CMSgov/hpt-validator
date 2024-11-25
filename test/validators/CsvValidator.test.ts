@@ -12,6 +12,7 @@ import {
   CodePairMissingError,
   ColumnMissingError,
   DollarNeedsMinMaxError,
+  DrugInformationRequiredError,
   DuplicateColumnError,
   DuplicateHeaderColumnError,
   HeaderColumnMissingError,
@@ -19,11 +20,12 @@ import {
   InvalidNumberError,
   InvalidStateCodeError,
   ItemRequiresChargeError,
+  ModifierMissingInfoError,
   OtherMethodologyNotesError,
+  PercentageAlgorithmEstimateError,
   RequiredValueError,
 } from "../../src/errors/csv";
 import { shuffle } from "lodash";
-// import { BILLING_CODE_TYPES } from "../../src/types";
 
 describe("CsvValidator", () => {
   describe("constructor", () => {});
@@ -1014,6 +1016,7 @@ describe("CsvValidator", () => {
 
       it("should return no errors when a payer specific negotiated charge is a percentage and valid values exist for payer name, plan name, and methodology", () => {
         row["standard_charge | negotiated_percentage"] = "80";
+        row.estimated_amount = "8000";
         row.payer_name = "Payer One";
         row.plan_name = "Plan B";
         row["standard_charge | methodology"] =
@@ -1024,6 +1027,7 @@ describe("CsvValidator", () => {
 
       it("should return errors when a payer specific negotiated charge is a percentage, but no valid values exist for payer name, plan name, or methodology", () => {
         row["standard_charge | negotiated_percentage"] = "80";
+        row.estimated_amount = "800";
         const result = validator.validateDataRow(row);
         expect(result).toHaveLength(3);
         expect(result).toContainEqual(
@@ -1054,6 +1058,7 @@ describe("CsvValidator", () => {
 
       it("should return no errors when a payer specific negotiated charge is an algorithm and valid values exist for payer name, plan name, and methodology", () => {
         row["standard_charge | negotiated_algorithm"] = "adjusted median scale";
+        row.estimated_amount = "600";
         row.payer_name = "Payer One";
         row.plan_name = "Plan C";
         row["standard_charge | methodology"] = "case rate";
@@ -1063,6 +1068,7 @@ describe("CsvValidator", () => {
 
       it("should return errors when a payer specific negotiated charge is an algorithm, but no valid values exist for payer name, plan name, or methodology", () => {
         row["standard_charge | negotiated_algorithm"] = "adjusted median scale";
+        row.estimated_amount = "500";
         const result = validator.validateDataRow(row);
         expect(result).toHaveLength(3);
         expect(result).toContainEqual(
@@ -1095,6 +1101,7 @@ describe("CsvValidator", () => {
       // in the "additional notes" for the associated payer-specific negotiated charge.
       it("should return no errors when methodology is 'other' and additional notes are present", () => {
         row["standard_charge | negotiated_percentage"] = "85";
+        row.estimated_amount = "1800";
         row.payer_name = "Payer 2";
         row.plan_name = "Plan C";
         row["standard_charge | methodology"] = "other";
@@ -1105,6 +1112,7 @@ describe("CsvValidator", () => {
 
       it("should return an error when methodology is 'other' and additional notes are missing", () => {
         row["standard_charge | negotiated_percentage"] = "85";
+        row.estimated_amount = "8532";
         row.payer_name = "Payer 2";
         row.plan_name = "Plan C";
         row["standard_charge | methodology"] = "other";
@@ -1151,6 +1159,7 @@ describe("CsvValidator", () => {
       it("should return no errors when an item or service is encoded with a payer-specific percentage", () => {
         row["standard_charge | gross"] = "";
         row["standard_charge | negotiated_percentage"] = "73.5";
+        row.estimated_amount = "862";
         row.payer_name = "Payer 3";
         row.plan_name = "Regular plan";
         row["standard_charge | methodology"] = "case rate";
@@ -1162,6 +1171,7 @@ describe("CsvValidator", () => {
         row["standard_charge | gross"] = "";
         row["standard_charge | negotiated_algorithm"] =
           "the compression function";
+        row.estimated_amount = "508";
         row.payer_name = "Payer 3";
         row.plan_name = "Regular plan";
         row["standard_charge | methodology"] = "per diem";
@@ -1206,53 +1216,121 @@ describe("CsvValidator", () => {
       // If a modifier is encoded without an item or service, then a description and one of the following
       // is the minimum information required:
       // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
-      it.todo(
-        "should return an error when a modifier is encoded without an item or service, but none of the informational fields are present"
-      );
+      it("should return an error when a modifier is encoded without an item or service, but none of the informational fields are present", () => {
+        row["code | 1"] = "";
+        row["code | 1 | type"] = "";
+        row.modifiers = "typical modifier";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        // column for error based on "additional_generic_notes"
+        expect(result[0]).toEqual(
+          new ModifierMissingInfoError(validator.index, 13)
+        );
+      });
 
-      it.todo(
-        "should return no errors when a modifier is encoded without an item or service and additional notes are provided"
-      );
+      it("should return no errors when a modifier is encoded without an item or service and additional notes are provided", () => {
+        row["code | 1"] = "";
+        row["code | 1 | type"] = "";
+        row.modifiers = "typical modifier";
+        row.additional_generic_notes = "additional notes to explain modifier";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return no errors when a modifier is encoded without an item or service and a payer specific dollar amount is provided"
-      );
+      it("should return no errors when a modifier is encoded without an item or service and a payer specific dollar amount is provided", () => {
+        row["code | 1"] = "";
+        row["code | 1 | type"] = "";
+        row.modifiers = "typical modifier";
+        row["standard_charge | negotiated_dollar"] = "395";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return no errors when a modifier is encoded without an item or service and a payer specific percentage is provided"
-      );
+      it("should return no errors when a modifier is encoded without an item or service and a payer specific percentage is provided", () => {
+        row["code | 1"] = "";
+        row["code | 1 | type"] = "";
+        row.modifiers = "typical modifier";
+        row["standard_charge | negotiated_percentage"] = "150";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return no errors when a modifier is encoded without an item or service and a payer specific algorithm is provided"
-      );
+      it("should return no errors when a modifier is encoded without an item or service and a payer specific algorithm is provided", () => {
+        row["code | 1"] = "";
+        row["code | 1 | type"] = "";
+        row.modifiers = "typical modifier";
+        row["standard_charge | negotiated_algorithm"] =
+          "charge transformation table";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
       // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
       // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
-      it.todo(
-        "should return no errors when a payer-specific percentage is encoded with an estimated allowed amount"
-      );
+      it("should return no errors when a payer-specific percentage is encoded with an estimated allowed amount", () => {
+        row.payer_name = "Payer Three";
+        row.plan_name = "Plan W";
+        row["standard_charge | negotiated_percentage"] = "85";
+        row["standard_charge | methodology"] = "fee schedule";
+        row.estimated_amount = "370";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return an error when a payer-specific percentage is encoded without an estimated allowed amount"
-      );
+      it("should return an error when a payer-specific percentage is encoded without an estimated allowed amount", () => {
+        row.payer_name = "Payer Three";
+        row.plan_name = "Plan W";
+        row["standard_charge | negotiated_percentage"] = "85";
+        row["standard_charge | methodology"] = "fee schedule";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result[0]).toEqual(
+          new PercentageAlgorithmEstimateError(validator.index, 20)
+        );
+      });
 
-      it.todo(
-        "should return no errors when a payer-specific algorithm is encoded with an estimated allowed amount"
-      );
+      it("should return no errors when a payer-specific algorithm is encoded with an estimated allowed amount", () => {
+        row.payer_name = "Payer Three";
+        row.plan_name = "Plan W";
+        row["standard_charge | negotiated_algorithm"] = "special algorithm";
+        row["standard_charge | methodology"] = "fee schedule";
+        row.estimated_amount = "370";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return an error when a payer-specific algorithm is encoded without an estimated allowed amount"
-      );
+      it("should return an error when a payer-specific algorithm is encoded without an estimated allowed amount", () => {
+        row.payer_name = "Payer Three";
+        row.plan_name = "Plan W";
+        row["standard_charge | negotiated_algorithm"] = "special algorithm";
+        row["standard_charge | methodology"] = "fee schedule";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result[0]).toEqual(
+          new PercentageAlgorithmEstimateError(validator.index, 20)
+        );
+      });
 
       // If code type is NDC, then the corresponding drug unit of measure and
       // drug type of measure data elements must be encoded. new in v2.2.0
-      it.todo(
-        "should return an error when code type is NDC, but no drug information is present"
-      );
+      it("should return an error when code type is NDC, but drug information is missing", () => {
+        row["code | 1 | type"] = "NDC";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result[0]).toEqual(
+          new DrugInformationRequiredError(validator.index, 6)
+        );
+      });
 
-      it.todo(
-        "should return an error when more than one code is present, a code other than the first is NDC, but no drug information is present"
-      );
+      it("should return an error when more than one code is present, a code other than the first is NDC, but drug information is missing", () => {
+        row["code | 2 | type"] = "NDC";
+        row["code | 2"] = "567";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result[0]).toEqual(
+          new DrugInformationRequiredError(validator.index, 6)
+        );
+      });
     });
 
     describe("#validateDataRow wide", () => {

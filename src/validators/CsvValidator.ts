@@ -16,6 +16,7 @@ import {
   ColumnMissingError,
   CsvValidationError,
   DollarNeedsMinMaxError,
+  DrugInformationRequiredError,
   DuplicateColumnError,
   DuplicateHeaderColumnError,
   HeaderBlankError,
@@ -26,13 +27,15 @@ import {
   InvalidVersionError,
   ItemRequiresChargeError,
   MinRowsError,
+  ModifierMissingInfoError,
   OtherMethodologyNotesError,
+  PercentageAlgorithmEstimateError,
   ProblemsInHeaderError,
   RequiredValueError,
 } from "../errors/csv";
 import { range, partial } from "lodash";
 import _ from "lodash";
-import { ToastyValidator, DynaReadyValidator } from "./CsvFieldTypes";
+import { ToastyValidator } from "./CsvFieldTypes";
 
 export const AFFIRMATION =
   "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.";
@@ -280,15 +283,6 @@ export function dynaValidateRequiredField(
   return [];
 }
 
-export function isOneOfPresent(
-  normalizedColumns: string[],
-  enteredColumns: string[],
-  fields: string[],
-  dataRow: { [key: string]: string }
-) {
-  return fields.some;
-}
-
 export class CsvValidator extends BaseValidator {
   public index = 0;
   public isTall: boolean = false;
@@ -418,8 +412,6 @@ export class CsvValidator extends BaseValidator {
         });
       });
 
-      // this.rowValidators.push(...standardChargeChecks);
-
       const nonModifierChecks: ToastyValidator[] = [];
 
       if (semver.gte(this.version, "2.1.0")) {
@@ -532,7 +524,6 @@ export class CsvValidator extends BaseValidator {
       }
 
       if (semver.gte(this.version, "2.2.0")) {
-        // checks diverge based on whether this is a modifier row
         this.rowValidators.push(
           {
             name: "drug_unit_of_measurement",
@@ -562,6 +553,82 @@ export class CsvValidator extends BaseValidator {
               ),
           }
         );
+        // If code type is NDC, then the corresponding drug unit of measure and
+        // drug type of measure data elements must be encoded. new in v2.2.0
+        this.rowValidators.push({
+          name: "NDC code requires drug information",
+          validator: (dataRow, row) => {
+            const hasNDC = range(1, this.codeCount + 1).some((codeIndex) => {
+              return matchesString(
+                dataRow[`code | ${codeIndex} | type`],
+                "NDC"
+              );
+            });
+            if (hasNDC) {
+              const missingDrugFields = [
+                "drug_unit_of_measurement",
+                "drug_type_of_measurement",
+              ].filter((field) => !Boolean(dataRow[field]));
+              if (missingDrugFields.length > 0) {
+                return [
+                  new DrugInformationRequiredError(
+                    row,
+                    this.normalizedColumns.indexOf(missingDrugFields[0])
+                  ),
+                ];
+              }
+            }
+            return [];
+          },
+        });
+        // some checks diverge based on whether this is a modifier row
+        // If a modifier is encoded without an item or service, then a description and one of the following
+        // is the minimum information required:
+        // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
+        modifierChecks.push({
+          name: "extra info for modifier row",
+          validator: (dataRow, row) => {
+            if (
+              ![
+                "additional_generic_notes",
+                "standard_charge | negotiated_dollar",
+                "standard_charge | negotiated_percentage",
+                "standard_charge | negotiated_algorithm",
+              ].some((field) => Boolean(dataRow[field]))
+            ) {
+              return [
+                new ModifierMissingInfoError(
+                  row,
+                  this.normalizedColumns.indexOf("additional_generic_notes")
+                ),
+              ];
+            }
+            return [];
+          },
+        });
+        // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+        // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
+        nonModifierChecks.push({
+          name: "estimated allowed amount required when charge is only percentage or algorithm",
+          validator: (dataRow, row) => {
+            if (
+              !dataRow["standard_charge | negotiated_dollar"] &&
+              (dataRow["standard_charge | negotiated_percentage"] ||
+                dataRow["standard_charge | negotiated_algorithm"]) &&
+              !dataRow.estimated_amount
+            ) {
+              return [
+                new PercentageAlgorithmEstimateError(
+                  row,
+                  this.normalizedColumns.indexOf("estimated_amount")
+                ),
+              ];
+            }
+            return [];
+          },
+        });
+        // that's all for the conditional checks. so now build the tree out, branching on whether
+        // the row is modifier-only.
         const isModifierPresent: ToastyValidator = {
           name: "is a modifier present",
           predicate: (row) => {
