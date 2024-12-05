@@ -1334,75 +1334,266 @@ describe("CsvValidator", () => {
     });
 
     describe("#validateDataRow wide", () => {
-      it.todo("should return no errors when a valid wide data row is provided");
+      const columns = [
+        "description",
+        "setting",
+        "code | 1",
+        "code | 1 | type",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "estimated_amount |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar",
+        "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage",
+        "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm",
+        "standard_charge | Payer XYZ | Plan 2 | methodology",
+        "estimated_amount | Payer XYZ | Plan 2",
+        "additional_payer_notes | Payer XYZ | Plan 2",
+        "additional_generic_notes",
+      ];
+      const normalizedColumns = [
+        "description",
+        "setting",
+        "code | 1",
+        "code | 1 | type",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "estimated_amount | Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar",
+        "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage",
+        "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm",
+        "standard_charge | Payer XYZ | Plan 2 | methodology",
+        "estimated_amount | Payer XYZ | Plan 2",
+        "additional_payer_notes | Payer XYZ | Plan 2",
+        "additional_generic_notes",
+      ];
+      let row: { [key: string]: string } = {};
+
+      beforeEach(() => {
+        validator.index = Math.floor(Math.random() * 1000);
+        validator.dataColumns = columns;
+        validator.normalizedColumns = normalizedColumns;
+        validator.isTall = false;
+        validator.codeCount = validator.getCodeCount(columns);
+        validator.payersPlans = CsvValidator.getPayersPlans(columns);
+        validator.rowValidators = [];
+        validator.buildRowValidators();
+        // start with the minimum amount of valid information
+        row = {
+          description: "basic description",
+          setting: "inpatient",
+          "code | 1": "12345",
+          "code | 1 | type": "DRG",
+          "code | 2": "",
+          "code | 2 | type": "",
+          drug_unit_of_measurement: "",
+          drug_type_of_measurement: "",
+          modifiers: "",
+          "standard_charge | gross": "100",
+          "standard_charge | discounted_cash": "",
+          "standard_charge | min": "",
+          "standard_charge | max": "",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_dollar": "",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_percentage": "",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm": "",
+          "standard_charge | Payer ABC | Plan 1 | methodology": "",
+          "estimated_amount |  Payer ABC | Plan 1": "",
+          "additional_payer_notes | Payer ABC | Plan 1": "",
+          "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar": "",
+          "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage": "",
+          "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm": "",
+          "standard_charge | Payer XYZ | Plan 2 | methodology": "",
+          "estimated_amount |  Payer XYZ | Plan 2": "",
+          "additional_payer_notes | Payer XYZ | Plan 2": "",
+          additional_generic_notes: "",
+        };
+      });
+
+      it("should return no errors when a valid wide data row is provided", () => {
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
       // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
       // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
       // Since the wide format incorporates payer name and plan name into the column name, only methodology is checked.
-      it.todo(
-        "should return no errors when a payer specific negotiated charge is a dollar amount and a valid value exists for methodology"
-      );
+      it("should return no errors when a payer specific negotiated charge is a dollar amount and a valid value exists for methodology", () => {
+        row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] = "500";
+        row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+          "fee schedule";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return errors when a payer specific negotiated charge is a dollar amount, but no valid value exists for methodology"
-      );
+      it("should return errors when a payer specific negotiated charge is a dollar amount, but no valid value exists for methodology", () => {
+        row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] = "500";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result).toContainEqual(
+          new RequiredValueError(
+            validator.index,
+            14,
+            "standard_charge | Payer ABC | Plan 1 | methodology",
+            " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm"
+          )
+        );
+      });
 
-      it.todo(
-        "should return no errors when a payer specific negotiated charge is a percentage and a valid value exists for methodology"
-      );
+      it("should return no errors when a payer specific negotiated charge is a percentage and a valid value exists for methodology", () => {
+        row["standard_charge | Payer ABC | Plan 1 | negotiated_percentage"] =
+          "60";
+        row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+          "percent of total billed charges";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return errors when a payer specific negotiated charge is a percentage, but no valid value exists for methodology"
-      );
+      it("should return errors when a payer specific negotiated charge is a percentage, but no valid value exists for methodology", () => {
+        row["standard_charge | Payer ABC | Plan 1 | negotiated_percentage"] =
+          "60";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result).toContainEqual(
+          new RequiredValueError(
+            validator.index,
+            14,
+            "standard_charge | Payer ABC | Plan 1 | methodology",
+            " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm"
+          )
+        );
+      });
 
-      it.todo(
-        "should return no errors when a payer specific negotiated charge is an algorithm and a valid value exists for methodology"
-      );
+      it("should return no errors when a payer specific negotiated charge is an algorithm and a valid value exists for methodology", () => {
+        row["standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"] =
+          "standard algorithm function";
+        row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+          "fee schedule";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return errors when a payer specific negotiated charge is an algorithm, but no valid value exists for methodology"
-      );
+      it("should return errors when a payer specific negotiated charge is an algorithm, but no valid value exists for methodology", () => {
+        row["standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"] =
+          "standard algorithm function";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result).toContainEqual(
+          new RequiredValueError(
+            validator.index,
+            14,
+            "standard_charge | Payer ABC | Plan 1 | methodology",
+            " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm"
+          )
+        );
+      });
 
       // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
       // in the "additional notes" for the associated payer-specific negotiated charge.
-      it.todo(
-        "should return no errors when a methodology is 'other' and payer-specific notes are provided"
-      );
+      it("should return no errors when a methodology is 'other' and payer-specific notes are provided", () => {
+        row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+          "a complicated formula";
+        row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "other";
+        row["additional_payer_notes | Payer XYZ | Plan 2"] =
+          "explanation of the complicated formula.";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return an error when a methodology is 'other' and payer-specific notes are not provided"
-      );
+      it("should return an error when a methodology is 'other' and payer-specific notes are not provided", () => {
+        row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+          "a complicated formula";
+        row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "other";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result).toContainEqual(
+          new OtherMethodologyNotesError(validator.index, 22)
+        );
+      });
 
-      it.todo(
-        "should return an error when a methodology is 'other' and payer-specific notes are provided for a different payer and plan"
-      );
+      it("should return an error when a methodology is 'other' and payer-specific notes are provided for a different payer and plan", () => {
+        row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+          "a complicated formula";
+        row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "other";
+        row["additional_payer_notes | Payer ABC | Plan 1"] =
+          "these notes are for the wrong payer and plan.";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result).toContainEqual(
+          new OtherMethodologyNotesError(validator.index, 22)
+        );
+      });
 
       // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
       // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
       // "Payer-Specific Negotiated Charge: Algorithm".
-      it.todo(
-        "should return an error when an item or service is encoded without any charges"
-      );
+      it("should return an error when an item or service is encoded without any charges", () => {
+        row["standard_charge | gross"] = "";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result).toContainEqual(
+          new ItemRequiresChargeError(validator.index, 7)
+        );
+      });
 
-      it.todo(
-        "should return no errors when an item or service with only a gross charge"
-      );
+      // a row with a gross charge is already covered by the "minimal data" test
 
-      it.todo(
-        "should return no errors when an item or service with only a discounted cash price"
-      );
+      it("should return no errors when an item or service with only a discounted cash price", () => {
+        row["standard_charge | gross"] = "";
+        row["standard_charge | discounted_cash"] = "3800";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return no errors when an item or service with only a payer-specific dollar amount"
-      );
+      it("should return no errors when an item or service with only a payer-specific dollar amount", () => {
+        row["standard_charge | gross"] = "";
+        row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] =
+          "3800";
+        row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+          "fee schedule";
+        row["standard_charge | min"] = "3800";
+        row["standard_charge | max"] = "3800";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return no errors when an item or service with only a payer-specific percentage"
-      );
+      it("should return no errors when an item or service with only a payer-specific percentage", () => {
+        row["standard_charge | gross"] = "";
+        row["standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"] =
+          "70";
+        row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "case rate";
+        row["estimated_amount | Payer XYZ | Plan 2"] = "9500";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
-      it.todo(
-        "should return no errors when an item or service with only a payer-specific algorithm"
-      );
+      it("should return no errors when an item or service with only a payer-specific algorithm", () => {
+        row["standard_charge | gross"] = "";
+        row["standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"] =
+          "adjusted scale of charges";
+        row["standard_charge | Payer ABC | Plan 1 | methodology"] = "case rate";
+        row["estimated_amount | Payer ABC | Plan 1"] = "7500";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(0);
+      });
 
       // If there is a "payer specific negotiated charge" encoded as a dollar amount,
       // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.

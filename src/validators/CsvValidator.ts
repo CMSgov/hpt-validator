@@ -415,11 +415,11 @@ export class CsvValidator extends BaseValidator {
       const nonModifierChecks: ToastyValidator[] = [];
 
       if (semver.gte(this.version, "2.1.0")) {
-        // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
-        // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
         const payerSpecificSuffix =
           " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm";
         if (this.isTall) {
+          // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+          // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
           nonModifierChecks.push({
             name: "conditional for payer specific negotiated charge",
             predicate: (row) => {
@@ -463,16 +463,19 @@ export class CsvValidator extends BaseValidator {
           nonModifierChecks.push({
             name: "other methodology requires notes",
             predicate: (row) => {
-              return (
-                matchesString(row["standard_charge | methodology"], "other") &&
-                !row.additional_generic_notes
+              return matchesString(
+                row["standard_charge | methodology"],
+                "other"
               );
             },
-            validator: (_dataRow, row) => {
-              const columnIndex = this.normalizedColumns.indexOf(
-                "additional_generic_notes"
-              );
-              return [new OtherMethodologyNotesError(row, columnIndex)];
+            validator: (dataRow, row) => {
+              if (!dataRow.additional_generic_notes) {
+                const columnIndex = this.normalizedColumns.indexOf(
+                  "additional_generic_notes"
+                );
+                return [new OtherMethodologyNotesError(row, columnIndex)];
+              }
+              return [];
             },
           });
           // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
@@ -520,6 +523,89 @@ export class CsvValidator extends BaseValidator {
             },
           });
         } else {
+          // For the wide format, a set of columns will be repeated for each payer and plan.
+          // So, some conditional checks are repeated for each of those payers and plans.
+          // Other conditional checks apply to all payers and plans together.
+
+          // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+          // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
+          nonModifierChecks.push(
+            ...this.payersPlans.map<ToastyValidator>((payerPlan) => {
+              return {
+                name: `conditional for ${payerPlan} negotiated charge methodology`,
+                predicate: (row) => {
+                  return Boolean(
+                    row[`standard_charge | ${payerPlan} | negotiated_dollar`] ||
+                      row[
+                        `standard_charge | ${payerPlan} | negotiated_percentage`
+                      ] ||
+                      row[
+                        `standard_charge | ${payerPlan} | negotiated_algorithm`
+                      ]
+                  );
+                },
+                validator: partial(
+                  validateRequiredEnumField,
+                  `standard_charge | ${payerPlan} | methodology`,
+                  STANDARD_CHARGE_METHODOLOGY,
+                  payerSpecificSuffix
+                ),
+              };
+            })
+          );
+          // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
+          // in the "additional notes" for the associated payer-specific negotiated charge.
+          nonModifierChecks.push(
+            ...this.payersPlans.map<ToastyValidator>((payerPlan) => {
+              return {
+                name: `${payerPlan} other methodology requires notes`,
+                predicate: (row) => {
+                  return matchesString(
+                    row[`standard_charge | ${payerPlan} | methodology`] ?? "",
+                    "other"
+                  );
+                },
+                validator: (dataRow, row) => {
+                  const columnName = `additional_payer_notes | ${payerPlan}`;
+                  if (!dataRow[columnName]) {
+                    const columnIndex =
+                      this.normalizedColumns.indexOf(columnName);
+                    return [new OtherMethodologyNotesError(row, columnIndex)];
+                  }
+                  return [];
+                },
+              };
+            })
+          );
+          // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
+          // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
+          // "Payer-Specific Negotiated Charge: Algorithm".
+          const chargeFields = [
+            "standard_charge | gross",
+            "standard_charge | discounted_cash",
+          ];
+          this.payersPlans.forEach((payerPlan) => {
+            chargeFields.push(
+              `standard_charge | ${payerPlan} | negotiated_dollar`,
+              `standard_charge | ${payerPlan} | negotiated_percentage`,
+              `standard_charge | ${payerPlan} | negotiated_algorithm`,
+              `standard_charge | ${payerPlan} | methodology`,
+              `estimated_amount | ${payerPlan}`,
+              `additional_payer_notes | ${payerPlan}`
+            );
+          });
+          nonModifierChecks.push({
+            name: "item requires charge",
+            predicate: (row) => {
+              return !chargeFields.some((chargeField) => row[chargeField]);
+            },
+            validator: (_dataRow, row) => {
+              const columnIndex = this.normalizedColumns.indexOf(
+                "standard_charge | gross"
+              );
+              return [new ItemRequiresChargeError(row, columnIndex)];
+            },
+          });
         }
       }
 
