@@ -1,4 +1,4 @@
-import { CsvValidationError } from "./CsvValidationError";
+import { CsvValidationError } from "./CsvValidationError.js";
 
 export class HeaderColumnMissingError extends CsvValidationError {
   constructor(public columnName: string) {

@@ -1,5 +1,5 @@
 import { ErrorObject } from "ajv";
-import { ValidationError } from "./errors/ValidationError";
+import { ValidationError } from "./errors/ValidationError.js";
 
 export function oldAddErrorsToList<T extends { warning?: boolean | undefined }>(
   newErrors: T[],

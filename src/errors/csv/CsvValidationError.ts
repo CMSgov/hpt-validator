@@ -1,4 +1,4 @@
-import { ValidationError } from "../ValidationError";
+import { ValidationError } from "../ValidationError.js";
 
 export class CsvValidationError extends ValidationError {
   constructor(row: number, column: number, message: string) {

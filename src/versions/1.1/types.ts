@@ -16,17 +16,17 @@ export const BILLING_CODE_TYPES = [
   "CDT",
   "RC",
   "CDM",
-] as const
-type BillingCodeTypeTuple = typeof BILLING_CODE_TYPES
-export type BillingCodeType = BillingCodeTypeTuple[number]
+] as const;
+type BillingCodeTypeTuple = typeof BILLING_CODE_TYPES;
+export type BillingCodeType = BillingCodeTypeTuple[number];
 
-export const DRUG_UNITS = ["GR", "ME", "ML", "UN"]
-type DrugUnitTuple = typeof DRUG_UNITS
-export type DrugUnit = DrugUnitTuple[number]
+export const DRUG_UNITS = ["GR", "ME", "ML", "UN"];
+type DrugUnitTuple = typeof DRUG_UNITS;
+export type DrugUnit = DrugUnitTuple[number];
 
-export const CHARGE_SETTINGS = ["inpatient", "outpatient", "both"] as const
-type ChargeSettingTuple = typeof CHARGE_SETTINGS
-export type ChargeSetting = ChargeSettingTuple[number]
+export const CHARGE_SETTINGS = ["inpatient", "outpatient", "both"] as const;
+type ChargeSettingTuple = typeof CHARGE_SETTINGS;
+export type ChargeSetting = ChargeSettingTuple[number];
 
 export const CONTRACTING_METHODS = [
   "case rate",
@@ -34,6 +34,6 @@ export const CONTRACTING_METHODS = [
   "percent of total billed charges",
   "per diem",
   "other",
-] as const
-type ContractingMethodTuple = typeof CONTRACTING_METHODS
-export type ContractingMethod = ContractingMethodTuple[number]
+] as const;
+type ContractingMethodTuple = typeof CONTRACTING_METHODS;
+export type ContractingMethod = ContractingMethodTuple[number];

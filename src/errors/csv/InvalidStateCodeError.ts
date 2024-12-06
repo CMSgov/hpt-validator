@@ -1,4 +1,4 @@
-import { CsvValidationError } from "./CsvValidationError";
+import { CsvValidationError } from "./CsvValidationError.js";
 
 export class InvalidStateCodeError extends CsvValidationError {
   constructor(column: number, stateCode: string) {

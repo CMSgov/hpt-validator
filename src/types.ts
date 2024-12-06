@@ -1,5 +1,5 @@
 import { JsonTypes } from "@streamparser/json";
-import { ValidationError } from "./errors/ValidationError";
+import { ValidationError } from "./errors/ValidationError.js";
 
 export const SCHEMA_VERSIONS = [
   "v1.1",

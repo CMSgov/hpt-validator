@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "declaration": true,
     "outDir": "./lib",
-    "baseUrl": "./"
+    "baseUrl": "./",
+    "allowSyntheticDefaultImports": true
   }
 }

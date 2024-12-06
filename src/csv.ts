@@ -3,7 +3,7 @@ import {
   SchemaVersion,
   CsvValidationOptions,
 } from "./types.js";
-import { CsvValidator } from "./validators";
+import { CsvValidator } from "./validators/CsvValidator.js";
 
 /**
  *

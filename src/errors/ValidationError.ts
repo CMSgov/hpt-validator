@@ -1,5 +1,6 @@
 export class ValidationError {
-  public field: string | undefined
+  public field: string | undefined;
+  public warning: boolean | undefined;
 
   constructor(
     public path: string,
@@ -7,7 +8,7 @@ export class ValidationError {
   ) {}
 
   withField(field: string): ValidationError {
-    this.field = field
-    return this
+    this.field = field;
+    return this;
   }
 }

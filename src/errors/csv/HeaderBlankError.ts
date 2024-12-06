@@ -1,4 +1,4 @@
-import { CsvValidationError } from "./CsvValidationError";
+import { CsvValidationError } from "./CsvValidationError.js";
 
 export class HeaderBlankError extends CsvValidationError {
   constructor(row: number) {

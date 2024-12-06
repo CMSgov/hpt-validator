@@ -5,7 +5,7 @@ import {
   BILLING_CODE_TYPES,
   CsvValidator,
   DRUG_UNITS,
-} from "../../src/validators/CsvValidator";
+} from "../../src/validators/CsvValidator.js";
 import {
   AllowedValuesError,
   AmbiguousFormatError,
@@ -24,8 +24,10 @@ import {
   OtherMethodologyNotesError,
   PercentageAlgorithmEstimateError,
   RequiredValueError,
-} from "../../src/errors/csv";
-import { shuffle } from "lodash";
+} from "../../src/errors/csv/index.js";
+// import { shuffle } from "lodash";
+import _ from "lodash";
+const { shuffle } = _;
 
 describe("CsvValidator", () => {
   describe("constructor", () => {});

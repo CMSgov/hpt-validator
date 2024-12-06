@@ -1,4 +1,4 @@
-import { CsvValidationError } from "./CsvValidationError";
+import { CsvValidationError } from "./CsvValidationError.js";
 
 export class PercentageAlgorithmEstimateError extends CsvValidationError {
   constructor(row: number, column: number) {

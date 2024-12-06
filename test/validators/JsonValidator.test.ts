@@ -1,6 +1,6 @@
-import { InvalidJsonError } from "../../src/errors/json/InvalidJsonError";
-import { JsonValidator } from "../../src/validators/JsonValidator";
-import { createFixtureStream } from "../testhelpers/createFixtureStream";
+import { InvalidJsonError } from "../../src/errors/json/InvalidJsonError.js";
+import { JsonValidator } from "../../src/validators/JsonValidator.js";
+import { createFixtureStream } from "../testhelpers/createFixtureStream.js";
 
 describe("JsonValidator", () => {
   describe("schema v2.0.0", () => {

@@ -3,15 +3,15 @@ import path from "path";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import { JSONParser } from "@streamparser/json";
-import { JsonValidatorOptions, ValidationResult } from "../types";
-import { BaseValidator } from "./BaseValidator";
+import { JsonValidatorOptions, ValidationResult } from "../types.js";
+import { BaseValidator } from "./BaseValidator.js";
 import {
   addItemsWithLimit,
   errorObjectToValidationError,
   removeBOM,
-} from "../utils";
-import { ValidationError } from "../errors/ValidationError";
-import { InvalidJsonError } from "../errors/json/InvalidJsonError";
+} from "../utils.js";
+import { ValidationError } from "../errors/ValidationError.js";
+import { InvalidJsonError } from "../errors/json/InvalidJsonError.js";
 
 export class JsonValidator extends BaseValidator {
   private fullSchema: any;
@@ -23,7 +23,11 @@ export class JsonValidator extends BaseValidator {
     try {
       this.fullSchema = JSON.parse(
         fs.readFileSync(
-          path.join(__dirname, "..", "schemas", `${version}.json`),
+          // path.join(__dirname, "..", "schemas", `${version}.json`),
+          new URL(
+            path.join("..", "schemas", `${version}.json`),
+            import.meta.url
+          ),
           "utf-8"
         )
       );

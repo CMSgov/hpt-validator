@@ -1,4 +1,4 @@
-import { CsvValidationError } from "../errors/csv";
+import { CsvValidationError } from "../errors/csv/index.js";
 
 // the function gets passed the data row and row index
 // but there can be things before that, which get bound in when assembling the validation tree

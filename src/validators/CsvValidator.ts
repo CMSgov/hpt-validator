@@ -6,9 +6,9 @@ import {
   STATE_CODES,
   StateCode,
   ValidationResult,
-} from "../types";
-import { BaseValidator } from "./BaseValidator";
-import { removeBOM } from "../utils";
+} from "../types.js";
+import { BaseValidator } from "./BaseValidator.js";
+import { removeBOM } from "../utils.js";
 import {
   AllowedValuesError,
   AmbiguousFormatError,
@@ -32,10 +32,10 @@ import {
   PercentageAlgorithmEstimateError,
   ProblemsInHeaderError,
   RequiredValueError,
-} from "../errors/csv";
-import { range, partial } from "lodash";
+} from "../errors/csv/index.js";
 import _ from "lodash";
-import { ToastyValidator } from "./CsvFieldTypes";
+const { range, partial } = _;
+import { ToastyValidator } from "./CsvFieldTypes.js";
 
 export const AFFIRMATION =
   "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.";
