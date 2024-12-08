@@ -606,6 +606,31 @@ export class CsvValidator extends BaseValidator {
               return [new ItemRequiresChargeError(row, columnIndex)];
             },
           });
+          // If there is a "payer specific negotiated charge" encoded as a dollar amount,
+          // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
+          nonModifierChecks.push({
+            name: "dollar requires min and max",
+            predicate: (row) => {
+              return this.payersPlans.some((payerPlan) => {
+                return Boolean(
+                  row[`standard_charge | ${payerPlan} | negotiated_dollar`]
+                );
+              });
+            },
+            validator: (dataRow, row) => {
+              const missingBounds = [
+                "standard_charge | min",
+                "standard_charge | max",
+              ].filter((bound) => !Boolean(dataRow[bound]));
+              if (missingBounds.length > 0) {
+                const columnIndex = this.normalizedColumns.indexOf(
+                  missingBounds[0]
+                );
+                return [new DollarNeedsMinMaxError(row, columnIndex)];
+              }
+              return [];
+            },
+          });
         }
       }
 
@@ -667,52 +692,136 @@ export class CsvValidator extends BaseValidator {
             return [];
           },
         });
-        // some checks diverge based on whether this is a modifier row
-        // If a modifier is encoded without an item or service, then a description and one of the following
-        // is the minimum information required:
-        // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
-        modifierChecks.push({
-          name: "extra info for modifier row",
-          validator: (dataRow, row) => {
-            if (
-              ![
-                "additional_generic_notes",
-                "standard_charge | negotiated_dollar",
-                "standard_charge | negotiated_percentage",
-                "standard_charge | negotiated_algorithm",
-              ].some((field) => Boolean(dataRow[field]))
-            ) {
-              return [
-                new ModifierMissingInfoError(
-                  row,
-                  this.normalizedColumns.indexOf("additional_generic_notes")
-                ),
-              ];
-            }
-            return [];
-          },
-        });
-        // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
-        // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
-        nonModifierChecks.push({
-          name: "estimated allowed amount required when charge is only percentage or algorithm",
-          validator: (dataRow, row) => {
-            if (
-              !dataRow["standard_charge | negotiated_dollar"] &&
-              (dataRow["standard_charge | negotiated_percentage"] ||
-                dataRow["standard_charge | negotiated_algorithm"]) &&
-              !dataRow.estimated_amount
-            ) {
-              return [
-                new PercentageAlgorithmEstimateError(
-                  row,
-                  this.normalizedColumns.indexOf("estimated_amount")
-                ),
-              ];
-            }
-            return [];
-          },
-        });
+
+        if (this.isTall) {
+          // some checks diverge based on whether this is a modifier row
+          // If a modifier is encoded without an item or service, then a description and one of the following
+          // is the minimum information required:
+          // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
+          modifierChecks.push({
+            name: "extra info for modifier row",
+            validator: (dataRow, row) => {
+              if (
+                ![
+                  "additional_generic_notes",
+                  "standard_charge | negotiated_dollar",
+                  "standard_charge | negotiated_percentage",
+                  "standard_charge | negotiated_algorithm",
+                ].some((field) => Boolean(dataRow[field]))
+              ) {
+                return [
+                  new ModifierMissingInfoError(
+                    row,
+                    this.normalizedColumns.indexOf("additional_generic_notes")
+                  ),
+                ];
+              }
+              return [];
+            },
+          });
+          // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+          // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
+          nonModifierChecks.push({
+            name: "estimated allowed amount required when charge is only percentage or algorithm",
+            validator: (dataRow, row) => {
+              if (
+                !dataRow["standard_charge | negotiated_dollar"] &&
+                (dataRow["standard_charge | negotiated_percentage"] ||
+                  dataRow["standard_charge | negotiated_algorithm"]) &&
+                !dataRow.estimated_amount
+              ) {
+                return [
+                  new PercentageAlgorithmEstimateError(
+                    row,
+                    this.normalizedColumns.indexOf("estimated_amount")
+                  ),
+                ];
+              }
+              return [];
+            },
+          });
+        } else {
+          // some checks diverge based on whether this is a modifier row
+          // If a modifier is encoded without an item or service, then a description and one of the following
+          // is the minimum information required:
+          // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
+          const extraInfoFields = ["additional_generic_notes"];
+          this.payersPlans.forEach((payerPlan) => {
+            extraInfoFields.push(
+              `standard_charge | ${payerPlan} | negotiated_dollar`,
+              `standard_charge | ${payerPlan} | negotiated_percentage`,
+              `standard_charge | ${payerPlan} | negotiated_algorithm`,
+              `additional_payer_notes | ${payerPlan}`
+            );
+          });
+          modifierChecks.push({
+            name: "extra info for modifier row",
+            validator: (dataRow, row) => {
+              if (!extraInfoFields.some((field) => Boolean(dataRow[field]))) {
+                return [
+                  new ModifierMissingInfoError(
+                    row,
+                    this.normalizedColumns.indexOf("additional_generic_notes")
+                  ),
+                ];
+              }
+              return [];
+            },
+          });
+          // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+          // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
+          nonModifierChecks.push(
+            ...this.payersPlans.map<ToastyValidator>((payerPlan) => {
+              return {
+                name: `estimated allowed amount for ${payerPlan} required when charge is only percentage or algorithm`,
+                validator: (dataRow, row) => {
+                  if (
+                    !dataRow[
+                      `standard_charge | ${payerPlan} | negotiated_dollar`
+                    ] &&
+                    (dataRow[
+                      `standard_charge | ${payerPlan} | negotiated_percentage`
+                    ] ||
+                      dataRow[
+                        `standard_charge | ${payerPlan} | negotiated_algorithm`
+                      ]) &&
+                    !dataRow[`estimated_amount | ${payerPlan}`]
+                  ) {
+                    return [
+                      new PercentageAlgorithmEstimateError(
+                        row,
+                        this.normalizedColumns.indexOf(
+                          `estimated_amount | ${payerPlan}`
+                        )
+                      ),
+                    ];
+                  }
+                  return [];
+                },
+              };
+            })
+          );
+          nonModifierChecks.push({
+            name: "estimated allowed amount required when charge is only percentage or algorithm",
+            validator: (dataRow, row) => {
+              if (
+                !dataRow["standard_charge | negotiated_dollar"] &&
+                (dataRow["standard_charge | negotiated_percentage"] ||
+                  dataRow["standard_charge | negotiated_algorithm"]) &&
+                !dataRow.estimated_amount
+              ) {
+                return [
+                  new PercentageAlgorithmEstimateError(
+                    row,
+                    this.normalizedColumns.indexOf("estimated_amount")
+                  ),
+                ];
+              }
+              return [];
+            },
+          });
+        }
+
         // that's all for the conditional checks. so now build the tree out, branching on whether
         // the row is modifier-only.
         const isModifierPresent: ToastyValidator = {
