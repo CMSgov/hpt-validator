@@ -25,7 +25,6 @@ import {
   PercentageAlgorithmEstimateError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
-// import { shuffle } from "lodash";
 import _ from "lodash";
 const { shuffle } = _;
 
@@ -46,18 +45,24 @@ describe("CsvValidator", () => {
     });
 
     describe("#validate", () => {
-      it.skip("should validate a valid tall CSV file", async () => {
+      it("should validate a valid tall CSV file", async () => {
         const input = fs.createReadStream(
-          path.join(__dirname, "..", "fixtures", "sample-tall-valid.csv")
+          new URL(
+            path.join("..", "fixtures", "sample-tall-valid.csv"),
+            import.meta.url
+          )
         );
         const result = await validator.validate(input);
         expect(result.valid).toBe(true);
         expect(result.errors).toHaveLength(0);
       });
 
-      it.skip("should validate a valid wide CSV file", async () => {
+      it("should validate a valid wide CSV file", async () => {
         const input = fs.createReadStream(
-          path.join(__dirname, "..", "fixtures", "sample-wide-valid.csv")
+          new URL(
+            path.join("..", "fixtures", "sample-wide-valid.csv"),
+            import.meta.url
+          )
         );
         const result = await validator.validate(input);
         expect(result.valid).toBe(true);
@@ -352,10 +357,58 @@ describe("CsvValidator", () => {
         expect(validator.dataColumns).toEqual(columns);
       });
 
-      it("should save the normalized form of the columns", () => {
-        // normalized means that the pipe separator will have one space on each side
+      it("should save the normalized form of the columns when validating wide columns", () => {
+        // normalized means that the pipe separator will have one space on each side,
+        // and anything other than payer-plan text will be lowercase.
         const columns = [
+          "Description",
+          "code | 1",
+          "code | 1 | type",
+          "setting",
+          "drug_unit_of_measurement",
+          "drug_type_of_measurement",
+          "modifiers",
+          "standard_charge   | gross",
+          "standard_charge |   discounted_cash",
+          "standard_charge | min",
+          "standard_charge | max",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+          "standard_charge | Payer ABC | Plan 1 | methodology",
+          "estimated_amount |  Payer ABC | Plan 1",
+          "additional_payer_notes | Payer ABC | Plan 1",
+          "additional_generic_notes",
+        ];
+        const result = validator.validateColumns(columns);
+        expect(result).toHaveLength(0);
+        expect(validator.isTall).toBe(false);
+        expect(validator.dataColumns).toEqual(columns);
+        expect(validator.normalizedColumns).toEqual([
           "description",
+          "code | 1",
+          "code | 1 | type",
+          "setting",
+          "drug_unit_of_measurement",
+          "drug_type_of_measurement",
+          "modifiers",
+          "standard_charge | gross",
+          "standard_charge | discounted_cash",
+          "standard_charge | min",
+          "standard_charge | max",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+          "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+          "standard_charge | Payer ABC | Plan 1 | methodology",
+          "estimated_amount | Payer ABC | Plan 1",
+          "additional_payer_notes | Payer ABC | Plan 1",
+          "additional_generic_notes",
+        ]);
+      });
+
+      it("should save the normalized form of the columns when validating tall columns", () => {
+        const columns = [
+          "Description",
           "code | 1",
           "code | 1 | type",
           "setting",

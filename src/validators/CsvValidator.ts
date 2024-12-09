@@ -860,11 +860,9 @@ export class CsvValidator extends BaseValidator {
       return new Promise((resolve) => {
         resolve({
           valid: false,
-          errors: [new InvalidVersionError()],
+          errors: [new InvalidVersionError(CsvValidator.allowedVersions)],
         });
       });
-    } else if (this.rowValidators.length == 0) {
-      this.buildRowValidators();
     }
 
     return new Promise((resolve, reject) => {
@@ -982,6 +980,7 @@ export class CsvValidator extends BaseValidator {
       return [new AmbiguousFormatError()];
     }
     this.dataColumns = [];
+    this.normalizedColumns = [];
     const errors: CsvValidationError[] = [];
     this.codeCount = this.getCodeCount(columns);
     const expectedDataColumns = CsvValidator.getExpectedDataColumns(
@@ -995,6 +994,8 @@ export class CsvValidator extends BaseValidator {
       });
       if (matchingColumnIndex > -1) {
         this.dataColumns[index] = column;
+        this.normalizedColumns[index] =
+          expectedDataColumns[matchingColumnIndex].label;
         expectedDataColumns.splice(matchingColumnIndex, 1);
       } else {
         const isDuplicate = this.dataColumns.some((dataColumn) => {
@@ -1007,7 +1008,7 @@ export class CsvValidator extends BaseValidator {
         }
       }
     });
-    this.normalizedColumns = this.dataColumns.map((column) => {
+    this.normalizedColumns = this.normalizedColumns.map((column) => {
       if (column) {
         return column
           .split("|")
@@ -1231,6 +1232,8 @@ export class CsvValidator extends BaseValidator {
           errors: [...this.errors, new ProblemsInHeaderError()],
         });
         parser.abort();
+      } else {
+        this.buildRowValidators();
       }
     } else {
       // regular data row
