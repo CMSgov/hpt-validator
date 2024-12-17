@@ -320,7 +320,6 @@ export class CsvValidator extends BaseValidator {
   set version(version: string) {
     if (this._version !== version) {
       this._version = version;
-      // clear validation functions?
       this.rowValidators = [];
     }
   }
@@ -352,7 +351,6 @@ export class CsvValidator extends BaseValidator {
       this.normalizedColumns,
       this.dataColumns
     );
-    // ??? define an autofail validator?
     // now set up validators based on version
     if (semver.gte(this.version, "2.0.0")) {
       // description is always required
@@ -850,6 +848,25 @@ export class CsvValidator extends BaseValidator {
         this.rowValidators.push(containsCode);
       } else {
         // for older versions, there is no notion of a "modifier row"
+        // therefore, some code information is always required.
+        // if only half of the pair is present, a different check accounts for that.
+        this.rowValidators.push({
+          name: "found at least one code",
+          validator: (dataRow, row) => {
+            const hasCodeInfo = range(1, this.codeCount + 1).some(
+              (codeIndex) => {
+                return (
+                  dataRow[`code | ${codeIndex}`] ||
+                  dataRow[`code | ${codeIndex} | type`]
+                );
+              }
+            );
+            if (!hasCodeInfo) {
+              return [new CodePairMissingError(row, this.dataColumns.length)];
+            }
+            return [];
+          },
+        });
         this.rowValidators.push(...nonModifierChecks);
       }
     }
@@ -1101,34 +1118,24 @@ export class CsvValidator extends BaseValidator {
       );
     }
 
-    switch (version) {
-      case "v2.0.0":
-        // do we want to add these?
-        // it sort of depends on how other parts of the implement shake out.
-        // columns.push(
-        //   { label: "drug_unit_of_measurement", required: false },
-        //   { label: "drug_type_of_measurement", required: false }
-        // );
-        break;
-      case "v2.2.0":
+    if (semver.gte(version, "v2.2.0")) {
+      columns.push(
+        { label: "drug_unit_of_measurement", required: true },
+        { label: "drug_type_of_measurement", required: true },
+        { label: "modifiers", required: true }
+      );
+      if (payersPlans.length > 0) {
         columns.push(
-          { label: "drug_unit_of_measurement", required: true },
-          { label: "drug_type_of_measurement", required: true },
-          { label: "modifiers", required: true }
+          ...payersPlans.map((payerPlan) => {
+            return {
+              label: `estimated_amount | ${payerPlan}`,
+              required: true,
+            };
+          })
         );
-        if (payersPlans.length > 0) {
-          columns.push(
-            ...payersPlans.map((payerPlan) => {
-              return {
-                label: `estimated_amount | ${payerPlan}`,
-                required: true,
-              };
-            })
-          );
-        } else {
-          columns.push({ label: "estimated_amount", required: true });
-        }
-        break;
+      } else {
+        columns.push({ label: "estimated_amount", required: true });
+      }
     }
     return columns;
   }
