@@ -1,12 +1,6 @@
 import Papa from "papaparse";
 import semver from "semver";
-import {
-  // BILLING_CODE_TYPES,
-  CsvValidationOptions,
-  STATE_CODES,
-  StateCode,
-  ValidationResult,
-} from "../types.js";
+import { CsvValidationOptions, ValidationResult } from "../types.js";
 import { BaseValidator } from "./BaseValidator.js";
 import { removeBOM } from "../utils.js";
 import {
@@ -34,8 +28,18 @@ import {
   RequiredValueError,
 } from "../errors/csv/index.js";
 import _ from "lodash";
-const { range, partial } = _;
-import { ToastyValidator } from "./CsvFieldTypes.js";
+const { range, partial, bind } = _;
+import { BranchingValidator } from "./CsvFieldTypes.js";
+import {
+  matchesString,
+  sepColumnsEqual,
+  isValidDate,
+  objectFromKeysValues,
+  DRUG_UNITS,
+  BILLING_CODE_TYPES,
+  STANDARD_CHARGE_METHODOLOGY,
+  STATE_CODES,
+} from "./CsvHelpers.js";
 
 export const AFFIRMATION =
   "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.";
@@ -50,105 +54,13 @@ export const HEADER_COLUMNS = [
   AFFIRMATION, // "true" or "false"
 ];
 
-export const DRUG_UNITS = ["GR", "ME", "ML", "UN", "F2", "EA", "GM"];
-
-export const BILLING_CODE_TYPES = [
-  "CPT",
-  "HCPCS",
-  "ICD",
-  "DRG",
-  "MS-DRG",
-  "R-DRG",
-  "S-DRG",
-  "APS-DRG",
-  "AP-DRG",
-  "APR-DRG",
-  "APC",
-  "NDC",
-  "HIPPS",
-  "LOCAL",
-  "EAPG",
-  "CDT",
-  "RC",
-  "CDM",
-  "TRIS-DRG",
-];
-
-export const STANDARD_CHARGE_METHODOLOGY = [
-  "case rate",
-  "fee schedule",
-  "percent of total billed charges",
-  "per diem",
-  "other",
-];
-
 export type ColumnDefinition = {
   label: string;
   required: boolean;
   dataRequired?: boolean;
 };
 
-export function objectFromKeysValues(
-  keys: (string | undefined)[],
-  values: string[]
-): { [key: string]: string } {
-  return Object.fromEntries(
-    keys.map((key, index) => [key, values[index]]).filter((entry) => entry)
-  );
-}
-
-export function sepColumnsEqual(colA: string, colB: string) {
-  const cleanA = colA.split("|").map((v) => v.trim().toUpperCase());
-  const cleanB = colB.split("|").map((v) => v.trim().toUpperCase());
-  return (
-    cleanA.length === cleanB.length &&
-    cleanA.every((a, idx: number) => a === cleanB[idx])
-  );
-}
-
-export function matchesString(a: string, b: string): boolean {
-  return a.toLocaleUpperCase() === b.toLocaleUpperCase();
-}
-
-export function isValidDate(value: string) {
-  // required format is YYYY-MM-DD or MM/DD/YYYY or M/D/YYYY or MM/D/YYYY or M/DD/YYYY
-  const dateMatch1 = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  const dateMatch2 = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-
-  if (dateMatch1 != null) {
-    // UTC methods are used because "date-only forms are interpreted as a UTC time",
-    // as per https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format
-    // check that the parsed date matches the input, to guard against e.g. February 31
-    const matchYear = dateMatch1[3];
-    const matchMonth = dateMatch1[1];
-    const matchDate = dateMatch1[2];
-    const expectedYear = parseInt(matchYear);
-    const expectedMonth = parseInt(matchMonth) - 1;
-    const expectedDate = parseInt(matchDate);
-    const parsedDate = new Date(value);
-    return (
-      expectedYear === parsedDate.getUTCFullYear() &&
-      expectedMonth === parsedDate.getUTCMonth() &&
-      expectedDate === parsedDate.getUTCDate()
-    );
-  } else if (dateMatch2 != null) {
-    const matchYear = dateMatch2[1];
-    const matchMonth = dateMatch2[2];
-    const matchDate = dateMatch2[3];
-    const expectedYear = parseInt(matchYear);
-    const expectedMonth = parseInt(matchMonth) - 1;
-    const expectedDate = parseInt(matchDate);
-    const parsedDate = new Date(value);
-    return (
-      expectedYear === parsedDate.getUTCFullYear() &&
-      expectedMonth === parsedDate.getUTCMonth() &&
-      expectedDate === parsedDate.getUTCDate()
-    );
-  }
-  return false;
-}
-
-export function sneakyValidateRequiredEnumField(
+export function validateRequiredHeaderEnum(
   row: number,
   column: number,
   columnName: string,
@@ -296,7 +208,7 @@ export class CsvValidator extends BaseValidator {
   public dataCallback?: CsvValidationOptions["onValueCallback"];
   static allowedVersions = ["v2.0.0", "v2.1.0", "v2.2.0"];
 
-  public rowValidators: ToastyValidator[] = [];
+  public rowValidators: BranchingValidator[] = [];
   public payersPlans: string[] = [];
   public codeCount: number = 0;
 
@@ -306,7 +218,10 @@ export class CsvValidator extends BaseValidator {
   ) {
     super("csv");
     this.maxErrors = options.maxErrors ?? 0;
-    this.dataCallback = options.onValueCallback;
+    if (options.onValueCallback) {
+      this.dataCallback = options.onValueCallback;
+      bind(this.dataCallback, this);
+    }
   }
 
   static isAllowedVersion(version: string): boolean {
@@ -327,8 +242,8 @@ export class CsvValidator extends BaseValidator {
   buildRowValidators() {
     // there is currently only one major version: 2.
     // 2.1.0 and 2.2.0 add some additional requirements
-    const modifierChecks: ToastyValidator[] = [];
-    const codeChecks: ToastyValidator[] = [];
+    const modifierChecks: BranchingValidator[] = [];
+    const codeChecks: BranchingValidator[] = [];
     // const standardChargeChecks: ToastyValidator[] = [];
     // do partial application on all dynamic validators, since they all use the same sets of columns
     const validateRequiredField = partial(
@@ -410,7 +325,7 @@ export class CsvValidator extends BaseValidator {
         });
       });
 
-      const nonModifierChecks: ToastyValidator[] = [];
+      const nonModifierChecks: BranchingValidator[] = [];
 
       if (semver.gte(this.version, "2.1.0")) {
         const payerSpecificSuffix =
@@ -427,7 +342,7 @@ export class CsvValidator extends BaseValidator {
                   row["standard_charge | negotiated_algorithm"]
               );
             },
-            toastyChildren: [
+            children: [
               {
                 name: "payer_name",
                 validator: partial(
@@ -528,7 +443,7 @@ export class CsvValidator extends BaseValidator {
           // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
           // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
           nonModifierChecks.push(
-            ...this.payersPlans.map<ToastyValidator>((payerPlan) => {
+            ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
               return {
                 name: `conditional for ${payerPlan} negotiated charge methodology`,
                 predicate: (row) => {
@@ -554,7 +469,7 @@ export class CsvValidator extends BaseValidator {
           // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
           // in the "additional notes" for the associated payer-specific negotiated charge.
           nonModifierChecks.push(
-            ...this.payersPlans.map<ToastyValidator>((payerPlan) => {
+            ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
               return {
                 name: `${payerPlan} other methodology requires notes`,
                 predicate: (row) => {
@@ -769,7 +684,7 @@ export class CsvValidator extends BaseValidator {
           // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
           // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
           nonModifierChecks.push(
-            ...this.payersPlans.map<ToastyValidator>((payerPlan) => {
+            ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
               return {
                 name: `estimated allowed amount for ${payerPlan} required when charge is only percentage or algorithm`,
                 validator: (dataRow, row) => {
@@ -822,18 +737,18 @@ export class CsvValidator extends BaseValidator {
 
         // that's all for the conditional checks. so now build the tree out, branching on whether
         // the row is modifier-only.
-        const isModifierPresent: ToastyValidator = {
+        const isModifierPresent: BranchingValidator = {
           name: "is a modifier present",
           predicate: (row) => {
             return row["modifiers"].length > 0;
           },
-          toastyChildren: modifierChecks, // validate modifier row,
+          children: modifierChecks, // validate modifier row,
           negativeValidator: (_dataRow, row) => {
             return [new CodePairMissingError(row, this.dataColumns.length)];
           },
           negativeChildren: nonModifierChecks, // non-modifier row
         };
-        const containsCode: ToastyValidator = {
+        const containsCode: BranchingValidator = {
           name: "found at least one code",
           predicate: (row) => {
             return range(1, this.codeCount + 1).some((codeIndex) => {
@@ -842,7 +757,7 @@ export class CsvValidator extends BaseValidator {
               );
             });
           },
-          toastyChildren: nonModifierChecks, // non-modifier row
+          children: nonModifierChecks, // non-modifier row
           negativeChildren: [isModifierPresent], // possibly modifier row
         };
         this.rowValidators.push(containsCode);
@@ -916,9 +831,7 @@ export class CsvValidator extends BaseValidator {
               return false;
             }
             if (sepColumnsEqual(splitColumn[0], "license_number")) {
-              if (
-                STATE_CODES.includes(splitColumn[1].toUpperCase() as StateCode)
-              ) {
+              if (STATE_CODES.includes(splitColumn[1].toUpperCase())) {
                 return true;
               } else {
                 errors.push(new InvalidStateCodeError(index, splitColumn[1]));
@@ -972,7 +885,7 @@ export class CsvValidator extends BaseValidator {
           errors.push(new InvalidDateError(1, index, header, value));
         } else if (sepColumnsEqual(header, AFFIRMATION)) {
           errors.push(
-            ...sneakyValidateRequiredEnumField(1, index, header, value, [
+            ...validateRequiredHeaderEnum(1, index, header, value, [
               "true",
               "false",
             ])
@@ -1186,7 +1099,7 @@ export class CsvValidator extends BaseValidator {
     const errors: CsvValidationError[] = [];
     const validatorsToRun = [...this.rowValidators];
     while (validatorsToRun.length > 0) {
-      const currentValidator = validatorsToRun.shift() as ToastyValidator;
+      const currentValidator = validatorsToRun.shift() as BranchingValidator;
       if (
         currentValidator.predicate == null ||
         currentValidator.predicate(row)
@@ -1194,8 +1107,8 @@ export class CsvValidator extends BaseValidator {
         if (currentValidator.validator) {
           errors.push(...currentValidator.validator(row, this.index));
         }
-        if (currentValidator.toastyChildren) {
-          validatorsToRun.unshift(...currentValidator.toastyChildren);
+        if (currentValidator.children) {
+          validatorsToRun.unshift(...currentValidator.children);
         }
       } else {
         if (currentValidator.negativeValidator) {

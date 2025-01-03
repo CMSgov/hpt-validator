@@ -1,6 +1,6 @@
+import _ from "lodash";
 import {
   AFFIRMATION,
-  BILLING_CODE_TYPES,
   CsvValidator,
 } from "../../src/validators/CsvValidator.js";
 import {
@@ -14,7 +14,8 @@ import {
   InvalidStateCodeError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
-import _ from "lodash";
+import { BILLING_CODE_TYPES } from "../../src/validators/CsvHelpers.js";
+
 const { shuffle } = _;
 
 describe("schema v2.0.0", () => {

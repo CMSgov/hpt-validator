@@ -1,6 +1,5 @@
 export class ValidationError {
   public field: string | undefined;
-  public warning: boolean | undefined;
 
   constructor(
     public path: string,

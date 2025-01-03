@@ -8,11 +8,11 @@ export type DynaReadyValidator = (
   row: number
 ) => CsvValidationError[];
 
-export type ToastyValidator = {
+export type BranchingValidator = {
   name: string;
   predicate?: (row: { [key: string]: string }) => boolean;
   validator?: DynaReadyValidator;
   negativeValidator?: DynaReadyValidator;
-  toastyChildren?: ToastyValidator[];
-  negativeChildren?: ToastyValidator[];
+  children?: BranchingValidator[];
+  negativeChildren?: BranchingValidator[];
 };

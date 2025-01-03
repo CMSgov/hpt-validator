@@ -3,7 +3,7 @@ import path from "path";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import { JSONParser } from "@streamparser/json";
-import { JsonValidatorOptions, ValidationResult } from "../types.js";
+import { JsonValidationOptions, ValidationResult } from "../types.js";
 import { BaseValidator } from "./BaseValidator.js";
 import {
   addItemsWithLimit,
@@ -14,9 +14,9 @@ import { ValidationError } from "../errors/ValidationError.js";
 import { InvalidJsonError } from "../errors/json/InvalidJsonError.js";
 
 export class JsonValidator extends BaseValidator {
-  private fullSchema: any;
-  private standardChargeSchema: any;
-  private metadataSchema: any;
+  public fullSchema: any;
+  public standardChargeSchema: any;
+  public metadataSchema: any;
 
   constructor(public version: string) {
     super("json");
@@ -57,7 +57,7 @@ export class JsonValidator extends BaseValidator {
 
   async validate(
     input: File | NodeJS.ReadableStream,
-    options: JsonValidatorOptions = {}
+    options: JsonValidationOptions = {}
   ): Promise<ValidationResult> {
     const validator = new Ajv({ allErrors: true });
     addFormats(validator);

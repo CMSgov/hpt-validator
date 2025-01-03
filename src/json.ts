@@ -1,8 +1,4 @@
-import {
-  ValidationResult,
-  SchemaVersion,
-  JsonValidatorOptions,
-} from "./types.js";
+import { ValidationResult, JsonValidationOptions } from "./types.js";
 import { JsonValidator } from "./validators/JsonValidator.js";
 
 /**
@@ -13,8 +9,8 @@ import { JsonValidator } from "./validators/JsonValidator.js";
  */
 export async function validateJson(
   jsonInput: File | NodeJS.ReadableStream,
-  version: SchemaVersion,
-  options: JsonValidatorOptions = {}
+  version: string,
+  options: JsonValidationOptions = {}
 ): Promise<ValidationResult> {
   const validator = new JsonValidator(version);
   return validator.validate(jsonInput, options);

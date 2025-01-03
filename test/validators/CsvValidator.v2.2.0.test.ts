@@ -1,10 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
+import _ from "lodash";
 import {
   AFFIRMATION,
-  BILLING_CODE_TYPES,
   CsvValidator,
-  DRUG_UNITS,
 } from "../../src/validators/CsvValidator.js";
 import {
   AllowedValuesError,
@@ -25,7 +24,11 @@ import {
   PercentageAlgorithmEstimateError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
-import _ from "lodash";
+import {
+  BILLING_CODE_TYPES,
+  DRUG_UNITS,
+} from "../../src/validators/CsvHelpers.js";
+
 const { shuffle } = _;
 
 describe("CsvValidator v2.2.0", () => {

@@ -1,8 +1,4 @@
-import {
-  ValidationResult,
-  SchemaVersion,
-  CsvValidationOptions,
-} from "./types.js";
+import { ValidationResult, CsvValidationOptions } from "./types.js";
 import { CsvValidator } from "./validators/CsvValidator.js";
 
 /**
@@ -13,7 +9,7 @@ import { CsvValidator } from "./validators/CsvValidator.js";
  */
 export async function validateCsv(
   input: File | NodeJS.ReadableStream,
-  version: SchemaVersion,
+  version: string,
   options: CsvValidationOptions = {}
 ): Promise<ValidationResult> {
   // currently, the CsvValidator takes options in the constructor,
