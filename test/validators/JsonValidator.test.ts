@@ -109,7 +109,8 @@ describe("JsonValidator", () => {
     });
 
     it("should limit the number of errors returned when the maxErrors option is used", async () => {
-      const input = createFixtureStream("sample-empty.json");
+      // this file normally could produce 3 errors when not limited
+      const input = createFixtureStream("sample-no-min-max.json");
       const result = await validator.validate(input, { maxErrors: 2 });
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(2);
