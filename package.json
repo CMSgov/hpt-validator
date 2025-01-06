@@ -1,6 +1,6 @@
 {
   "name": "hpt-validator",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "author": "CMS Open Source <opensource@cms.hhs.gov>",
   "license": "CC0-1.0",
   "description": "Validation library for CMS Hospital Price Transparency machine-readable files",
