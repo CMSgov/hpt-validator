@@ -1,5 +1,0 @@
-Hospital_name,last_updated_on,version,hospital_location,financial_aid_policy,license_number | MD,,,,,,,,,,,,,,
-Example Hospital,2/1/23,1.0.0,Woodlawn,See aid policy on site,12345678,,,,,,,,,,,,,,
-description,code | 1,code | 1 | type,code | 2,code | 2 | type,billing_class,setting,drug_unit_of_measurement,drug_type_of_measurement,modifiers,standard_charge | gross,standard_charge | discounted_cash,payer_name,plan_name,standard_charge | negotiated_dollar,standard_charge | negotiated_percent,standard_charge | min,standard_charge | max,standard_charge | contracting_method,additional_generic_notes
-Code 1,A123,C,,,Facility,ipatient,1,ML,,100,90,Payer,Plan,80,20,60,80,another,
-Code 1,A456,D,,,Facility,opatient,1,ML,,100,90,Payer,Plan,80,20,60,80,other,
