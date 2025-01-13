@@ -183,6 +183,7 @@ export async function validateCsv(
   return new Promise((resolve, reject) => {
     Papa.parse(input, {
       header: false,
+      newline: "\n",
       // chunkSize: 64 * 1024,
       beforeFirstChunk: (chunk) => {
         return removeBOM(chunk)
