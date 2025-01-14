@@ -1,5 +1,6 @@
 import { JsonTypes } from "@streamparser/json";
 import { ValidationError } from "./errors/ValidationError.js";
+import { CsvValidationError } from "./errors/csv/CsvValidationError.js";
 
 export interface ValidationResult {
   valid: boolean;
@@ -8,7 +9,10 @@ export interface ValidationResult {
 
 export interface CsvValidationOptions {
   maxErrors?: number;
-  onValueCallback?: (value: { [key: string]: string }) => void;
+  onValueCallback?: (
+    value: { [key: string]: string },
+    errors: CsvValidationError[]
+  ) => void;
 }
 
 export interface JsonValidationOptions {

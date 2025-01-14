@@ -1,5 +1,5 @@
 const config = {
-  moduleFileExtensions: ["js", "ts"],
+  moduleFileExtensions: ["js", "ts", "jsx", "tsx"],
   transform: {
     "^.+\\.(ts|tsx)$": [
       "ts-jest",
@@ -9,6 +9,7 @@ const config = {
       },
     ],
   },
+  // transform: {},
   extensionsToTreatAsEsm: [".ts"],
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",

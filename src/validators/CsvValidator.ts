@@ -1158,9 +1158,10 @@ export class CsvValidator extends BaseValidator {
     } else {
       // regular data row
       const rowRecord = objectFromKeysValues(this.normalizedColumns, row);
-      this.errors.push(...this.validateDataRow(rowRecord));
+      const rowErrors = this.validateDataRow(rowRecord);
+      this.errors.push(...rowErrors);
       if (this.dataCallback) {
-        this.dataCallback(rowRecord);
+        this.dataCallback(rowRecord, rowErrors);
       }
     }
 
