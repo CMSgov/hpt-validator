@@ -181,9 +181,8 @@ export async function validateCsv(
   }
 
   return new Promise((resolve, reject) => {
-    Papa.parse(input, {
+    const config = {
       header: false,
-      // chunkSize: 64 * 1024,
       beforeFirstChunk: (chunk) => {
         return removeBOM(chunk)
       },
@@ -196,6 +195,12 @@ export async function validateCsv(
       },
       complete: () => handleParseEnd(resolve),
       error: (error: Error) => reject(error),
-    })
+    };
+
+    if (options.newline) {
+      config.newline = options.newline;
+    }
+
+    Papa.parse(input, config)
   })
 }

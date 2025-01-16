@@ -44,11 +44,13 @@ export interface CsvValidatorVersion {
 
 export interface CsvValidationOptions {
   maxErrors?: number
+  newline?: string
   onValueCallback?: (value: { [key: string]: string }) => void
 }
 
 export interface JsonValidatorOptions {
   maxErrors?: number
+  newline?: string
   onValueCallback?: (
     val: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct
   ) => void
