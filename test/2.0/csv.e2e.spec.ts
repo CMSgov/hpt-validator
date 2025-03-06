@@ -11,6 +11,15 @@ test("validateCsvTall", async (t) => {
   t.deepEqual(result.errors.length, 0)
 })
 
+test("validateCsv mixed line endings", async (t) => {
+  const result = await validateCsv(
+    loadFixtureStream("/2.0/sample-tall-mixed-line-endings.csv"),
+    "v2.0"
+  )
+  t.is(result.valid, true)
+  t.deepEqual(result.errors.length, 0)
+})
+
 test("validateCsvTall quoted column name", async (t) => {
   // this test shows correct behavior when a file contains a BOM and the first column name is quoted
   const result = await validateCsv(
@@ -144,7 +153,8 @@ test("validate columns with date-dependent enforcement", async (t) => {
       },
       {
         path: "A1",
-        message: "Errors were seen in headers so rows were not evaluated",
+        message:
+          "Errors were found in the headers or values in rows 1 through 3, so the remaining rows were not evaluated.",
       },
     ])
   } else {
