@@ -253,6 +253,26 @@ test("validateJson NDC drug information conditional", async (t) => {
   ])
 })
 
+test("validateJson with incorrect code information property", async (t) => {
+  const enforce2025 = new Date().getFullYear() >= 2025
+  const result = await validateJson(
+    loadFixtureStream(
+      "/2.0/sample-conditional-error-wrong-code-information.json"
+    ),
+    "v2.0"
+  )
+  // always invalid due to missing code_information
+  t.is(result.valid, false)
+  // starting jan 1 2025, drug information is required when an NDC code is present
+  if (enforce2025) {
+    // the file contains no NDC codes, so no errors about requiring drug information should be present
+    const drugInfoError = result.errors.findIndex((err) => {
+      return err.message == "must have required property 'drug_information'"
+    })
+    t.is(drugInfoError, -1)
+  }
+})
+
 test("validateJson 2025 properties", async (t) => {
   const enforce2025 = new Date().getFullYear() >= 2025
   const result = await validateJson(

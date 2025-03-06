@@ -123,9 +123,11 @@ const STANDARD_CHARGE_DEFINITIONS = {
                 const: "NDC",
               },
             },
+            required: ["type"],
           },
         },
       },
+      required: ["code_information"],
     },
     then: {
       required: ["drug_information"],
@@ -212,9 +214,11 @@ const STANDARD_CHARGE_PROPERTIES = {
               const: "NDC",
             },
           },
+          required: ["type"],
         },
       },
     },
+    required: ["code_information"],
   },
   then: {
     required: ["drug_information"],
