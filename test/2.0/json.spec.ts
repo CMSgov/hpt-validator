@@ -218,13 +218,13 @@ test("validateJson estimated amount conditional", async (t) => {
       path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
       field: "3",
       message: "must have required property 'estimated_amount'",
-      warning: enforce2025 ? undefined : true,
+      ...(enforce2025 ? {} : { warning: true }),
     },
     {
       path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
       field: "3",
       message: 'must match "then" schema',
-      warning: enforce2025 ? undefined : true,
+      ...(enforce2025 ? {} : { warning: true }),
     },
   ])
 })
@@ -242,15 +242,35 @@ test("validateJson NDC drug information conditional", async (t) => {
       path: "/standard_charge_information/0",
       field: "",
       message: "must have required property 'drug_information'",
-      warning: enforce2025 ? undefined : true,
+      ...(enforce2025 ? {} : { warning: true }),
     },
     {
       path: "/standard_charge_information/0",
       field: "",
       message: 'must match "then" schema',
-      warning: enforce2025 ? undefined : true,
+      ...(enforce2025 ? {} : { warning: true }),
     },
   ])
+})
+
+test("validateJson with incorrect code information property", async (t) => {
+  const enforce2025 = new Date().getFullYear() >= 2025
+  const result = await validateJson(
+    loadFixtureStream(
+      "/2.0/sample-conditional-error-wrong-code-information.json"
+    ),
+    "v2.0"
+  )
+  // always invalid due to missing code_information
+  t.is(result.valid, false)
+  // starting jan 1 2025, drug information is required when an NDC code is present
+  if (enforce2025) {
+    // the file contains no NDC codes, so no errors about requiring drug information should be present
+    const drugInfoError = result.errors.findIndex((err) => {
+      return err.message == "must have required property 'drug_information'"
+    })
+    t.is(drugInfoError, -1)
+  }
 })
 
 test("validateJson 2025 properties", async (t) => {
@@ -266,19 +286,19 @@ test("validateJson 2025 properties", async (t) => {
       path: "/standard_charge_information/0/drug_information",
       field: "drug_information",
       message: "must have required property 'type'",
-      warning: enforce2025 ? undefined : true,
+      ...(enforce2025 ? {} : { warning: true }),
     },
     {
       path: "/standard_charge_information/1/standard_charges/0/payers_information/1/estimated_amount",
       field: "estimated_amount",
       message: "must be number",
-      warning: enforce2025 ? undefined : true,
+      ...(enforce2025 ? {} : { warning: true }),
     },
     {
       path: "/modifier_information/0",
       field: "0",
       message: "must have required property 'modifier_payer_information'",
-      warning: enforce2025 ? undefined : true,
+      ...(enforce2025 ? {} : { warning: true }),
     },
   ])
 })
