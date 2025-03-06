@@ -361,7 +361,7 @@ test("validateRow tall", (t) => {
     emptyDrugUnitResult[0].message,
     'A value is required for "drug_unit_of_measurement" when "drug_type_of_measurement" is present. You must encode the missing information.'
   )
-  t.assert(emptyDrugUnitResult[0].warning === !enforce2025)
+  t.assert(emptyDrugUnitResult[0].warning === (enforce2025 ? undefined : true))
   const wrongDrugUnitRow = { ...basicRow, drug_unit_of_measurement: "-4" }
   const wrongDrugUnitResult = validateRow(wrongDrugUnitRow, 10, columns, false)
   t.is(wrongDrugUnitResult.length, 1)
@@ -369,7 +369,7 @@ test("validateRow tall", (t) => {
     wrongDrugUnitResult[0].message,
     '"drug_unit_of_measurement" value "-4" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
-  t.assert(wrongDrugUnitResult[0].warning === !enforce2025)
+  t.assert(wrongDrugUnitResult[0].warning === (enforce2025 ? undefined : true))
   // drug_type_of_measurement must be one of DRUG_UNITS if present
   const emptyDrugTypeRow = { ...basicRow, drug_type_of_measurement: "" }
   const emptyDrugTypeResult = validateRow(emptyDrugTypeRow, 12, columns, false)
@@ -378,7 +378,7 @@ test("validateRow tall", (t) => {
     emptyDrugTypeResult[0].message,
     'A value is required for "drug_type_of_measurement" when "drug_unit_of_measurement" is present. You must encode the missing information.'
   )
-  t.assert(emptyDrugTypeResult[0].warning === !enforce2025)
+  t.assert(emptyDrugTypeResult[0].warning === (enforce2025 ? undefined : true))
   const wrongDrugTypeRow = { ...basicRow, drug_type_of_measurement: "KG" }
   const wrongDrugTypeResult = validateRow(wrongDrugTypeRow, 12, columns, false)
   t.is(wrongDrugTypeResult.length, 1)
@@ -386,7 +386,7 @@ test("validateRow tall", (t) => {
     wrongDrugTypeResult[0].message,
     '"drug_type_of_measurement" value "KG" is not one of the allowed valid values. You must encode one of these valid values: GR, ME, ML, UN, F2, EA, GM'
   )
-  t.assert(wrongDrugTypeResult[0].warning === !enforce2025)
+  t.assert(wrongDrugTypeResult[0].warning === (enforce2025 ? undefined : true))
   // standard_charge | gross must be positive number if present
   const emptyGrossRow = { ...basicRow, "standard_charge | gross": "" }
   const emptyGrossResult = validateRow(emptyGrossRow, 13, columns, false)
