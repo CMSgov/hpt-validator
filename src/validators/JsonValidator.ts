@@ -3,6 +3,8 @@ import path from "path";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import { JSONParser } from "@streamparser/json";
+import _ from "lodash";
+const { bind } = _;
 import { JsonValidationOptions, ValidationResult } from "../types.js";
 import { BaseValidator } from "./BaseValidator.js";
 import {
@@ -17,13 +19,15 @@ export class JsonValidator extends BaseValidator {
   public fullSchema: any;
   public standardChargeSchema: any;
   public metadataSchema: any;
+  public errors: ValidationError[] = [];
+  public dataCallback?: JsonValidationOptions["onValueCallback"];
+  public metadataCallback?: JsonValidationOptions["onMetadataCallback"];
 
   constructor(public version: string) {
     super("json");
     try {
       this.fullSchema = JSON.parse(
         fs.readFileSync(
-          // path.join(__dirname, "..", "schemas", `${version}.json`),
           new URL(
             path.join("..", "schemas", `${version}.json`),
             import.meta.url
@@ -59,6 +63,7 @@ export class JsonValidator extends BaseValidator {
     input: File | NodeJS.ReadableStream,
     options: JsonValidationOptions = {}
   ): Promise<ValidationResult> {
+    this.errors = [];
     const validator = new Ajv({ allErrors: true });
     addFormats(validator);
     const parser = new JSONParser({
@@ -78,21 +83,30 @@ export class JsonValidator extends BaseValidator {
     const metadata: { [key: string]: any } = {};
     let valid = true;
     let hasCharges = false;
+    if (options.onValueCallback) {
+      this.dataCallback = options.onValueCallback;
+      bind(this.dataCallback, this);
+    }
+    if (options.onMetadataCallback) {
+      this.metadataCallback = options.onMetadataCallback;
+      bind(this.metadataCallback, this);
+    }
 
     return new Promise(async (resolve) => {
-      const errors: ValidationError[] = [];
+      const errors = this.errors;
       parser.onValue = ({ value, key, stack }) => {
         if (stack.length > 2 || key === "standard_charge_information") return;
         if (typeof key === "string") {
           metadata[key] = value;
         } else {
           hasCharges = true;
+          const pathPrefix = stack
+            .filter((se) => se.key)
+            .map((se) => se.key)
+            .join("/");
+          let newErrors: ValidationError[] = [];
           if (!validator.validate(this.standardChargeSchema, value)) {
-            const pathPrefix = stack
-              .filter((se) => se.key)
-              .map((se) => se.key)
-              .join("/");
-            const newErrors =
+            newErrors =
               validator.errors?.map(errorObjectToValidationError) ?? [];
             newErrors.forEach((error) => {
               error.path = `/${pathPrefix}/${key}${error.path}`;
@@ -100,8 +114,8 @@ export class JsonValidator extends BaseValidator {
             addItemsWithLimit(newErrors, errors, options.maxErrors);
             valid = errors.length === 0;
           }
-          if (options.onValueCallback && value != null) {
-            options.onValueCallback(value);
+          if (this.dataCallback && value != null) {
+            this.dataCallback(value, pathPrefix, key as number, newErrors);
           }
           if (
             options.maxErrors &&
@@ -119,16 +133,20 @@ export class JsonValidator extends BaseValidator {
 
       parser.onEnd = () => {
         // If no charges present, use the full schema to throw error for missing
+        let metadataErrors: ValidationError[] = [];
         if (
           !validator.validate(
             hasCharges ? this.metadataSchema : this.fullSchema,
             metadata
           )
         ) {
-          const newErrors =
+          metadataErrors =
             validator.errors?.map(errorObjectToValidationError) ?? [];
-          addItemsWithLimit(newErrors, errors, options.maxErrors);
+          addItemsWithLimit(metadataErrors, errors, options.maxErrors);
           valid = errors.length === 0;
+        }
+        if (this.metadataCallback && metadata != null) {
+          this.metadataCallback(metadata, metadataErrors);
         }
         resolve({
           valid,

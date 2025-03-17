@@ -18,6 +18,13 @@ export interface CsvValidationOptions {
 export interface JsonValidationOptions {
   maxErrors?: number;
   onValueCallback?: (
-    val: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct
+    val: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct,
+    pathPrefix: string,
+    key: number,
+    errors: ValidationError[]
+  ) => void;
+  onMetadataCallback?: (
+    val: JsonTypes.JsonObject,
+    errors: ValidationError[]
   ) => void;
 }
