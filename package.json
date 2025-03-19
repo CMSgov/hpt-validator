@@ -1,6 +1,6 @@
 {
   "name": "hpt-validator",
-  "version": "1.9.3",
+  "version": "1.10.0",
   "author": "CMS Open Source <opensource@cms.hhs.gov>",
   "license": "CC0-1.0",
   "description": "Validation library for CMS Hospital Price Transparency machine-readable files",
@@ -33,8 +33,8 @@
     "papaparse": "^5.4.1"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.5.0",
-    "@typescript-eslint/parser": "^8.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
     "ava": "^6.1.3",
     "eslint": "^9.10.0",
     "eslint-config-prettier": "^9.1.0",
