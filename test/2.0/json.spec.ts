@@ -9,6 +9,7 @@ test("validateJson", async (t) => {
   )
   t.is(result.valid, true)
   t.deepEqual(result.errors.length, 0)
+  t.is(result.alerts.length, 0)
 })
 
 test("validateJson BOM", async (t) => {
@@ -18,6 +19,7 @@ test("validateJson BOM", async (t) => {
   )
   t.is(result.valid, true)
   t.deepEqual(result.errors.length, 0)
+  t.is(result.alerts.length, 0)
 })
 
 test("validateJson empty", async (t) => {
@@ -27,6 +29,7 @@ test("validateJson empty", async (t) => {
   )
   t.is(result.valid, false)
   t.deepEqual(result.errors.length, 8)
+  t.is(result.alerts.length, 0)
 })
 
 test("validateJson syntactically invalid", async (t) => {
@@ -36,6 +39,7 @@ test("validateJson syntactically invalid", async (t) => {
   )
   t.is(result.valid, false)
   t.deepEqual(result.errors.length, 1)
+  t.is(result.alerts.length, 0)
 })
 
 test("validateJson maxErrors", async (t) => {
@@ -48,6 +52,7 @@ test("validateJson maxErrors", async (t) => {
   )
   t.is(result.valid, false)
   t.deepEqual(result.errors.length, 1)
+  t.is(result.alerts.length, 0)
 })
 
 test("validateJson errorFile", async (t) => {
@@ -57,6 +62,7 @@ test("validateJson errorFile", async (t) => {
   )
   t.is(result.valid, false)
   t.deepEqual(result.errors.length, 3)
+  t.is(result.alerts.length, 0)
   t.deepEqual(result.errors, [
     {
       path: "/standard_charge_information/0/standard_charges/0/payers_information/0/standard_charge_dollar",
@@ -83,6 +89,7 @@ test("validateJsonConditionals", async (t) => {
   )
   t.is(result.valid, false)
   t.deepEqual(result.errors.length, 2)
+  t.is(result.alerts.length, 0)
   t.deepEqual(result.errors, [
     {
       path: "/standard_charge_information/3/standard_charges/0/payers_information/2",
@@ -102,6 +109,7 @@ test("validateJsonConditionals", async (t) => {
   )
   t.is(result2.valid, false)
   t.deepEqual(result2.errors.length, 11)
+  t.is(result.alerts.length, 0)
   t.deepEqual(result2.errors, [
     {
       path: "/standard_charge_information/0/standard_charges/0",
@@ -166,6 +174,7 @@ test("validateJsonConditionals", async (t) => {
   )
   t.is(result3.valid, false)
   t.deepEqual(result3.errors.length, 7)
+  t.is(result.alerts.length, 0)
   t.deepEqual(result3.errors, [
     {
       path: "/standard_charge_information/1/standard_charges/0",
@@ -213,6 +222,7 @@ test("validateJson estimated amount conditional", async (t) => {
   )
   t.is(result.valid, !enforce2025)
   t.is(result.errors.length, 2)
+  t.is(result.alerts.length, 0)
   t.deepEqual(result.errors, [
     {
       path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
@@ -237,6 +247,7 @@ test("validateJson NDC drug information conditional", async (t) => {
   )
   t.is(result.valid, !enforce2025)
   t.is(result.errors.length, 2)
+  t.is(result.alerts.length, 0)
   t.deepEqual(result.errors, [
     {
       path: "/standard_charge_information/0",
@@ -281,6 +292,7 @@ test("validateJson 2025 properties", async (t) => {
   )
   t.is(result.valid, !enforce2025)
   t.is(result.errors.length, 3)
+  t.is(result.alerts.length, 0)
   t.deepEqual(result.errors, [
     {
       path: "/standard_charge_information/0/drug_information",
@@ -309,4 +321,44 @@ test("validateJson minimum not required if there are no payer-specific standard 
     "v2.0"
   )
   t.is(result.valid, true)
+})
+
+test("collect alerts when estimated amount is nine 9s", async (t) => {
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-nine-nines.json"),
+    "v2.0"
+  )
+  t.is(result.valid, true)
+  t.is(result.errors.length, 0)
+  t.is(result.alerts.length, 2)
+  t.deepEqual(result.alerts, [
+    {
+      path: "/standard_charge_information/0/standard_charges/0/payers_information/3/estimated_amount",
+      field: "estimated_amount",
+      message: "Nine 9s should not be used for estimated amount.",
+    },
+    {
+      path: "/standard_charge_information/1/standard_charges/0/payers_information/1/estimated_amount",
+      field: "estimated_amount",
+      message: "Nine 9s should not be used for estimated amount.",
+    },
+  ])
+})
+
+test("collect alerts up to the maximum amount", async (t) => {
+  const result = await validateJson(
+    loadFixtureStream("/2.0/sample-nine-nines.json"),
+    "v2.0",
+    { maxErrors: 1 }
+  )
+  t.is(result.valid, true)
+  t.is(result.errors.length, 0)
+  t.is(result.alerts.length, 1)
+  t.deepEqual(result.alerts, [
+    {
+      path: "/standard_charge_information/0/standard_charges/0/payers_information/3/estimated_amount",
+      field: "estimated_amount",
+      message: "Nine 9s should not be used for estimated amount.",
+    },
+  ])
 })

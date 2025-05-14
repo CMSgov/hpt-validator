@@ -9,6 +9,7 @@ import {
   BASE_COLUMNS,
   TALL_COLUMNS,
   NEW_2025_COLUMNS,
+  collectAlerts,
 } from "../../src/versions/2.0/csv.js"
 
 const VALID_HEADER_COLUMNS = HEADER_COLUMNS.map((c) =>
@@ -1761,5 +1762,168 @@ test("validateRow wide conditionals", (t) => {
   t.is(
     zeroNumericRowErrors[1].message,
     '"standard_charge | Payer One | Basic Plan | negotiated_percentage" value "0" is not a positive number. You must encode a positive, non-zero, numeric value.'
+  )
+})
+
+test("collectAlerts tall", (t) => {
+  const columns = [
+    ...BASE_COLUMNS,
+    ...TALL_COLUMNS,
+    "code | 1",
+    "code | 1 | type",
+    "code | 2",
+    "code | 2 | type",
+  ]
+  const basicRow = {
+    description: "basic description",
+    setting: "inpatient",
+    "code | 1": "12345",
+    "code | 1 | type": "DRG",
+    "code | 2": "",
+    "code | 2 | type": "",
+    drug_unit_of_measurement: "8.5",
+    drug_type_of_measurement: "ML",
+    modifiers: "",
+    "standard_charge | gross": "100",
+    "standard_charge | discounted_cash": "200.50",
+    "standard_charge | min": "50",
+    "standard_charge | max": "500",
+    additional_generic_notes: "some notes",
+    payer_name: "Acme Payer",
+    plan_name: "Acme Basic Coverage",
+    "standard_charge | negotiated_dollar": "300",
+    "standard_charge | negotiated_percentage": "",
+    "standard_charge | negotiated_algorithm": "",
+    "standard_charge | methodology": "fee schedule",
+    estimated_amount: "",
+  }
+
+  const basicResult = collectAlerts(basicRow, 5, columns, false)
+  t.is(basicResult.length, 0)
+
+  const nineNineRow = {
+    ...basicRow,
+    estimated_amount: "999999999",
+  }
+  const nineNineResult = collectAlerts(nineNineRow, 6, columns, false)
+  t.is(nineNineResult.length, 1)
+  t.is(
+    nineNineResult[0].message,
+    "Nine 9s should not be used for estimated amount."
+  )
+  t.is(nineNineResult[0].field, "estimated_amount")
+
+  const nineNineDecimalRow = {
+    ...basicRow,
+    estimated_amount: "999999999.00",
+  }
+  const nineNineDecimalResult = collectAlerts(
+    nineNineDecimalRow,
+    7,
+    columns,
+    false
+  )
+  t.is(nineNineDecimalResult.length, 1)
+  t.is(
+    nineNineDecimalResult[0].message,
+    "Nine 9s should not be used for estimated amount."
+  )
+  t.is(nineNineDecimalResult[0].field, "estimated_amount")
+})
+
+test("collectAlerts wide", (t) => {
+  const columns = [
+    ...BASE_COLUMNS,
+    "code | 1",
+    "code | 1 | type",
+    "code | 2",
+    "code | 2 | type",
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar",
+    "standard_charge | Payer One | Basic Plan | negotiated_percentage",
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm",
+    "estimated_amount | Payer One | Basic Plan",
+    "standard_charge | Payer One | Basic Plan | methodology",
+    "additional_payer_notes | Payer One | Basic Plan",
+    "standard_charge | Payer Two | Special Plan | negotiated_dollar",
+    "standard_charge | Payer Two | Special Plan | negotiated_percentage",
+    "standard_charge | Payer Two | Special Plan | negotiated_algorithm",
+    "estimated_amount | Payer Two | Special Plan",
+    "standard_charge | Payer Two | Special Plan | methodology",
+    "additional_payer_notes | Payer Two | Special Plan",
+  ]
+  const basicRow = {
+    description: "basic description",
+    setting: "inpatient",
+    "code | 1": "12345",
+    "code | 1 | type": "DRG",
+    "code | 2": "",
+    "code | 2 | type": "",
+    drug_unit_of_measurement: "",
+    drug_type_of_measurement: "",
+    modifiers: "",
+    "standard_charge | gross": "100",
+    "standard_charge | discounted_cash": "200.50",
+    "standard_charge | min": "50",
+    "standard_charge | max": "500",
+    additional_generic_notes: "",
+    "standard_charge | Payer One | Basic Plan | negotiated_dollar": "",
+    "standard_charge | Payer One | Basic Plan | negotiated_percentage": "",
+    "standard_charge | Payer One | Basic Plan | negotiated_algorithm": "",
+    "estimated_amount | Payer One | Basic Plan": "",
+    "standard_charge | Payer One | Basic Plan | methodology": "",
+    "additional_payer_notes | Payer One | Basic Plan": "",
+    "standard_charge | Payer Two | Special Plan | negotiated_dollar": "",
+    "standard_charge | Payer Two | Special Plan | negotiated_percentage": "",
+    "standard_charge | Payer Two | Special Plan | negotiated_algorithm": "",
+    "estimated_amount | Payer Two | Special Plan": "",
+    "standard_charge | Payer Two | Special Plan | methodology": "",
+    "additional_payer_notes | Payer Two | Special Plan": "",
+  }
+
+  const basicResult = collectAlerts(basicRow, 5, columns, true)
+  t.is(basicResult.length, 0)
+
+  const singleNineNineRow = {
+    ...basicRow,
+    "estimated_amount | Payer Two | Special Plan": "999999999",
+  }
+  const singleNineNineResult = collectAlerts(
+    singleNineNineRow,
+    6,
+    columns,
+    true
+  )
+  t.is(singleNineNineResult.length, 1)
+  t.is(
+    singleNineNineResult[0].message,
+    "Nine 9s should not be used for estimated amount."
+  )
+  t.is(
+    singleNineNineResult[0].field,
+    "estimated_amount | Payer Two | Special Plan"
+  )
+
+  const multiNineNineRow = {
+    ...basicRow,
+    "estimated_amount | Payer One | Basic Plan": "999999999",
+    "estimated_amount | Payer Two | Special Plan": "999999999.0",
+  }
+  const multiNineNineResult = collectAlerts(multiNineNineRow, 7, columns, true)
+  t.is(multiNineNineResult.length, 2)
+  t.is(
+    multiNineNineResult[0].message,
+    "Nine 9s should not be used for estimated amount."
+  )
+  t.is(
+    multiNineNineResult[0].field,
+    "estimated_amount | Payer One | Basic Plan"
+  )
+  t.is(
+    multiNineNineResult[1].message,
+    "Nine 9s should not be used for estimated amount."
+  )
+  t.is(
+    multiNineNineResult[1].field,
+    "estimated_amount | Payer Two | Special Plan"
   )
 })

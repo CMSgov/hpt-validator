@@ -569,4 +569,5 @@ export const CsvValidatorOneOne = {
   validateColumns,
   validateRow,
   isTall,
+  collectAlerts: () => [],
 }

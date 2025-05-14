@@ -1,4 +1,9 @@
-import { CsvValidationError, StateCode, STATE_CODES } from "../../types.js"
+import {
+  CsvValidationError,
+  StateCode,
+  STATE_CODES,
+  CsvAlert,
+} from "../../types.js"
 import {
   csvErr,
   sepColumnsEqual,
@@ -113,6 +118,10 @@ const ERRORS = {
     'If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following: "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage", "Payer-Specific Negotiated Charge: Algorithm".',
   AMBIGUOUS_FORMAT: () =>
     "Required payer-specific information data element headers are missing or miscoded from the MRF that does not follow the specifications for the CSV “Tall” or CSV “Wide” format.",
+}
+
+const ALERTS = {
+  NINE_NINES: () => "Nine 9s should not be used for estimated amount.",
 }
 
 /** @private */
@@ -465,6 +474,41 @@ export function validateRow(
   }
 
   return errors
+}
+
+export function collectAlerts(
+  row: { [key: string]: string },
+  index: number,
+  columns: string[],
+  wide = false
+): CsvAlert[] {
+  const alerts: CsvAlert[] = []
+  if (wide) {
+    const payersPlans = getPayersPlans(columns)
+    payersPlans.forEach(([payer, plan]) => {
+      const estimateColumn = `estimated_amount | ${payer} | ${plan}`
+      if (Number(row[estimateColumn]) === 999999999) {
+        const columnIndex = columns.indexOf(estimateColumn)
+        alerts.push({
+          row: index,
+          column: columnIndex,
+          field: estimateColumn,
+          message: ALERTS.NINE_NINES(),
+        })
+      }
+    })
+  } else {
+    if (Number(row["estimated_amount"]) === 999999999) {
+      const columnIndex = columns.indexOf("estimated_amount")
+      alerts.push({
+        row: index,
+        column: columnIndex,
+        field: "estimated_amount",
+        message: ALERTS.NINE_NINES(),
+      })
+    }
+  }
+  return alerts
 }
 
 /** @private */
@@ -1329,6 +1373,7 @@ export const CsvValidatorTwoZero = {
   validateHeader,
   validateColumns,
   validateRow,
+  collectAlerts,
   isTall,
   isAmbiguousFormat,
 }

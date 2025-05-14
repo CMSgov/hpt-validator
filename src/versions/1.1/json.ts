@@ -229,6 +229,7 @@ export async function validateJson(
           resolve({
             valid: false,
             errors: errors.slice(0, options.maxErrors),
+            alerts: [],
           })
           parser.end()
         }
@@ -256,6 +257,7 @@ export async function validateJson(
           options.maxErrors && options.maxErrors > 0
             ? errors.slice(0, options.maxErrors)
             : errors,
+        alerts: [],
       })
     }
 

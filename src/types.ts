@@ -11,9 +11,16 @@ export interface ValidationError {
   warning?: boolean
 }
 
+export interface ValidationAlert {
+  path: string
+  field?: string
+  message: string
+}
+
 export interface ValidationResult {
   valid: boolean
   errors: ValidationError[]
+  alerts: ValidationAlert[]
 }
 
 export interface CsvValidationError {
@@ -22,6 +29,13 @@ export interface CsvValidationError {
   field?: string
   message: string
   warning?: boolean
+}
+
+export interface CsvAlert {
+  row: number
+  column: number
+  field: string
+  message: string
 }
 
 /**
@@ -39,6 +53,12 @@ export interface CsvValidatorVersion {
     columns: string[],
     wide: boolean
   ) => CsvValidationError[]
+  collectAlerts: (
+    row: { [key: string]: string },
+    index: number,
+    columns: string[],
+    wide: boolean
+  ) => CsvAlert[]
   isTall: (columns: string[]) => boolean
 }
 
