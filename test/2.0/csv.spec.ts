@@ -1807,10 +1807,7 @@ test("collectAlerts tall", (t) => {
   }
   const nineNineResult = collectAlerts(nineNineRow, 6, columns, false)
   t.is(nineNineResult.length, 1)
-  t.is(
-    nineNineResult[0].message,
-    "Nine 9s should not be used for estimated amount."
-  )
+  t.is(nineNineResult[0].message, "Nine 9s used for estimated amount.")
   t.is(nineNineResult[0].field, "estimated_amount")
 
   const nineNineDecimalRow = {
@@ -1824,10 +1821,7 @@ test("collectAlerts tall", (t) => {
     false
   )
   t.is(nineNineDecimalResult.length, 1)
-  t.is(
-    nineNineDecimalResult[0].message,
-    "Nine 9s should not be used for estimated amount."
-  )
+  t.is(nineNineDecimalResult[0].message, "Nine 9s used for estimated amount.")
   t.is(nineNineDecimalResult[0].field, "estimated_amount")
 })
 
@@ -1894,10 +1888,7 @@ test("collectAlerts wide", (t) => {
     true
   )
   t.is(singleNineNineResult.length, 1)
-  t.is(
-    singleNineNineResult[0].message,
-    "Nine 9s should not be used for estimated amount."
-  )
+  t.is(singleNineNineResult[0].message, "Nine 9s used for estimated amount.")
   t.is(
     singleNineNineResult[0].field,
     "estimated_amount | Payer Two | Special Plan"
@@ -1910,18 +1901,12 @@ test("collectAlerts wide", (t) => {
   }
   const multiNineNineResult = collectAlerts(multiNineNineRow, 7, columns, true)
   t.is(multiNineNineResult.length, 2)
-  t.is(
-    multiNineNineResult[0].message,
-    "Nine 9s should not be used for estimated amount."
-  )
+  t.is(multiNineNineResult[0].message, "Nine 9s used for estimated amount.")
   t.is(
     multiNineNineResult[0].field,
     "estimated_amount | Payer One | Basic Plan"
   )
-  t.is(
-    multiNineNineResult[1].message,
-    "Nine 9s should not be used for estimated amount."
-  )
+  t.is(multiNineNineResult[1].message, "Nine 9s used for estimated amount.")
   t.is(
     multiNineNineResult[1].field,
     "estimated_amount | Payer Two | Special Plan"

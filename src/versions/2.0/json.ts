@@ -404,7 +404,7 @@ export function collectAlertsForStandardCharge(
     validator.errors?.forEach((err) => {
       if (err.keyword === "not") {
         alerts.push({
-          message: "Nine 9s should not be used for estimated amount.",
+          message: "Nine 9s used for estimated amount.",
           field: err.instancePath.split("/").pop(),
           path: `${prefix}${err.instancePath}`,
         })
