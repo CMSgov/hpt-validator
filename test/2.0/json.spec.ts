@@ -335,12 +335,12 @@ test("collect alerts when estimated amount is nine 9s", async (t) => {
     {
       path: "/standard_charge_information/0/standard_charges/0/payers_information/3/estimated_amount",
       field: "estimated_amount",
-      message: "Nine 9s should not be used for estimated amount.",
+      message: "Nine 9s used for estimated amount.",
     },
     {
       path: "/standard_charge_information/1/standard_charges/0/payers_information/1/estimated_amount",
       field: "estimated_amount",
-      message: "Nine 9s should not be used for estimated amount.",
+      message: "Nine 9s used for estimated amount.",
     },
   ])
 })
@@ -358,7 +358,7 @@ test("collect alerts up to the maximum amount", async (t) => {
     {
       path: "/standard_charge_information/0/standard_charges/0/payers_information/3/estimated_amount",
       field: "estimated_amount",
-      message: "Nine 9s should not be used for estimated amount.",
+      message: "Nine 9s used for estimated amount.",
     },
   ])
 })

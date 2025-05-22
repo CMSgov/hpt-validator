@@ -121,7 +121,7 @@ const ERRORS = {
 }
 
 const ALERTS = {
-  NINE_NINES: () => "Nine 9s should not be used for estimated amount.",
+  NINE_NINES: () => "Nine 9s used for estimated amount.",
 }
 
 /** @private */
