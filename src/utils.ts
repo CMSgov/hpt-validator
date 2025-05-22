@@ -28,7 +28,20 @@ export function addErrorsToList<T extends { warning?: boolean | undefined }>(
       }
     })
   }
+  return counts
+}
 
+export function addAlertsToList<T>(
+  newAlerts: T[],
+  alertList: T[],
+  maxAlerts = 0,
+  counts: { alerts: number }
+) {
+  if (maxAlerts > 0 && counts.alerts + newAlerts.length > maxAlerts) {
+    newAlerts = newAlerts.slice(0, maxAlerts - counts.alerts)
+  }
+  alertList.push(...newAlerts)
+  counts.alerts = alertList.length
   return counts
 }
 

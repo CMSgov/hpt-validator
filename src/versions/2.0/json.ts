@@ -5,6 +5,7 @@ import { JSONParser } from "@streamparser/json"
 import {
   JsonValidatorOptions,
   STATE_CODES,
+  ValidationAlert,
   ValidationError,
   ValidationResult,
 } from "../../types.js"
@@ -15,7 +16,7 @@ import {
   STANDARD_CHARGE_METHODOLOGY,
 } from "./types.js"
 import { errorObjectToValidationError, parseJson } from "../common/json.js"
-import { addErrorsToList } from "../../utils.js"
+import { addAlertsToList, addErrorsToList } from "../../utils.js"
 
 const STANDARD_CHARGE_DEFINITIONS = {
   code_information: {
@@ -368,6 +369,51 @@ export const JSON_SCHEMA = {
   required: [...METADATA_REQUIRED, "standard_charge_information"],
 }
 
+const NINE_NINE_HELPER_SCHEMA = {
+  $schema: "http://json-schema.org/draft-07/schema#",
+  type: "object",
+  properties: {
+    standard_charges: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          payers_information: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                estimated_amount: { type: "number", not: { const: 999999999 } },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}
+
+export function collectAlertsForStandardCharge(
+  validator: Ajv,
+  prefix: string,
+  value: any
+): ValidationAlert[] {
+  const alerts: ValidationAlert[] = []
+  if (!validator.validate(NINE_NINE_HELPER_SCHEMA, value)) {
+    // a failure keyword of "not" means the estimated_amount was nine 9s
+    validator.errors?.forEach((err) => {
+      if (err.keyword === "not") {
+        alerts.push({
+          message: "Nine 9s should not be used for estimated amount.",
+          field: err.instancePath.split("/").pop(),
+          path: `${prefix}${err.instancePath}`,
+        })
+      }
+    })
+  }
+  return alerts
+}
+
 export async function validateJson(
   jsonInput: File | NodeJS.ReadableStream,
   options: JsonValidatorOptions = {}
@@ -392,10 +438,12 @@ export async function validateJson(
   let valid = true
   let hasCharges = false
   const errors: ValidationError[] = []
+  const alerts: ValidationAlert[] = []
   const enforce2025 = new Date().getFullYear() >= 2025
   const counts = {
     errors: 0,
     warnings: 0,
+    alerts: 0,
   }
 
   return new Promise(async (resolve) => {
@@ -407,6 +455,10 @@ export async function validateJson(
         metadata[key] = value
       } else {
         // is this where I need to put another check for the modifier information?
+        const pathPrefix = stack
+          .filter((se) => se.key)
+          .map((se) => se.key)
+          .join("/")
         hasCharges = true
         if (!validator.validate(STANDARD_CHARGE_SCHEMA, value)) {
           const validationErrors = (validator.errors as ErrorObject[])
@@ -416,10 +468,6 @@ export async function validateJson(
                 : errorObjectToValidationErrorWithWarnings
             )
             .map((error) => {
-              const pathPrefix = stack
-                .filter((se) => se.key)
-                .map((se) => se.key)
-                .join("/")
               return {
                 ...error,
                 path: `/${pathPrefix}/${key}${error.path}`,
@@ -428,6 +476,16 @@ export async function validateJson(
           addErrorsToList(validationErrors, errors, options.maxErrors, counts)
           valid = counts.errors === 0
         }
+        addAlertsToList(
+          collectAlertsForStandardCharge(
+            validator,
+            `/${pathPrefix}/${key}`,
+            value
+          ),
+          alerts,
+          options.maxErrors,
+          counts
+        )
         if (options.onValueCallback && value != null) {
           options.onValueCallback(value)
         }
@@ -439,6 +497,7 @@ export async function validateJson(
           resolve({
             valid: false,
             errors: errors,
+            alerts: alerts,
           })
           parser.end()
         }
@@ -464,6 +523,7 @@ export async function validateJson(
       resolve({
         valid,
         errors,
+        alerts: alerts,
       })
     }
 
@@ -479,6 +539,7 @@ export async function validateJson(
             message: `JSON parsing error: ${e.message}. The validator is unable to review a syntactically invalid JSON file. Please ensure that your file is well-formatted JSON.`,
           },
         ],
+        alerts: alerts,
       })
     }
 

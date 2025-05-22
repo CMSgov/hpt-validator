@@ -26,6 +26,7 @@ export async function validateJson(
     resolve({
       valid: false,
       errors: [{ path: "/", message: `Invalid version "${version}" supplied` }],
+      alerts: [],
     })
   })
 }

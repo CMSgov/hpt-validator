@@ -4,6 +4,7 @@ import {
   CsvValidatorVersion,
   CsvValidationOptions,
   SchemaVersion,
+  CsvAlert,
 } from "./types.js"
 import {
   csvErrorToValidationError,
@@ -14,7 +15,7 @@ import {
 } from "./versions/common/csv.js"
 import { CsvValidatorOneOne } from "./versions/1.1/csv.js"
 import { CsvValidatorTwoZero } from "./versions/2.0/csv.js"
-import { addErrorsToList, removeBOM } from "./utils.js"
+import { addAlertsToList, addErrorsToList, removeBOM } from "./utils.js"
 
 import Papa from "papaparse"
 
@@ -51,9 +52,11 @@ export async function validateCsv(
 ): Promise<ValidationResult> {
   let index = 0
   const errors: CsvValidationError[] = []
+  const alerts: CsvAlert[] = []
   const counts = {
     errors: 0,
     warnings: 0,
+    alerts: 0,
   }
   let headerColumns: string[]
   let dataColumns: string[]
@@ -71,6 +74,7 @@ export async function validateCsv(
             message: ERRORS.INVALID_VERSION,
           },
         ],
+        alerts: alerts.map(csvErrorToValidationError),
       })
     })
   } else {
@@ -95,6 +99,7 @@ export async function validateCsv(
             message: ERRORS.HEADER_BLANK(index + 1),
           },
         ],
+        alerts: alerts.map(csvErrorToValidationError),
       })
       parser.abort()
     } else if (isEmpty && index !== 1) {
@@ -126,6 +131,7 @@ export async function validateCsv(
             path: csvCellName(0, 0),
             message: ERRORS.HEADER_ERRORS,
           }),
+          alerts: alerts.map(csvErrorToValidationError),
         })
         parser.abort()
       } else {
@@ -139,6 +145,13 @@ export async function validateCsv(
         options.maxErrors,
         counts
       )
+      addAlertsToList(
+        validator.collectAlerts(cleanRow, index, dataColumns, !tall),
+        alerts,
+        options.maxErrors,
+        counts
+      )
+
       if (options.onValueCallback) {
         options.onValueCallback(cleanRow)
       }
@@ -152,6 +165,7 @@ export async function validateCsv(
       resolve({
         valid: false,
         errors: errors.map(csvErrorToValidationError),
+        alerts: alerts.map(csvErrorToValidationError),
       })
       parser.abort()
     }
@@ -171,11 +185,13 @@ export async function validateCsv(
             message: ERRORS.MIN_ROWS,
           },
         ],
+        alerts: alerts.map(csvErrorToValidationError),
       })
     } else {
       resolve({
         valid: counts.errors === 0,
         errors: errors.map(csvErrorToValidationError),
+        alerts: alerts.map(csvErrorToValidationError),
       })
     }
   }
