@@ -1,5 +1,5 @@
 {
-  "name": "hpt-validator",
+  "name": "@cmsgov/hpt-validator",
   "version": "1.11.1",
   "author": "CMS Open Source <opensource@cms.hhs.gov>",
   "license": "CC0-1.0",
@@ -7,6 +7,10 @@
   "type": "module",
   "module": "./lib/index.js",
   "types": "./lib/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CMSGov/hpt-validator.git"
+  },
   "exports": {
     ".": {
       "require": "./lib/index.js",
