@@ -1,5 +1,7 @@
 # Hospital Price Transparency Validator
 
+[![Version](https://img.shields.io/npm/v/@cmsgov/hpt-validator)](https://www.npmjs.com/package/@cmsgov/hpt-validator)
+
 Validation library for CMS Hospital Price Transparency machine-readable files
 
 ## Resources
@@ -13,7 +15,7 @@ Validation library for CMS Hospital Price Transparency machine-readable files
 ### Installation
 
 ```
-npm install hpt-validator
+npm install @cmsgov/hpt-validator
 ```
 
 ### Testing
