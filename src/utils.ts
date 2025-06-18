@@ -50,19 +50,24 @@ export function removeBOM(chunk: string): string {
   // Handle Buffer input
   if (Buffer.isBuffer(chunk)) {
     // Check for BOM in buffer
-    if (chunk.length > 2 && chunk[0] === 0xef && chunk[1] === 0xbb && chunk[2] === 0xbf) {
+    if (
+      chunk.length > 2 &&
+      chunk[0] === 0xef &&
+      chunk[1] === 0xbb &&
+      chunk[2] === 0xbf
+    ) {
       // Return buffer without BOM
-      return chunk.slice(3);
+      return chunk.slice(3)
     }
 
-    return chunk;
+    return chunk
   }
 
   // Check for BOM in string and remove if present
-  if (typeof chunk === 'string' && chunk.charCodeAt(0) === 0xfeff) {
-    return chunk.substring(1);
+  if (typeof chunk === "string" && chunk.charCodeAt(0) === 0xfeff) {
+    return chunk.substring(1)
   }
 
   // For any other type, return as is
-  return chunk;
+  return chunk
 }
