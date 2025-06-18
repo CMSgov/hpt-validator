@@ -47,14 +47,22 @@ export function addAlertsToList<T>(
 
 export function removeBOM(chunk: string): string {
   // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
-  const dataBuffer = Buffer.from(chunk)
-  if (
-    dataBuffer.length > 2 &&
-    dataBuffer[0] === 0xef &&
-    dataBuffer[1] === 0xbb &&
-    dataBuffer[2] === 0xbf
-  ) {
-    chunk = chunk.trimStart()
+  // Handle Buffer input
+  if (Buffer.isBuffer(chunk)) {
+    // Check for BOM in buffer
+    if (chunk.length > 2 && chunk[0] === 0xef && chunk[1] === 0xbb && chunk[2] === 0xbf) {
+      // Return buffer without BOM
+      return chunk.slice(3);
+    }
+
+    return chunk;
   }
-  return chunk
+
+  // Check for BOM in string and remove if present
+  if (typeof chunk === 'string' && chunk.charCodeAt(0) === 0xfeff) {
+    return chunk.substring(1);
+  }
+
+  // For any other type, return as is
+  return chunk;
 }
