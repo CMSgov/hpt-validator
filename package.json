@@ -16,7 +16,7 @@
     "./src/*": "./src/*.ts"
   },
   "scripts": {
-    "build": "tsc && copyfiles -u 2 \"src/schemas/*\" lib/schemas",
+    "build": "tsc && copyfiles -u 2 \"src/schemas/*\" lib/schemas && copyfiles -u 2 \"src/alert-schemas/*\" lib/alert-schemas",
     "lint": "tsc && eslint \"**/*.{js,ts}\"",
     "lint:fix": "tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
     "prettier": "prettier --check \"**/*.{js,ts}\"",

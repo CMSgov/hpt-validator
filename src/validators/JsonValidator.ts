@@ -10,6 +10,7 @@ import { BaseValidator } from "./BaseValidator.js";
 import {
   addItemsWithLimit,
   errorObjectToValidationError,
+  errorObjectToValidationAlert,
   removeBOM,
 } from "../utils.js";
 import { ValidationError } from "../errors/ValidationError.js";
@@ -19,9 +20,18 @@ export class JsonValidator extends BaseValidator {
   public fullSchema: any;
   public standardChargeSchema: any;
   public metadataSchema: any;
+  public alertSchema: any;
   public errors: ValidationError[] = [];
+  public alerts: ValidationError[] = [];
   public dataCallback?: JsonValidationOptions["onValueCallback"];
   public metadataCallback?: JsonValidationOptions["onMetadataCallback"];
+
+  static get allowedVersions(): string[] {
+    return fs
+      .readdirSync(path.join("..", "schemas"))
+      .filter((filename) => filename.endsWith(".json"))
+      .map((filename) => filename.replace(".json", ""));
+  }
 
   constructor(public version: string) {
     super("json");
@@ -37,6 +47,7 @@ export class JsonValidator extends BaseValidator {
       );
       this.buildStandardChargeSchema();
       this.buildMetadataSchema();
+      this.loadAlertSchema();
     } catch (err) {
       console.log(err);
       throw Error(`Could not load JSON schema with version: ${version}`);
@@ -59,13 +70,30 @@ export class JsonValidator extends BaseValidator {
     );
   }
 
+  loadAlertSchema() {
+    const alertSchemaURL = new URL(
+      path.join("..", "alert-schemas", `${this.version}.json`),
+      import.meta.url
+    );
+    if (fs.existsSync(alertSchemaURL)) {
+      this.alertSchema = JSON.parse(fs.readFileSync(alertSchemaURL, "utf-8"));
+    }
+  }
+
   async validate(
     input: File | NodeJS.ReadableStream,
     options: JsonValidationOptions = {}
   ): Promise<ValidationResult> {
     this.errors = [];
+    this.alerts = [];
     const validator = new Ajv({ allErrors: true });
     addFormats(validator);
+    let alertValidator: Ajv;
+    if (this.alertSchema) {
+      alertValidator = new Ajv({ allErrors: true, verbose: true });
+      addFormats(alertValidator);
+      alertValidator.addKeyword("$message");
+    }
     const parser = new JSONParser({
       paths: [
         "$.hospital_name",
@@ -94,6 +122,7 @@ export class JsonValidator extends BaseValidator {
 
     return new Promise(async (resolve) => {
       const errors = this.errors;
+      const alerts = this.alerts;
       parser.onValue = ({ value, key, stack }) => {
         if (stack.length > 2 || key === "standard_charge_information") return;
         if (typeof key === "string") {
@@ -114,8 +143,25 @@ export class JsonValidator extends BaseValidator {
             addItemsWithLimit(newErrors, errors, options.maxErrors);
             valid = errors.length === 0;
           }
+          let newAlerts: ValidationError[] = [];
+          if (alertValidator != null) {
+            if (!alertValidator.validate(this.alertSchema, value)) {
+              newAlerts =
+                alertValidator.errors?.map(errorObjectToValidationAlert) ?? [];
+              newAlerts.forEach((error) => {
+                error.path = `/${pathPrefix}/${key}${error.path}`;
+              });
+              addItemsWithLimit(newAlerts, alerts, options.maxErrors);
+            }
+          }
           if (this.dataCallback && value != null) {
-            this.dataCallback(value, pathPrefix, key as number, newErrors);
+            this.dataCallback(
+              value,
+              pathPrefix,
+              key as number,
+              newErrors,
+              newAlerts
+            );
           }
           if (
             options.maxErrors &&
@@ -125,6 +171,7 @@ export class JsonValidator extends BaseValidator {
             resolve({
               valid: false,
               errors: errors,
+              alerts: alerts,
             });
             parser.end();
           }
@@ -146,11 +193,12 @@ export class JsonValidator extends BaseValidator {
           valid = errors.length === 0;
         }
         if (this.metadataCallback && metadata != null) {
-          this.metadataCallback(metadata, metadataErrors);
+          this.metadataCallback(metadata, metadataErrors, []);
         }
         resolve({
           valid,
           errors,
+          alerts,
         });
       };
 
@@ -161,6 +209,7 @@ export class JsonValidator extends BaseValidator {
         resolve({
           valid: false,
           errors: [new InvalidJsonError(e)],
+          alerts,
         });
       };
 

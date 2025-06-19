@@ -5,13 +5,15 @@ import { CsvValidationError } from "./errors/csv/CsvValidationError.js";
 export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
+  alerts: ValidationError[];
 }
 
 export interface CsvValidationOptions {
   maxErrors?: number;
   onValueCallback?: (
     value: { [key: string]: string },
-    errors: CsvValidationError[]
+    errors: CsvValidationError[],
+    alerts: CsvValidationError[]
   ) => void;
 }
 
@@ -21,10 +23,12 @@ export interface JsonValidationOptions {
     val: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct,
     pathPrefix: string,
     key: number,
-    errors: ValidationError[]
+    errors: ValidationError[],
+    alerts: ValidationError[]
   ) => void;
   onMetadataCallback?: (
     val: JsonTypes.JsonObject,
-    errors: ValidationError[]
+    errors: ValidationError[],
+    alerts: ValidationError[]
   ) => void;
 }

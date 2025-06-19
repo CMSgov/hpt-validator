@@ -298,5 +298,18 @@ describe("JsonValidator", () => {
         })
       );
     });
+
+    it("should validate a file that uses nine 9s for an estimated amount", async () => {
+      const input = createFixtureStream("sample-nine-nines.json");
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual(
+        expect.objectContaining({
+          message: "Nine 9s used for estimated amount.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/2/estimated_amount",
+        })
+      );
+    });
   });
 });

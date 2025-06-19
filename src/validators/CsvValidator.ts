@@ -27,6 +27,7 @@ import {
   ProblemsInHeaderError,
   RequiredValueError,
 } from "../errors/csv/index.js";
+import { CsvNineNinesAlert } from "../alerts/index.js";
 import _ from "lodash";
 const { range, partial, bind } = _;
 import { BranchingValidator } from "./CsvFieldTypes.js";
@@ -204,11 +205,13 @@ export class CsvValidator extends BaseValidator {
   // normalizedColumns are the columns after pipe separation, trim, and rejoining
   public normalizedColumns: (string | undefined)[] = [];
   public errors: CsvValidationError[] = [];
+  public alerts: CsvValidationError[] = [];
   public maxErrors: number;
   public dataCallback?: CsvValidationOptions["onValueCallback"];
   static allowedVersions = ["v2.0.0", "v2.1.0", "v2.2.0"];
 
   public rowValidators: BranchingValidator[] = [];
+  public rowAlerters: BranchingValidator[] = [];
   public payersPlans: string[] = [];
   public codeCount: number = 0;
 
@@ -653,6 +656,23 @@ export class CsvValidator extends BaseValidator {
               return [];
             },
           });
+          // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+          // amount data element within the MRF and should instead encode an actual dollar amount.
+          // new as of 2025/05/22, at which point v2.2.0 was in effect.
+          this.rowAlerters.push({
+            name: "discontinue encoding nine 9s for estimated amount",
+            validator: (dataRow, row) => {
+              if (Number(dataRow.estimated_amount) === 999999999) {
+                return [
+                  new CsvNineNinesAlert(
+                    row,
+                    this.normalizedColumns.indexOf("estimated_amount")
+                  ),
+                ];
+              }
+              return [];
+            },
+          });
         } else {
           // some checks diverge based on whether this is a modifier row
           // If a modifier is encoded without an item or service, then a description and one of the following
@@ -714,25 +734,32 @@ export class CsvValidator extends BaseValidator {
               };
             })
           );
-          nonModifierChecks.push({
-            name: "estimated allowed amount required when charge is only percentage or algorithm",
-            validator: (dataRow, row) => {
-              if (
-                !dataRow["standard_charge | negotiated_dollar"] &&
-                (dataRow["standard_charge | negotiated_percentage"] ||
-                  dataRow["standard_charge | negotiated_algorithm"]) &&
-                !dataRow.estimated_amount
-              ) {
-                return [
-                  new PercentageAlgorithmEstimateError(
-                    row,
-                    this.normalizedColumns.indexOf("estimated_amount")
-                  ),
-                ];
-              }
-              return [];
-            },
-          });
+          // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+          // amount data element within the MRF and should instead encode an actual dollar amount.
+          // new as of 2025/05/22, at which point v2.2.0 was in effect.
+          this.rowAlerters.push(
+            ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
+              return {
+                name: "discontinue encoding nine 9s for estimated amount",
+                validator: (dataRow, row) => {
+                  if (
+                    Number(dataRow[`estimated_amount | ${payerPlan}`]) ===
+                    999999999
+                  ) {
+                    return [
+                      new CsvNineNinesAlert(
+                        row,
+                        this.normalizedColumns.indexOf(
+                          `estimated_amount | ${payerPlan}`
+                        )
+                      ),
+                    ];
+                  }
+                  return [];
+                },
+              };
+            })
+          );
         }
 
         // that's all for the conditional checks. so now build the tree out, branching on whether
@@ -793,6 +820,7 @@ export class CsvValidator extends BaseValidator {
         resolve({
           valid: false,
           errors: [new InvalidVersionError(CsvValidator.allowedVersions)],
+          alerts: [],
         });
       });
     }
@@ -1095,9 +1123,12 @@ export class CsvValidator extends BaseValidator {
     return Array.from(payersPlans);
   }
 
-  validateDataRow(row: { [key: string]: string }): CsvValidationError[] {
+  applyValidators(
+    row: { [key: string]: string },
+    startingValidators: BranchingValidator[]
+  ): CsvValidationError[] {
     const errors: CsvValidationError[] = [];
-    const validatorsToRun = [...this.rowValidators];
+    const validatorsToRun = [...startingValidators];
     while (validatorsToRun.length > 0) {
       const currentValidator = validatorsToRun.shift() as BranchingValidator;
       if (
@@ -1122,6 +1153,14 @@ export class CsvValidator extends BaseValidator {
     return errors;
   }
 
+  validateDataRow(row: { [key: string]: string }) {
+    return this.applyValidators(row, this.rowValidators);
+  }
+
+  alertDataRow(row: { [key: string]: string }) {
+    return this.applyValidators(row, this.rowAlerters);
+  }
+
   handleParseStep(
     step: Papa.ParseStepResult<string[]>,
     resolve: (value: ValidationResult | PromiseLike<ValidationResult>) => void,
@@ -1133,6 +1172,7 @@ export class CsvValidator extends BaseValidator {
       resolve({
         valid: false,
         errors: [new HeaderBlankError(this.index)],
+        alerts: this.alerts,
       });
       parser.abort();
     } else if (isEmpty && this.index !== 1) {
@@ -1150,6 +1190,7 @@ export class CsvValidator extends BaseValidator {
         resolve({
           valid: false,
           errors: [...this.errors, new ProblemsInHeaderError()],
+          alerts: this.alerts,
         });
         parser.abort();
       } else {
@@ -1160,15 +1201,31 @@ export class CsvValidator extends BaseValidator {
       const rowRecord = objectFromKeysValues(this.normalizedColumns, row);
       const rowErrors = this.validateDataRow(rowRecord);
       this.errors.push(...rowErrors);
+      // if we have room for more alerts, collect alerts
+      let rowAlerts: CsvValidationError[] = [];
+      if (
+        this.maxErrors === 0 ||
+        (this.maxErrors > 0 && this.alerts.length < this.maxErrors)
+      ) {
+        rowAlerts = this.alertDataRow(rowRecord);
+        if (this.maxErrors > 0) {
+          this.alerts.push(
+            ...rowAlerts.slice(0, this.maxErrors - this.alerts.length)
+          );
+        } else {
+          this.alerts.push(...rowAlerts);
+        }
+      }
       if (this.dataCallback) {
-        this.dataCallback(rowRecord, rowErrors);
+        this.dataCallback(rowRecord, rowErrors, rowAlerts);
       }
     }
 
     if (this.maxErrors > 0 && this.errors.length >= this.maxErrors) {
       resolve({
         valid: false,
-        errors: this.errors,
+        errors: this.errors.slice(0, this.maxErrors),
+        alerts: this.alerts.slice(0, this.maxErrors),
       });
       parser.abort();
     }
@@ -1182,11 +1239,13 @@ export class CsvValidator extends BaseValidator {
       resolve({
         valid: false,
         errors: [new MinRowsError()],
+        alerts: this.alerts,
       });
     } else {
       resolve({
         valid: this.errors.length === 0,
         errors: this.errors,
+        alerts: this.alerts,
       });
     }
   }

@@ -21,6 +21,15 @@ export function errorObjectToValidationError(
   );
 }
 
+export function errorObjectToValidationAlert(
+  error: ErrorObject
+): ValidationError {
+  return new ValidationError(
+    error.instancePath,
+    (error.schema as any)?.["$message"] ?? error.message ?? ""
+  ).withField(error.instancePath.split("/").pop() ?? "");
+}
+
 export function removeBOM(chunk: string): string {
   // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
   const dataBuffer = Buffer.from(chunk);

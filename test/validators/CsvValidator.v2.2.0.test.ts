@@ -24,6 +24,7 @@ import {
   PercentageAlgorithmEstimateError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
+import { CsvNineNinesAlert } from "../../src/alerts/index.js";
 import {
   BILLING_CODE_TYPES,
   DRUG_UNITS,
@@ -1370,6 +1371,16 @@ describe("CsvValidator v2.2.0", () => {
         new DrugInformationRequiredError(validator.index, 6)
       );
     });
+
+    // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+    // amount data element within the MRF and should instead encode an actual dollar amount.
+    // new as of 2025/05/22, at which point v2.2.0 was in effect.
+    it("should return an alert when 999999999 is encoded for an estimated amount", () => {
+      row.estimated_amount = "999999999";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(new CsvNineNinesAlert(validator.index, 20));
+    });
   });
 
   describe("#validateDataRow wide", () => {
@@ -1827,6 +1838,16 @@ describe("CsvValidator v2.2.0", () => {
       expect(result[0]).toEqual(
         new DrugInformationRequiredError(validator.index, 6)
       );
+    });
+
+    // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+    // amount data element within the MRF and should instead encode an actual dollar amount.
+    // new as of 2025/05/22, at which point v2.2.0 was in effect.
+    it("should return an alert when 999999999 is encoded for an estimated amount", () => {
+      row["estimated_amount | Payer ABC | Plan 1"] = "999999999";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(new CsvNineNinesAlert(validator.index, 17));
     });
   });
 });
