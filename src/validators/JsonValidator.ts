@@ -16,6 +16,11 @@ import {
 import { ValidationError } from "../errors/ValidationError.js";
 import { InvalidJsonError } from "../errors/json/InvalidJsonError.js";
 
+import v200schema from "../schemas/v2.0.0.json";
+import v210schema from "../schemas/v2.1.0.json";
+import v220schema from "../schemas/v2.2.0.json";
+import v220alerts from "../alert-schemas/v2.2.0.json";
+
 export class JsonValidator extends BaseValidator {
   public fullSchema: any;
   public standardChargeSchema: any;
@@ -26,30 +31,30 @@ export class JsonValidator extends BaseValidator {
   public dataCallback?: JsonValidationOptions["onValueCallback"];
   public metadataCallback?: JsonValidationOptions["onMetadataCallback"];
 
-  static get allowedVersions(): string[] {
-    return fs
-      .readdirSync(path.join("..", "schemas"))
-      .filter((filename) => filename.endsWith(".json"))
-      .map((filename) => filename.replace(".json", ""));
-  }
+  static allowedVersions = ["v2.0.0", "v2.1.0", "v2.2.0"];
 
   constructor(public version: string) {
     super("json");
     try {
-      this.fullSchema = JSON.parse(
-        fs.readFileSync(
-          new URL(
-            path.join("..", "schemas", `${version}.json`),
-            import.meta.url
-          ),
-          "utf-8"
-        )
-      );
+      // this implementation is awkward, make a better one
+      switch (version) {
+        case "v2.0.0":
+          this.fullSchema = v200schema;
+          break;
+        case "v2.1.0":
+          this.fullSchema = v210schema;
+          break;
+        case "v2.2.0":
+          this.fullSchema = v220schema;
+          this.alertSchema = v220alerts;
+          break;
+        default:
+          throw new Error("unrecognized version");
+      }
+      // console.dir(this.fullSchema);
       this.buildStandardChargeSchema();
       this.buildMetadataSchema();
-      this.loadAlertSchema();
-    } catch (err) {
-      console.log(err);
+    } catch {
       throw Error(`Could not load JSON schema with version: ${version}`);
     }
   }
