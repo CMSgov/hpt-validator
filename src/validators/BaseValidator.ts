@@ -1,4 +1,4 @@
-import { ValidationError } from "src/errors/ValidationError.js";
+import { ValidationError } from "../errors/ValidationError.js";
 import { ValidationResult } from "../types.js";
 
 export abstract class BaseValidator {

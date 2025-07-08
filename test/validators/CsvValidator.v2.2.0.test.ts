@@ -48,8 +48,8 @@ describe("CsvValidator v2.2.0", () => {
         )
       );
       const result = await validator.validate(input);
-      expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
+      expect(result.valid).toBe(true);
     });
 
     it("should validate a valid wide CSV file", async () => {

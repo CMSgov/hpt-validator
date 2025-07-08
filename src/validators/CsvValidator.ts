@@ -197,6 +197,7 @@ export function dynaValidateRequiredField(
 }
 
 export class CsvValidator extends BaseValidator {
+  private _version: string = "";
   public index = 0;
   public isTall: boolean = false;
   public headerColumns: string[] = [];
@@ -208,18 +209,16 @@ export class CsvValidator extends BaseValidator {
   public alerts: CsvValidationError[] = [];
   public maxErrors: number;
   public dataCallback?: CsvValidationOptions["onValueCallback"];
-  static allowedVersions = ["v2.0.0", "v2.1.0", "v2.2.0"];
+  static allowedVersions = ["2.0.0", "2.1.0", "2.2.0"];
 
   public rowValidators: BranchingValidator[] = [];
   public rowAlerters: BranchingValidator[] = [];
   public payersPlans: string[] = [];
   public codeCount: number = 0;
 
-  constructor(
-    private _version: string,
-    options: CsvValidationOptions = {}
-  ) {
+  constructor(version: string, options: CsvValidationOptions = {}) {
     super("csv");
+    this.version = version;
     this.maxErrors = options.maxErrors ?? 0;
     if (options.onValueCallback) {
       this.dataCallback = options.onValueCallback;
@@ -236,18 +235,18 @@ export class CsvValidator extends BaseValidator {
   }
 
   set version(version: string) {
-    if (this._version !== version) {
-      this._version = version;
+    const newVersion = semver.coerce(version)?.toString() ?? version;
+    if (this._version !== newVersion) {
+      this._version = newVersion;
       this.rowValidators = [];
+      this.rowAlerters = [];
     }
   }
 
   buildRowValidators() {
-    // there is currently only one major version: 2.
-    // 2.1.0 and 2.2.0 add some additional requirements
     const modifierChecks: BranchingValidator[] = [];
     const codeChecks: BranchingValidator[] = [];
-    // const standardChargeChecks: ToastyValidator[] = [];
+
     // do partial application on all dynamic validators, since they all use the same sets of columns
     const validateRequiredField = partial(
       dynaValidateRequiredField,
@@ -269,549 +268,579 @@ export class CsvValidator extends BaseValidator {
       this.normalizedColumns,
       this.dataColumns
     );
-    // now set up validators based on version
-    if (semver.gte(this.version, "2.0.0")) {
-      // description is always required
-      this.rowValidators.push({
-        name: "description",
-        validator: partial(validateRequiredField, "description", ""),
-      });
-      // setting is always required
-      this.rowValidators.push({
-        name: "setting",
-        validator: partial(
-          validateRequiredEnumField,
-          "setting",
-          ["inpatient", "outpatient", "both"],
-          ""
-        ),
-      });
 
-      // if code | 1 is not null, code | 1 | type is requiredEnum
-      // if code | 1 | type is not null, code | 1 is required
-      range(1, this.codeCount + 1).forEach((codeIndex) => {
-        codeChecks.push(
+    // description is always required
+    this.rowValidators.push({
+      name: "description",
+      applicableVersion: ">=2.0.0",
+      validator: partial(validateRequiredField, "description", ""),
+    });
+    // setting is always required
+    this.rowValidators.push({
+      name: "setting",
+      applicableVersion: ">=2.0.0",
+      validator: partial(
+        validateRequiredEnumField,
+        "setting",
+        ["inpatient", "outpatient", "both"],
+        ""
+      ),
+    });
+
+    // if code | 1 is not null, code | 1 | type is requiredEnum
+    // if code | 1 | type is not null, code | 1 is required
+    range(1, this.codeCount + 1).forEach((codeIndex) => {
+      codeChecks.push(
+        {
+          name: `code | ${codeIndex}`,
+          applicableVersion: ">=2.0.0",
+          validator: (dataRow, row) => {
+            if (dataRow[`code | ${codeIndex} | type`]) {
+              return validateRequiredField(
+                `code | ${codeIndex}`,
+                "",
+                dataRow,
+                row
+              );
+            }
+            return [];
+          },
+        },
+        {
+          name: `code | ${codeIndex} | type`,
+          applicableVersion: ">=2.0.0",
+          validator: (dataRow, row) => {
+            if (dataRow[`code | ${codeIndex}`]) {
+              return validateRequiredEnumField(
+                `code | ${codeIndex} | type`,
+                BILLING_CODE_TYPES,
+                "",
+                dataRow,
+                row
+              );
+            }
+            return [];
+          },
+        }
+      );
+    });
+
+    this.rowValidators.push(...codeChecks);
+
+    // standard charges must be numeric if present
+    [
+      "standard_charge | gross",
+      "standard_charge | discounted_cash",
+      "standard_charge | min",
+      "standard_charge | max",
+    ].forEach((chargeColumn) => {
+      this.rowValidators.push({
+        name: chargeColumn,
+        applicableVersion: ">=2.0.0",
+        validator: partial(validateOptionalFloatField, chargeColumn),
+      });
+    });
+
+    const nonModifierChecks: BranchingValidator[] = [];
+
+    const payerSpecificSuffix =
+      " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm";
+    if (this.isTall) {
+      // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+      // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
+      nonModifierChecks.push({
+        name: "conditional for payer specific negotiated charge",
+        applicableVersion: ">=2.1.0",
+        predicate: (row) => {
+          return Boolean(
+            row["standard_charge | negotiated_dollar"] ||
+              row["standard_charge | negotiated_percentage"] ||
+              row["standard_charge | negotiated_algorithm"]
+          );
+        },
+        children: [
           {
-            name: `code | ${codeIndex}`,
+            name: "payer_name",
+            applicableVersion: ">=2.1.0",
             validator: partial(
               validateRequiredField,
-              `code | ${codeIndex}`,
-              ""
+              "payer_name",
+              payerSpecificSuffix
             ),
-            predicate: (row) => Boolean(row[`code | ${codeIndex} | type`]),
           },
           {
-            name: `code | ${codeIndex} | type`,
+            name: "plan_name",
+            applicableVersion: ">=2.1.0",
+            validator: partial(
+              validateRequiredField,
+              "plan_name",
+              payerSpecificSuffix
+            ),
+          },
+          {
+            name: "standard_charge | methodology",
+            applicableVersion: ">=2.1.0",
             validator: partial(
               validateRequiredEnumField,
-              `code | ${codeIndex} | type`,
-              BILLING_CODE_TYPES,
-              ""
+              "standard_charge | methodology",
+              STANDARD_CHARGE_METHODOLOGY,
+              payerSpecificSuffix
             ),
-            predicate: (row) => Boolean(row[`code | ${codeIndex}`]),
-          }
-        );
+          },
+        ],
       });
-
-      this.rowValidators.push(...codeChecks);
-
-      // standard charges must be numeric if present
-      [
+      // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
+      // in the "additional notes" for the associated payer-specific negotiated charge.
+      nonModifierChecks.push({
+        name: "other methodology requires notes",
+        applicableVersion: ">=2.1.0",
+        validator: (dataRow, row) => {
+          if (
+            matchesString(dataRow["standard_charge | methodology"], "other") &&
+            !dataRow.additional_generic_notes
+          ) {
+            const columnIndex = this.normalizedColumns.indexOf(
+              "additional_generic_notes"
+            );
+            return [new OtherMethodologyNotesError(row, columnIndex)];
+          }
+          return [];
+        },
+      });
+      // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
+      // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
+      // "Payer-Specific Negotiated Charge: Algorithm".
+      const chargeFields = [
         "standard_charge | gross",
         "standard_charge | discounted_cash",
-        "standard_charge | min",
-        "standard_charge | max",
-      ].forEach((chargeColumn) => {
-        this.rowValidators.push({
-          name: chargeColumn,
-          validator: partial(validateOptionalFloatField, chargeColumn),
-        });
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+      ];
+      nonModifierChecks.push({
+        name: "item requires charge",
+        applicableVersion: ">=2.1.0",
+        validator: (dataRow, row) => {
+          if (!chargeFields.some((chargeField) => dataRow[chargeField])) {
+            const columnIndex = this.normalizedColumns.indexOf(
+              "standard_charge | gross"
+            );
+            return [new ItemRequiresChargeError(row, columnIndex)];
+          }
+          return [];
+        },
       });
-
-      const nonModifierChecks: BranchingValidator[] = [];
-
-      if (semver.gte(this.version, "2.1.0")) {
-        const payerSpecificSuffix =
-          " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm";
-        if (this.isTall) {
-          // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
-          // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
-          nonModifierChecks.push({
-            name: "conditional for payer specific negotiated charge",
-            predicate: (row) => {
-              return Boolean(
-                row["standard_charge | negotiated_dollar"] ||
-                  row["standard_charge | negotiated_percentage"] ||
-                  row["standard_charge | negotiated_algorithm"]
+      // If there is a "payer specific negotiated charge" encoded as a dollar amount,
+      // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
+      nonModifierChecks.push({
+        name: "dollar requires min and max",
+        applicableVersion: ">=2.1.0",
+        validator: (dataRow, row) => {
+          if (dataRow["standard_charge | negotiated_dollar"]) {
+            const missingBounds = [
+              "standard_charge | min",
+              "standard_charge | max",
+            ].filter((bound) => !Boolean(dataRow[bound]));
+            if (missingBounds.length > 0) {
+              const columnIndex = this.normalizedColumns.indexOf(
+                missingBounds[0]
               );
-            },
-            children: [
-              {
-                name: "payer_name",
-                validator: partial(
-                  validateRequiredField,
-                  "payer_name",
-                  payerSpecificSuffix
-                ),
-              },
-              {
-                name: "plan_name",
-                validator: partial(
-                  validateRequiredField,
-                  "plan_name",
-                  payerSpecificSuffix
-                ),
-              },
-              {
-                name: "standard_charge | methodology",
-                validator: partial(
-                  validateRequiredEnumField,
-                  "standard_charge | methodology",
+              return [new DollarNeedsMinMaxError(row, columnIndex)];
+            }
+          }
+
+          return [];
+        },
+      });
+    } else {
+      // For the wide format, a set of columns will be repeated for each payer and plan.
+      // So, some conditional checks are repeated for each of those payers and plans.
+      // Other conditional checks apply to all payers and plans together.
+
+      // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+      // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
+      nonModifierChecks.push(
+        ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
+          return {
+            name: `conditional for ${payerPlan} negotiated charge methodology`,
+            applicableVersion: ">=2.1.0",
+            validator: (dataRow, row) => {
+              const hasStandardCharge = Boolean(
+                dataRow[`standard_charge | ${payerPlan} | negotiated_dollar`] ||
+                  dataRow[
+                    `standard_charge | ${payerPlan} | negotiated_percentage`
+                  ] ||
+                  dataRow[
+                    `standard_charge | ${payerPlan} | negotiated_algorithm`
+                  ]
+              );
+              if (hasStandardCharge) {
+                return validateRequiredEnumField(
+                  `standard_charge | ${payerPlan} | methodology`,
                   STANDARD_CHARGE_METHODOLOGY,
-                  payerSpecificSuffix
-                ),
-              },
-            ],
-          });
-          // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
-          // in the "additional notes" for the associated payer-specific negotiated charge.
-          // i don't like the implementation here. revisit this.
-          nonModifierChecks.push({
-            name: "other methodology requires notes",
-            predicate: (row) => {
-              return matchesString(
-                row["standard_charge | methodology"],
+                  payerSpecificSuffix,
+                  dataRow,
+                  row
+                );
+              }
+              return [];
+            },
+          };
+        })
+      );
+      // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
+      // in the "additional notes" for the associated payer-specific negotiated charge.
+      nonModifierChecks.push(
+        ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
+          return {
+            name: `${payerPlan} other methodology requires notes`,
+            applicableVersion: ">=2.1.0",
+            validator: (dataRow, row) => {
+              const methodologyIsOther = matchesString(
+                dataRow[`standard_charge | ${payerPlan} | methodology`] ?? "",
                 "other"
               );
-            },
-            validator: (dataRow, row) => {
-              if (!dataRow.additional_generic_notes) {
-                const columnIndex = this.normalizedColumns.indexOf(
-                  "additional_generic_notes"
-                );
+              const columnName = `additional_payer_notes | ${payerPlan}`;
+              if (methodologyIsOther && !dataRow[columnName]) {
+                const columnIndex = this.normalizedColumns.indexOf(columnName);
                 return [new OtherMethodologyNotesError(row, columnIndex)];
               }
               return [];
             },
-          });
-          // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
-          // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
-          // "Payer-Specific Negotiated Charge: Algorithm".
-          // similar awkward implementation here, where the predicate is asking the real question
-          const chargeFields = [
-            "standard_charge | gross",
-            "standard_charge | discounted_cash",
-            "standard_charge | negotiated_dollar",
-            "standard_charge | negotiated_percentage",
-            "standard_charge | negotiated_algorithm",
-          ];
-          nonModifierChecks.push({
-            name: "item requires charge",
-            predicate: (row) => {
-              return !chargeFields.some((chargeField) => row[chargeField]);
-            },
-            validator: (_dataRow, row) => {
-              const columnIndex = this.normalizedColumns.indexOf(
-                "standard_charge | gross"
-              );
-              return [new ItemRequiresChargeError(row, columnIndex)];
-            },
-          });
-          // If there is a "payer specific negotiated charge" encoded as a dollar amount,
-          // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
-          nonModifierChecks.push({
-            name: "dollar requires min and max",
-            predicate: (row) => {
-              return Boolean(row["standard_charge | negotiated_dollar"]);
-            },
-            validator: (dataRow, row) => {
-              const missingBounds = [
-                "standard_charge | min",
-                "standard_charge | max",
-              ].filter((bound) => !Boolean(dataRow[bound]));
-              if (missingBounds.length > 0) {
-                const columnIndex = this.normalizedColumns.indexOf(
-                  missingBounds[0]
-                );
-                return [new DollarNeedsMinMaxError(row, columnIndex)];
-              }
-              return [];
-            },
-          });
-        } else {
-          // For the wide format, a set of columns will be repeated for each payer and plan.
-          // So, some conditional checks are repeated for each of those payers and plans.
-          // Other conditional checks apply to all payers and plans together.
-
-          // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
-          // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
-          nonModifierChecks.push(
-            ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
-              return {
-                name: `conditional for ${payerPlan} negotiated charge methodology`,
-                predicate: (row) => {
-                  return Boolean(
-                    row[`standard_charge | ${payerPlan} | negotiated_dollar`] ||
-                      row[
-                        `standard_charge | ${payerPlan} | negotiated_percentage`
-                      ] ||
-                      row[
-                        `standard_charge | ${payerPlan} | negotiated_algorithm`
-                      ]
-                  );
-                },
-                validator: partial(
-                  validateRequiredEnumField,
-                  `standard_charge | ${payerPlan} | methodology`,
-                  STANDARD_CHARGE_METHODOLOGY,
-                  payerSpecificSuffix
-                ),
-              };
-            })
-          );
-          // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
-          // in the "additional notes" for the associated payer-specific negotiated charge.
-          nonModifierChecks.push(
-            ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
-              return {
-                name: `${payerPlan} other methodology requires notes`,
-                predicate: (row) => {
-                  return matchesString(
-                    row[`standard_charge | ${payerPlan} | methodology`] ?? "",
-                    "other"
-                  );
-                },
-                validator: (dataRow, row) => {
-                  const columnName = `additional_payer_notes | ${payerPlan}`;
-                  if (!dataRow[columnName]) {
-                    const columnIndex =
-                      this.normalizedColumns.indexOf(columnName);
-                    return [new OtherMethodologyNotesError(row, columnIndex)];
-                  }
-                  return [];
-                },
-              };
-            })
-          );
-          // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
-          // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
-          // "Payer-Specific Negotiated Charge: Algorithm".
-          const chargeFields = [
-            "standard_charge | gross",
-            "standard_charge | discounted_cash",
-          ];
-          this.payersPlans.forEach((payerPlan) => {
-            chargeFields.push(
-              `standard_charge | ${payerPlan} | negotiated_dollar`,
-              `standard_charge | ${payerPlan} | negotiated_percentage`,
-              `standard_charge | ${payerPlan} | negotiated_algorithm`,
-              `standard_charge | ${payerPlan} | methodology`,
-              `estimated_amount | ${payerPlan}`,
-              `additional_payer_notes | ${payerPlan}`
+          };
+        })
+      );
+      // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
+      // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
+      // "Payer-Specific Negotiated Charge: Algorithm".
+      const chargeFields = [
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+      ];
+      this.payersPlans.forEach((payerPlan) => {
+        chargeFields.push(
+          `standard_charge | ${payerPlan} | negotiated_dollar`,
+          `standard_charge | ${payerPlan} | negotiated_percentage`,
+          `standard_charge | ${payerPlan} | negotiated_algorithm`,
+          `standard_charge | ${payerPlan} | methodology`,
+          `estimated_amount | ${payerPlan}`,
+          `additional_payer_notes | ${payerPlan}`
+        );
+      });
+      nonModifierChecks.push({
+        name: "item requires charge",
+        applicableVersion: ">=2.1.0",
+        validator: (dataRow, row) => {
+          if (!chargeFields.some((chargeField) => dataRow[chargeField])) {
+            const columnIndex = this.normalizedColumns.indexOf(
+              "standard_charge | gross"
+            );
+            return [new ItemRequiresChargeError(row, columnIndex)];
+          }
+          return [];
+        },
+      });
+      // If there is a "payer specific negotiated charge" encoded as a dollar amount,
+      // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
+      nonModifierChecks.push({
+        name: "dollar requires min and max",
+        applicableVersion: ">=2.1.0",
+        validator: (dataRow, row) => {
+          const hasDollar = this.payersPlans.some((payerPlan) => {
+            return Boolean(
+              dataRow[`standard_charge | ${payerPlan} | negotiated_dollar`]
             );
           });
-          nonModifierChecks.push({
-            name: "item requires charge",
-            predicate: (row) => {
-              return !chargeFields.some((chargeField) => row[chargeField]);
-            },
-            validator: (_dataRow, row) => {
+          if (hasDollar) {
+            const missingBounds = [
+              "standard_charge | min",
+              "standard_charge | max",
+            ].filter((bound) => !Boolean(dataRow[bound]));
+            if (missingBounds.length > 0) {
               const columnIndex = this.normalizedColumns.indexOf(
-                "standard_charge | gross"
+                missingBounds[0]
               );
-              return [new ItemRequiresChargeError(row, columnIndex)];
-            },
-          });
-          // If there is a "payer specific negotiated charge" encoded as a dollar amount,
-          // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
-          nonModifierChecks.push({
-            name: "dollar requires min and max",
-            predicate: (row) => {
-              return this.payersPlans.some((payerPlan) => {
-                return Boolean(
-                  row[`standard_charge | ${payerPlan} | negotiated_dollar`]
-                );
-              });
-            },
-            validator: (dataRow, row) => {
-              const missingBounds = [
-                "standard_charge | min",
-                "standard_charge | max",
-              ].filter((bound) => !Boolean(dataRow[bound]));
-              if (missingBounds.length > 0) {
-                const columnIndex = this.normalizedColumns.indexOf(
-                  missingBounds[0]
-                );
-                return [new DollarNeedsMinMaxError(row, columnIndex)];
-              }
-              return [];
-            },
-          });
-        }
-      }
-
-      if (semver.gte(this.version, "2.2.0")) {
-        this.rowValidators.push(
-          {
-            name: "drug_unit_of_measurement",
-            validator: partial(
-              validateRequiredFloatField,
-              "drug_unit_of_measurement",
-              ' when "drug_type_of_measurement" is present'
-            ),
-            predicate: (row) =>
-              Boolean(
-                row["drug_unit_of_measurement"] ||
-                  row["drug_type_of_measurement"]
-              ),
-          },
-          {
-            name: "drug_type_of_measurement",
-            validator: partial(
-              validateRequiredEnumField,
-              "drug_type_of_measurement",
-              DRUG_UNITS,
-              ' when "drug_unit_of_measurement" is present'
-            ),
-            predicate: (row) =>
-              Boolean(
-                row["drug_unit_of_measurement"] ||
-                  row["drug_type_of_measurement"]
-              ),
-          }
-        );
-        // If code type is NDC, then the corresponding drug unit of measure and
-        // drug type of measure data elements must be encoded. new in v2.2.0
-        this.rowValidators.push({
-          name: "NDC code requires drug information",
-          validator: (dataRow, row) => {
-            const hasNDC = range(1, this.codeCount + 1).some((codeIndex) => {
-              return matchesString(
-                dataRow[`code | ${codeIndex} | type`],
-                "NDC"
-              );
-            });
-            if (hasNDC) {
-              const missingDrugFields = [
-                "drug_unit_of_measurement",
-                "drug_type_of_measurement",
-              ].filter((field) => !Boolean(dataRow[field]));
-              if (missingDrugFields.length > 0) {
-                return [
-                  new DrugInformationRequiredError(
-                    row,
-                    this.normalizedColumns.indexOf(missingDrugFields[0])
-                  ),
-                ];
-              }
+              return [new DollarNeedsMinMaxError(row, columnIndex)];
             }
-            return [];
-          },
-        });
+          }
 
-        if (this.isTall) {
-          // some checks diverge based on whether this is a modifier row
-          // If a modifier is encoded without an item or service, then a description and one of the following
-          // is the minimum information required:
-          // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
-          modifierChecks.push({
-            name: "extra info for modifier row",
+          return [];
+        },
+      });
+    }
+
+    // the drug information fields added in 2.2.0 must be present as a pair
+    this.rowValidators.push(
+      {
+        name: "drug_unit_of_measurement",
+        applicableVersion: ">=2.2.0",
+        validator: (dataRow, row) => {
+          if (
+            dataRow["drug_unit_of_measurement"] ||
+            dataRow["drug_type_of_measurement"]
+          ) {
+            return validateRequiredFloatField(
+              "drug_unit_of_measurement",
+              ' when "drug_type_of_measurement" is present',
+              dataRow,
+              row
+            );
+          }
+          return [];
+        },
+      },
+      {
+        name: "drug_type_of_measurement",
+        applicableVersion: ">=2.2.0",
+        validator: partial(
+          validateRequiredEnumField,
+          "drug_type_of_measurement",
+          DRUG_UNITS,
+          ' when "drug_unit_of_measurement" is present'
+        ),
+        predicate: (row) =>
+          Boolean(
+            row["drug_unit_of_measurement"] || row["drug_type_of_measurement"]
+          ),
+      }
+    );
+    // If code type is NDC, then the corresponding drug unit of measure and
+    // drug type of measure data elements must be encoded. new in v2.2.0
+    this.rowValidators.push({
+      name: "NDC code requires drug information",
+      applicableVersion: ">=2.2.0",
+      validator: (dataRow, row) => {
+        const hasNDC = range(1, this.codeCount + 1).some((codeIndex) => {
+          return matchesString(dataRow[`code | ${codeIndex} | type`], "NDC");
+        });
+        if (hasNDC) {
+          const missingDrugFields = [
+            "drug_unit_of_measurement",
+            "drug_type_of_measurement",
+          ].filter((field) => !Boolean(dataRow[field]));
+          if (missingDrugFields.length > 0) {
+            return [
+              new DrugInformationRequiredError(
+                row,
+                this.normalizedColumns.indexOf(missingDrugFields[0])
+              ),
+            ];
+          }
+        }
+        return [];
+      },
+    });
+
+    if (this.isTall) {
+      // some checks diverge based on whether this is a modifier row
+      // If a modifier is encoded without an item or service, then a description and one of the following
+      // is the minimum information required:
+      // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
+      modifierChecks.push({
+        name: "extra info for modifier row",
+        applicableVersion: ">=2.2.0",
+        validator: (dataRow, row) => {
+          if (
+            ![
+              "additional_generic_notes",
+              "standard_charge | negotiated_dollar",
+              "standard_charge | negotiated_percentage",
+              "standard_charge | negotiated_algorithm",
+            ].some((field) => Boolean(dataRow[field]))
+          ) {
+            return [
+              new ModifierMissingInfoError(
+                row,
+                this.normalizedColumns.indexOf("additional_generic_notes")
+              ),
+            ];
+          }
+          return [];
+        },
+      });
+      // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+      // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
+      nonModifierChecks.push({
+        name: "estimated allowed amount required when charge is only percentage or algorithm",
+        applicableVersion: ">=2.2.0",
+        validator: (dataRow, row) => {
+          if (
+            !dataRow["standard_charge | negotiated_dollar"] &&
+            (dataRow["standard_charge | negotiated_percentage"] ||
+              dataRow["standard_charge | negotiated_algorithm"]) &&
+            !dataRow.estimated_amount
+          ) {
+            return [
+              new PercentageAlgorithmEstimateError(
+                row,
+                this.normalizedColumns.indexOf("estimated_amount")
+              ),
+            ];
+          }
+          return [];
+        },
+      });
+      // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+      // amount data element within the MRF and should instead encode an actual dollar amount.
+      // new as of 2025/05/22, at which point v2.2.0 was in effect.
+      this.rowAlerters.push({
+        name: "discontinue encoding nine 9s for estimated amount",
+        applicableVersion: ">=2.2.0",
+        validator: (dataRow, row) => {
+          if (Number(dataRow.estimated_amount) === 999999999) {
+            return [
+              new CsvNineNinesAlert(
+                row,
+                this.normalizedColumns.indexOf("estimated_amount")
+              ),
+            ];
+          }
+          return [];
+        },
+      });
+    } else {
+      // some checks diverge based on whether this is a modifier row
+      // If a modifier is encoded without an item or service, then a description and one of the following
+      // is the minimum information required:
+      // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
+      const extraInfoFields = ["additional_generic_notes"];
+      this.payersPlans.forEach((payerPlan) => {
+        extraInfoFields.push(
+          `standard_charge | ${payerPlan} | negotiated_dollar`,
+          `standard_charge | ${payerPlan} | negotiated_percentage`,
+          `standard_charge | ${payerPlan} | negotiated_algorithm`,
+          `additional_payer_notes | ${payerPlan}`
+        );
+      });
+      modifierChecks.push({
+        name: "extra info for modifier row",
+        applicableVersion: ">=2.2.0",
+        validator: (dataRow, row) => {
+          if (!extraInfoFields.some((field) => Boolean(dataRow[field]))) {
+            return [
+              new ModifierMissingInfoError(
+                row,
+                this.normalizedColumns.indexOf("additional_generic_notes")
+              ),
+            ];
+          }
+          return [];
+        },
+      });
+      // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+      // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
+      nonModifierChecks.push(
+        ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
+          return {
+            name: `estimated allowed amount for ${payerPlan} required when charge is only percentage or algorithm`,
+            applicableVersion: ">=2.2.0",
             validator: (dataRow, row) => {
               if (
-                ![
-                  "additional_generic_notes",
-                  "standard_charge | negotiated_dollar",
-                  "standard_charge | negotiated_percentage",
-                  "standard_charge | negotiated_algorithm",
-                ].some((field) => Boolean(dataRow[field]))
-              ) {
-                return [
-                  new ModifierMissingInfoError(
-                    row,
-                    this.normalizedColumns.indexOf("additional_generic_notes")
-                  ),
-                ];
-              }
-              return [];
-            },
-          });
-          // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
-          // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
-          nonModifierChecks.push({
-            name: "estimated allowed amount required when charge is only percentage or algorithm",
-            validator: (dataRow, row) => {
-              if (
-                !dataRow["standard_charge | negotiated_dollar"] &&
-                (dataRow["standard_charge | negotiated_percentage"] ||
-                  dataRow["standard_charge | negotiated_algorithm"]) &&
-                !dataRow.estimated_amount
+                !dataRow[
+                  `standard_charge | ${payerPlan} | negotiated_dollar`
+                ] &&
+                (dataRow[
+                  `standard_charge | ${payerPlan} | negotiated_percentage`
+                ] ||
+                  dataRow[
+                    `standard_charge | ${payerPlan} | negotiated_algorithm`
+                  ]) &&
+                !dataRow[`estimated_amount | ${payerPlan}`]
               ) {
                 return [
                   new PercentageAlgorithmEstimateError(
                     row,
-                    this.normalizedColumns.indexOf("estimated_amount")
+                    this.normalizedColumns.indexOf(
+                      `estimated_amount | ${payerPlan}`
+                    )
                   ),
                 ];
               }
               return [];
             },
-          });
-          // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
-          // amount data element within the MRF and should instead encode an actual dollar amount.
-          // new as of 2025/05/22, at which point v2.2.0 was in effect.
-          this.rowAlerters.push({
+          };
+        })
+      );
+      // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+      // amount data element within the MRF and should instead encode an actual dollar amount.
+      // new as of 2025/05/22, at which point v2.2.0 was in effect.
+      this.rowAlerters.push(
+        ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
+          return {
             name: "discontinue encoding nine 9s for estimated amount",
+            applicableVersion: ">=2.2.0",
             validator: (dataRow, row) => {
-              if (Number(dataRow.estimated_amount) === 999999999) {
+              if (
+                Number(dataRow[`estimated_amount | ${payerPlan}`]) === 999999999
+              ) {
                 return [
                   new CsvNineNinesAlert(
                     row,
-                    this.normalizedColumns.indexOf("estimated_amount")
+                    this.normalizedColumns.indexOf(
+                      `estimated_amount | ${payerPlan}`
+                    )
                   ),
                 ];
               }
               return [];
             },
-          });
-        } else {
-          // some checks diverge based on whether this is a modifier row
-          // If a modifier is encoded without an item or service, then a description and one of the following
-          // is the minimum information required:
-          // additional_generic_notes, standard_charge | negotiated_dollar, standard_charge | negotiated_percentage, or standard_charge | negotiated_algorithm
-          const extraInfoFields = ["additional_generic_notes"];
-          this.payersPlans.forEach((payerPlan) => {
-            extraInfoFields.push(
-              `standard_charge | ${payerPlan} | negotiated_dollar`,
-              `standard_charge | ${payerPlan} | negotiated_percentage`,
-              `standard_charge | ${payerPlan} | negotiated_algorithm`,
-              `additional_payer_notes | ${payerPlan}`
-            );
-          });
-          modifierChecks.push({
-            name: "extra info for modifier row",
-            validator: (dataRow, row) => {
-              if (!extraInfoFields.some((field) => Boolean(dataRow[field]))) {
-                return [
-                  new ModifierMissingInfoError(
-                    row,
-                    this.normalizedColumns.indexOf("additional_generic_notes")
-                  ),
-                ];
-              }
-              return [];
-            },
-          });
-          // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
-          // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
-          nonModifierChecks.push(
-            ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
-              return {
-                name: `estimated allowed amount for ${payerPlan} required when charge is only percentage or algorithm`,
-                validator: (dataRow, row) => {
-                  if (
-                    !dataRow[
-                      `standard_charge | ${payerPlan} | negotiated_dollar`
-                    ] &&
-                    (dataRow[
-                      `standard_charge | ${payerPlan} | negotiated_percentage`
-                    ] ||
-                      dataRow[
-                        `standard_charge | ${payerPlan} | negotiated_algorithm`
-                      ]) &&
-                    !dataRow[`estimated_amount | ${payerPlan}`]
-                  ) {
-                    return [
-                      new PercentageAlgorithmEstimateError(
-                        row,
-                        this.normalizedColumns.indexOf(
-                          `estimated_amount | ${payerPlan}`
-                        )
-                      ),
-                    ];
-                  }
-                  return [];
-                },
-              };
-            })
-          );
-          // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
-          // amount data element within the MRF and should instead encode an actual dollar amount.
-          // new as of 2025/05/22, at which point v2.2.0 was in effect.
-          this.rowAlerters.push(
-            ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
-              return {
-                name: "discontinue encoding nine 9s for estimated amount",
-                validator: (dataRow, row) => {
-                  if (
-                    Number(dataRow[`estimated_amount | ${payerPlan}`]) ===
-                    999999999
-                  ) {
-                    return [
-                      new CsvNineNinesAlert(
-                        row,
-                        this.normalizedColumns.indexOf(
-                          `estimated_amount | ${payerPlan}`
-                        )
-                      ),
-                    ];
-                  }
-                  return [];
-                },
-              };
-            })
-          );
-        }
-
-        // that's all for the conditional checks. so now build the tree out, branching on whether
-        // the row is modifier-only.
-        const isModifierPresent: BranchingValidator = {
-          name: "is a modifier present",
-          predicate: (row) => {
-            return row["modifiers"].length > 0;
-          },
-          children: modifierChecks, // validate modifier row,
-          negativeValidator: (_dataRow, row) => {
-            return [new CodePairMissingError(row, this.dataColumns.length)];
-          },
-          negativeChildren: nonModifierChecks, // non-modifier row
-        };
-        const containsCode: BranchingValidator = {
-          name: "found at least one code",
-          predicate: (row) => {
-            return range(1, this.codeCount + 1).some((codeIndex) => {
-              return (
-                row[`code | ${codeIndex}`] || row[`code | ${codeIndex} | type`]
-              );
-            });
-          },
-          children: nonModifierChecks, // non-modifier row
-          negativeChildren: [isModifierPresent], // possibly modifier row
-        };
-        this.rowValidators.push(containsCode);
-      } else {
-        // for older versions, there is no notion of a "modifier row"
-        // therefore, some code information is always required.
-        // if only half of the pair is present, a different check accounts for that.
-        this.rowValidators.push({
-          name: "found at least one code",
-          validator: (dataRow, row) => {
-            const hasCodeInfo = range(1, this.codeCount + 1).some(
-              (codeIndex) => {
-                return (
-                  dataRow[`code | ${codeIndex}`] ||
-                  dataRow[`code | ${codeIndex} | type`]
-                );
-              }
-            );
-            if (!hasCodeInfo) {
-              return [new CodePairMissingError(row, this.dataColumns.length)];
-            }
-            return [];
-          },
-        });
-        this.rowValidators.push(...nonModifierChecks);
-      }
+          };
+        })
+      );
     }
+
+    // that's all for the conditional checks. so now build the tree out, branching on whether
+    // the row is modifier-only.
+    const isModifierPresent: BranchingValidator = {
+      name: "is a modifier present",
+      applicableVersion: ">=2.2.0",
+      predicate: (row) => {
+        return row["modifiers"].length > 0;
+      },
+      children: modifierChecks, // validate modifier row,
+      negativeValidator: (_dataRow, row) => {
+        // since getting here means that we know no code pair was found,
+        // just go ahead and return the CodePairMissingError.
+        return [new CodePairMissingError(row, this.dataColumns.length)];
+      },
+      negativeChildren: nonModifierChecks, // non-modifier row
+    };
+    const containsCode: BranchingValidator = {
+      name: "found at least one code",
+      applicableVersion: ">=2.2.0",
+      predicate: (row) => {
+        return range(1, this.codeCount + 1).some((codeIndex) => {
+          return (
+            row[`code | ${codeIndex}`] || row[`code | ${codeIndex} | type`]
+          );
+        });
+      },
+      children: nonModifierChecks, // non-modifier row
+      negativeChildren: [isModifierPresent], // possibly modifier row
+    };
+    this.rowValidators.push(containsCode);
+    // for versions before 2.2.0, there is no notion of a "modifier row"
+    // therefore, some code information is always required.
+    // if only half of the pair is present, a different check accounts for that.
+    this.rowValidators.push({
+      name: "found at least one code",
+      applicableVersion: "<2.2.0",
+      validator: (dataRow, row) => {
+        const hasCodeInfo = range(1, this.codeCount + 1).some((codeIndex) => {
+          return (
+            dataRow[`code | ${codeIndex}`] ||
+            dataRow[`code | ${codeIndex} | type`]
+          );
+        });
+        if (!hasCodeInfo) {
+          return [new CodePairMissingError(row, this.dataColumns.length)];
+        }
+        return [];
+      },
+      children: nonModifierChecks,
+    });
+
+    this.rowValidators = filterOnVersion(this.rowValidators, this.version);
   }
 
   validate(input: File | NodeJS.ReadableStream): Promise<ValidationResult> {
@@ -1249,4 +1278,21 @@ export class CsvValidator extends BaseValidator {
       });
     }
   }
+}
+
+function filterOnVersion(
+  validators: BranchingValidator[],
+  version: string
+): BranchingValidator[] {
+  return validators
+    .filter((val) => semver.satisfies(version, val.applicableVersion))
+    .map((val) => {
+      if (val.children != null) {
+        val.children = filterOnVersion(val.children, version);
+      }
+      if (val.negativeChildren != null) {
+        val.negativeChildren = filterOnVersion(val.negativeChildren, version);
+      }
+      return val;
+    });
 }

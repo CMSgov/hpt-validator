@@ -1,7 +1,6 @@
-import fs from "fs";
-import path from "path";
-import Ajv from "ajv";
-import addFormats from "ajv-formats";
+import { Ajv } from "ajv";
+import ajvFormats from "ajv-formats";
+const addFormats = ajvFormats.default; // imports, let me tell ya
 import { JSONParser } from "@streamparser/json";
 import _ from "lodash";
 const { bind } = _;
@@ -16,10 +15,11 @@ import {
 import { ValidationError } from "../errors/ValidationError.js";
 import { InvalidJsonError } from "../errors/json/InvalidJsonError.js";
 
-import v200schema from "../schemas/v2.0.0.json";
-import v210schema from "../schemas/v2.1.0.json";
-import v220schema from "../schemas/v2.2.0.json";
-import v220alerts from "../alert-schemas/v2.2.0.json";
+import v200schema from "../schemas/v2.0.0.json" with { type: "json" };
+import v210schema from "../schemas/v2.1.0.json" with { type: "json" };
+import v220schema from "../schemas/v2.2.0.json" with { type: "json" };
+import v220alerts from "../alert-schemas/v2.2.0.json" with { type: "json" };
+import semver from "semver";
 
 export class JsonValidator extends BaseValidator {
   public fullSchema: any;
@@ -31,20 +31,21 @@ export class JsonValidator extends BaseValidator {
   public dataCallback?: JsonValidationOptions["onValueCallback"];
   public metadataCallback?: JsonValidationOptions["onMetadataCallback"];
 
-  static allowedVersions = ["v2.0.0", "v2.1.0", "v2.2.0"];
+  static allowedVersions = ["2.0.0", "2.1.0", "2.2.0"];
 
   constructor(public version: string) {
     super("json");
+    this.version = semver.coerce(version)?.toString() ?? version;
     try {
-      // this implementation is awkward, make a better one
-      switch (version) {
-        case "v2.0.0":
+      // TODO: try to enhance this
+      switch (this.version) {
+        case "2.0.0":
           this.fullSchema = v200schema;
           break;
-        case "v2.1.0":
+        case "2.1.0":
           this.fullSchema = v210schema;
           break;
-        case "v2.2.0":
+        case "2.2.0":
           this.fullSchema = v220schema;
           this.alertSchema = v220alerts;
           break;
@@ -73,16 +74,6 @@ export class JsonValidator extends BaseValidator {
     this.metadataSchema.required = this.metadataSchema.required.filter(
       (propertyName: string) => propertyName !== "standard_charge_information"
     );
-  }
-
-  loadAlertSchema() {
-    const alertSchemaURL = new URL(
-      path.join("..", "alert-schemas", `${this.version}.json`),
-      import.meta.url
-    );
-    if (fs.existsSync(alertSchemaURL)) {
-      this.alertSchema = JSON.parse(fs.readFileSync(alertSchemaURL, "utf-8"));
-    }
   }
 
   async validate(

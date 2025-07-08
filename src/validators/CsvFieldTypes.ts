@@ -10,9 +10,17 @@ export type DynaReadyValidator = (
 
 export type BranchingValidator = {
   name: string;
+  applicableVersion: string;
   predicate?: (row: { [key: string]: string }) => boolean;
   validator?: DynaReadyValidator;
   negativeValidator?: DynaReadyValidator;
   children?: BranchingValidator[];
   negativeChildren?: BranchingValidator[];
+};
+
+export type OriginalFlavorValidator = {
+  name: string;
+  applicableVersion: string;
+  predicate?: (row: { [key: string]: string }) => boolean;
+  validator?: DynaReadyValidator;
 };
