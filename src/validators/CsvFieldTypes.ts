@@ -17,3 +17,27 @@ export type BranchingValidator = {
   children?: BranchingValidator[];
   negativeChildren?: BranchingValidator[];
 };
+
+export type OriginalFlavorValidator = {
+  name: string;
+  applicableVersion: string;
+  predicate?: (row: { [key: string]: string }) => boolean;
+  validator?: DynaReadyValidator;
+};
+
+// const descriptionRule = {
+//   name: "description",
+
+// }
+
+// export function getAllThoseRules(
+//   version: string,
+//   normalizedColumns: string[],
+//   dataColumns: string[]
+// ): BranchingValidator[] {
+//   return [];
+// }
+// ghfhhghf. there's like.
+// run this function, it will return a list of errors
+// then there are children but there are like. conditional children
+// maybe it just has like. ugh. ugh!
