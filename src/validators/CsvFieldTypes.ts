@@ -25,6 +25,17 @@ export type OriginalFlavorValidator = {
   validator?: DynaReadyValidator;
 };
 
+export type FileLevelValidator = {
+  name: string;
+  applicableVersion: string;
+  state: { [key: string]: any };
+  rowCheck: (
+    dataRow: { [key: string]: string },
+    state: FileLevelValidator["state"]
+  ) => void;
+  fileCheck: (state: FileLevelValidator["state"]) => CsvValidationError[];
+};
+
 // const descriptionRule = {
 //   name: "description",
 

@@ -7,7 +7,7 @@ import * as csvErr from "../errors/csv/index.js";
 import { CsvNineNinesAlert } from "../alerts/index.js";
 import _ from "lodash";
 const { range, partial, bind } = _;
-import { BranchingValidator } from "./CsvFieldTypes.js";
+import { BranchingValidator, FileLevelValidator } from "./CsvFieldTypes.js";
 import {
   matchesString,
   sepColumnsEqual,
@@ -61,6 +61,8 @@ export class CsvValidator extends BaseValidator {
 
   public rowValidators: BranchingValidator[] = [];
   public rowAlerters: BranchingValidator[] = [];
+  public fileValidators: FileLevelValidator[] = [];
+  public fileAlerters: FileLevelValidator[] = [];
   public payersPlans: string[] = [];
   public codeCount: number = 0;
 
@@ -731,6 +733,69 @@ export class CsvValidator extends BaseValidator {
     });
 
     this.rowValidators = filterOnVersion(this.rowValidators, this.version);
+    this.rowAlerters = filterOnVersion(this.rowAlerters, this.version);
+  }
+
+  buildFileValidators() {
+    // alert: a file should have at least one payer-specific negotiated charge
+    let hasChargeRowCheck: FileLevelValidator["rowCheck"];
+    if (this.isTall) {
+      hasChargeRowCheck = (dataRow, state) => {
+        if (!state.hasCharge) {
+          state.hasCharge = [
+            "standard_charge | negotiated_dollar",
+            "standard_charge | negotiated_percentage",
+            "standard_charge | negotiated_algorithm",
+          ].some((field) => Boolean(dataRow[field]));
+        }
+      };
+    } else {
+      const chargeFields: string[] = [];
+      this.payersPlans.forEach((payerPlan) => {
+        chargeFields.push(
+          `standard_charge | ${payerPlan} | negotiated_dollar`,
+          `standard_charge | ${payerPlan} | negotiated_percentage`,
+          `standard_charge | ${payerPlan} | negotiated_algorithm`
+        );
+      });
+      hasChargeRowCheck = (dataRow, state) => {
+        if (!state.hasCharge) {
+          state.hasCharge = chargeFields.some((field) =>
+            Boolean(dataRow[field])
+          );
+        }
+      };
+    }
+    this.fileAlerters.push({
+      name: "at least one payer-specific charge",
+      applicableVersion: ">=2.2.0",
+      state: {
+        hasCharge: false,
+      },
+      rowCheck: hasChargeRowCheck,
+      fileCheck: (state) => {
+        if (!state.hasCharge) {
+          return [
+            new csvErr.CsvValidationError(
+              -1,
+              this.normalizedColumns.indexOf(
+                "standard_charge | negotiated_dollar"
+              ),
+              "File does not have any payer-specific charges"
+            ),
+          ];
+        }
+        return [];
+      },
+    });
+
+    this.fileValidators = this.fileValidators.filter((val) =>
+      semver.satisfies(this.version, val.applicableVersion)
+    );
+
+    this.fileAlerters = this.fileAlerters.filter((val) =>
+      semver.satisfies(this.version, val.applicableVersion)
+    );
   }
 
   validate(input: File | NodeJS.ReadableStream): Promise<ValidationResult> {
@@ -1076,6 +1141,23 @@ export class CsvValidator extends BaseValidator {
     return errors;
   }
 
+  applyFileValidatorsToRow(
+    row: { [key: string]: string },
+    validators: FileLevelValidator[]
+  ) {
+    validators.forEach((validator) => {
+      validator.rowCheck(row, validator.state);
+    });
+  }
+
+  applyFileValidatorsToFile(validators: FileLevelValidator[]) {
+    const errors: csvErr.CsvValidationError[] = [];
+    validators.forEach((validator) => {
+      errors.push(...validator.fileCheck(validator.state));
+    });
+    return errors;
+  }
+
   validateDataRow(row: { [key: string]: string }) {
     return this.applyValidators(row, this.rowValidators);
   }
@@ -1118,12 +1200,15 @@ export class CsvValidator extends BaseValidator {
         parser.abort();
       } else {
         this.buildRowValidators();
+        this.buildFileValidators();
       }
     } else {
       // regular data row
       const rowRecord = objectFromKeysValues(this.normalizedColumns, row);
       const rowErrors = this.validateDataRow(rowRecord);
       addItemsWithLimit(rowErrors, this.errors, this.maxErrors);
+      this.applyFileValidatorsToRow(rowRecord, this.fileValidators);
+      this.applyFileValidatorsToRow(rowRecord, this.fileAlerters);
       // if we have room for more alerts, collect alerts
       let rowAlerts: csvErr.CsvValidationError[] = [];
       if (
@@ -1159,10 +1244,18 @@ export class CsvValidator extends BaseValidator {
         alerts: this.alerts,
       });
     } else {
+      this.errors.push(...this.applyFileValidatorsToFile(this.fileValidators));
+      this.alerts.push(...this.applyFileValidatorsToFile(this.fileAlerters));
       resolve({
         valid: this.errors.length === 0,
-        errors: this.errors,
-        alerts: this.alerts,
+        errors:
+          this.maxErrors > 0
+            ? this.errors.slice(0, this.maxErrors)
+            : this.errors,
+        alerts:
+          this.maxErrors > 0
+            ? this.alerts.slice(0, this.maxErrors)
+            : this.alerts,
       });
     }
   }

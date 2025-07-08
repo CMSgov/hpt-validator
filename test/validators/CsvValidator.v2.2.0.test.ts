@@ -8,6 +8,7 @@ import {
   AmbiguousFormatError,
   CodePairMissingError,
   ColumnMissingError,
+  CsvValidationError,
   DollarNeedsMinMaxError,
   DrugInformationRequiredError,
   DuplicateColumnError,
@@ -43,14 +44,36 @@ describe("CsvValidator v2.2.0", () => {
       const input = createFixtureStream("sample-tall-valid.csv");
       const result = await validator.validate(input);
       expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(0);
       expect(result.valid).toBe(true);
     });
 
     it("should validate a valid wide CSV file", async () => {
       const input = createFixtureStream("sample-wide-valid.csv");
       const result = await validator.validate(input);
-      expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(0);
+      expect(result.valid).toBe(true);
+    });
+
+    it("should validate a tall CSV file with no payer specific charges", async () => {
+      const input = fs.createReadStream(
+        new URL(
+          path.join("..", "fixtures", "sample-tall-no-negotiated.csv"),
+          import.meta.url
+        )
+      );
+      const result = await validator.validate(input);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual(
+        new CsvValidationError(
+          -1,
+          13,
+          "File does not have any payer-specific charges"
+        )
+      );
+      expect(result.valid).toBe(true);
     });
   });
 
