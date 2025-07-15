@@ -9,7 +9,7 @@
   "types": "./lib/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CMSGov/hpt-validator.git"
+    "url": "git+https://github.com/CMSgov/hpt-validator.git"
   },
   "exports": {
     ".": {
