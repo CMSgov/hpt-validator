@@ -4,7 +4,7 @@ import { CsvValidationOptions, ValidationResult } from "../types.js";
 import { BaseValidator } from "./BaseValidator.js";
 import { addItemsWithLimit, removeBOM } from "../utils.js";
 import * as csvErr from "../errors/csv/index.js";
-import { CsvNineNinesAlert } from "../alerts/index.js";
+import { CsvNineNinesAlert, CsvNoPayerChargeAlert } from "../alerts/index.js";
 import _ from "lodash";
 const { range, partial, bind } = _;
 import { BranchingValidator, FileLevelValidator } from "./CsvFieldTypes.js";
@@ -57,7 +57,7 @@ export class CsvValidator extends BaseValidator {
   public alerts: csvErr.CsvValidationError[] = [];
   public maxErrors: number;
   public dataCallback?: CsvValidationOptions["onValueCallback"];
-  static allowedVersions = ["2.0.0", "2.1.0", "2.2.0"];
+  static allowedVersions = ["2.0.0", "2.1.0", "2.2.0", "3.0.0"];
 
   public rowValidators: BranchingValidator[] = [];
   public rowAlerters: BranchingValidator[] = [];
@@ -562,7 +562,7 @@ export class CsvValidator extends BaseValidator {
       // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
       nonModifierChecks.push({
         name: "estimated allowed amount required when charge is only percentage or algorithm",
-        applicableVersion: ">=2.2.0",
+        applicableVersion: "^2.2.0",
         validator: (dataRow, row) => {
           if (
             !dataRow["standard_charge | negotiated_dollar"] &&
@@ -776,12 +776,10 @@ export class CsvValidator extends BaseValidator {
       fileCheck: (state) => {
         if (!state.hasCharge) {
           return [
-            new csvErr.CsvValidationError(
-              -1,
+            new CsvNoPayerChargeAlert(
               this.normalizedColumns.indexOf(
                 "standard_charge | negotiated_dollar"
-              ),
-              "File does not have any payer-specific charges"
+              )
             ),
           ];
         }
@@ -921,7 +919,7 @@ export class CsvValidator extends BaseValidator {
 
   validateColumns(columns: string[]): csvErr.CsvValidationError[] {
     this.isTall = this.areMyColumnsTall(columns);
-    this.payersPlans = CsvValidator.getPayersPlans(columns);
+    this.payersPlans = this.getPayersPlans(columns);
     if (this.isTall === this.payersPlans.length > 0) {
       return [new csvErr.AmbiguousFormatError()];
     }
@@ -1047,23 +1045,49 @@ export class CsvValidator extends BaseValidator {
       );
     }
 
-    if (semver.gte(version, "v2.2.0")) {
+    if (semver.satisfies(version, ">=2.2.0")) {
       columns.push(
         { label: "drug_unit_of_measurement", required: true },
         { label: "drug_type_of_measurement", required: true },
         { label: "modifiers", required: true }
       );
+    }
+    if (semver.satisfies(version, "^2.2.0")) {
       if (payersPlans.length > 0) {
-        columns.push(
-          ...payersPlans.map((payerPlan) => {
-            return {
-              label: `estimated_amount | ${payerPlan}`,
-              required: true,
-            };
-          })
-        );
+        payersPlans.forEach((payerPlan) => {
+          columns.push({
+            label: `estimated_amount | ${payerPlan}`,
+            required: true,
+          });
+        });
       } else {
         columns.push({ label: "estimated_amount", required: true });
+      }
+    }
+    if (semver.satisfies(version, ">=3.0.0")) {
+      if (payersPlans.length > 0) {
+        payersPlans.forEach((payerPlan) => {
+          columns.push(
+            {
+              label: `median_amount | ${payerPlan}`,
+              required: true,
+            },
+            {
+              label: `10th_percentile | ${payerPlan}`,
+              required: true,
+            },
+            {
+              label: `90th_percentile | ${payerPlan}`,
+              required: true,
+            }
+          );
+        });
+      } else {
+        columns.push(
+          { label: "median_amount", required: true },
+          { label: "10th_percentile", required: true },
+          { label: "90th_percentile", required: true }
+        );
       }
     }
     return columns;
@@ -1077,13 +1101,18 @@ export class CsvValidator extends BaseValidator {
     });
   }
 
-  static getPayersPlans(columns: string[]): string[] {
+  getPayersPlans(columns: string[]): string[] {
     // standard_charge | Payer ABC | Plan 1 | negotiated_dollar
     // standard_charge | Payer ABC | Plan 1 | negotiated_percentage
     // standard_charge | Payer ABC | Plan 1 | negotiated_algorithm
     // standard_charge | Payer ABC | Plan 1 | methodology
-    // estimated_amount | Payer ABC | Plan 1
     // additional_payer_notes | Payer ABC | Plan 1
+    // in ^2.2.0:
+    // estimated_amount | Payer ABC | Plan 1
+    // in >=3.0.0:
+    // median_amount | Payer ABC | Plan 1
+    // 10th_percentile | Payer ABC | Plan 1
+    // 90th_percentile | Payer ABC | Plan 1
     const payersPlans = new Set<string>();
     columns.forEach((column) => {
       const splitColumn = column.split("|").map((p) => p.trim());
@@ -1099,13 +1128,20 @@ export class CsvValidator extends BaseValidator {
         ) {
           payersPlans.add(splitColumn.slice(1, 3).join(" | "));
         }
-      } else if (
-        splitColumn.length === 3 &&
-        ["estimated_amount", "additional_payer_notes"].some((p) =>
-          matchesString(p, splitColumn[0])
-        )
-      ) {
-        payersPlans.add(splitColumn.slice(1, 3).join(" | "));
+      } else if (splitColumn.length === 3) {
+        const otherPossibilities = ["additional_payer_notes"];
+        if (semver.satisfies(this.version, "^2.2.0")) {
+          otherPossibilities.push("estimated_amount");
+        } else if (semver.satisfies(this.version, ">=3.0.0")) {
+          otherPossibilities.push(
+            "median_amount",
+            "10th_percentile",
+            "90th_percentile"
+          );
+        }
+        if (otherPossibilities.some((p) => matchesString(p, splitColumn[0]))) {
+          payersPlans.add(splitColumn.slice(1, 3).join(" | "));
+        }
       }
     });
     return Array.from(payersPlans);

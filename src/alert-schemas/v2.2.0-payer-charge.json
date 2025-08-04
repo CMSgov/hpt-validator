@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "standard_charges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "payers_information": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "standard_charge_dollar": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "standard_charge_algorithm": {
+                  "type": "string"
+                },
+                "standard_charge_percentage": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "contains": {
+        "type": "object",
+        "properties": {
+          "payers_information": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "required": ["standard_charge_dollar"]
+                },
+                {
+                  "required": ["standard_charge_algorithm"]
+                },
+                {
+                  "required": ["standard_charge_percentage"]
+                }
+              ]
+            }
+          }
+        },
+        "required": ["payers_information"]
+      }
+    }
+  },
+  "required": ["standard_charges"]
+}

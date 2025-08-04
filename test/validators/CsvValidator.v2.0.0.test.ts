@@ -778,7 +778,7 @@ describe("schema v2.0.0", () => {
       validator.normalizedColumns = normalizedColumns;
       validator.isTall = false;
       validator.codeCount = validator.getCodeCount(columns);
-      validator.payersPlans = CsvValidator.getPayersPlans(columns);
+      validator.payersPlans = validator.getPayersPlans(columns);
       validator.rowValidators = [];
       validator.buildRowValidators();
       // start with the minimum amount of valid information

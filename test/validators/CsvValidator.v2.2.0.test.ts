@@ -8,7 +8,6 @@ import {
   AmbiguousFormatError,
   CodePairMissingError,
   ColumnMissingError,
-  CsvValidationError,
   DollarNeedsMinMaxError,
   DrugInformationRequiredError,
   DuplicateColumnError,
@@ -23,7 +22,10 @@ import {
   PercentageAlgorithmEstimateError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
-import { CsvNineNinesAlert } from "../../src/alerts/index.js";
+import {
+  CsvNineNinesAlert,
+  CsvNoPayerChargeAlert,
+} from "../../src/alerts/index.js";
 import {
   BILLING_CODE_TYPES,
   DRUG_UNITS,
@@ -66,13 +68,7 @@ describe("CsvValidator v2.2.0", () => {
       const result = await validator.validate(input);
       expect(result.errors).toHaveLength(0);
       expect(result.alerts).toHaveLength(1);
-      expect(result.alerts[0]).toEqual(
-        new CsvValidationError(
-          -1,
-          13,
-          "File does not have any payer-specific charges"
-        )
-      );
+      expect(result.alerts[0]).toEqual(new CsvNoPayerChargeAlert(13));
       expect(result.valid).toBe(true);
     });
   });
@@ -1472,7 +1468,7 @@ describe("CsvValidator v2.2.0", () => {
       validator.normalizedColumns = normalizedColumns;
       validator.isTall = false;
       validator.codeCount = validator.getCodeCount(columns);
-      validator.payersPlans = CsvValidator.getPayersPlans(columns);
+      validator.payersPlans = validator.getPayersPlans(columns);
       validator.rowValidators = [];
       validator.buildRowValidators();
       // start with the minimum amount of valid information

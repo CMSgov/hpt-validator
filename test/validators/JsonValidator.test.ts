@@ -25,7 +25,7 @@ describe("JsonValidator", () => {
     // this is the earliest version of the schema supported by the validator.
     let validator: JsonValidator;
 
-    beforeAll(() => {
+    beforeEach(() => {
       validator = new JsonValidator("v2.0.0");
     });
 
@@ -165,7 +165,7 @@ describe("JsonValidator", () => {
     // valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
     let validator: JsonValidator;
 
-    beforeAll(() => {
+    beforeEach(() => {
       validator = new JsonValidator("v2.1.0");
     });
 
@@ -271,7 +271,7 @@ describe("JsonValidator", () => {
     // 5. If code type is NDC, then the corresponding drug unit of measure and drug type of measure data elements must be encoded.
     let validator: JsonValidator;
 
-    beforeAll(() => {
+    beforeEach(() => {
       validator = new JsonValidator("v2.2.0");
     });
 
@@ -382,6 +382,7 @@ describe("JsonValidator", () => {
       const input = createFixtureStream("sample-ndc-no-drug-info.json");
       const result = await validator.validate(input);
       expect(result.valid).toBe(false);
+      expect(result.alerts).toHaveLength(0);
       expect(result.errors).toHaveLength(2);
       expect(result.errors).toContainEqual<ValidationError>(
         expect.objectContaining({
@@ -406,6 +407,19 @@ describe("JsonValidator", () => {
         expect.objectContaining({
           message: "Nine 9s used for estimated amount.",
           path: "/standard_charge_information/0/standard_charges/0/payers_information/2/estimated_amount",
+        })
+      );
+    });
+
+    it("should validate a file that has no payer-specific charges", async () => {
+      const input = createFixtureStream("sample-no-payer-charges.json");
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual(
+        expect.objectContaining({
+          message: "File does not have any payer-specific charges.",
+          path: "/standard_charge_information",
         })
       );
     });
