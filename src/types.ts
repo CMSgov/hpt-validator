@@ -2,6 +2,12 @@ import { JsonTypes } from "@streamparser/json";
 import { ValidationError } from "./errors/ValidationError.js";
 import { CsvValidationError } from "./errors/csv/CsvValidationError.js";
 
+export interface ValidationAlert {
+  path: string;
+  field?: string;
+  message: string;
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
