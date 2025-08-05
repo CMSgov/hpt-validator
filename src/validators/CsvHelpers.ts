@@ -1,9 +1,10 @@
 import {
   AllowedValuesError,
   CsvValidationError,
-  InvalidNumberError,
+  InvalidPositiveNumberError,
   RequiredValueError,
 } from "../errors/index.js";
+import semver from "semver";
 
 export const DRUG_UNITS = ["GR", "ME", "ML", "UN", "F2", "EA", "GM"];
 
@@ -94,6 +95,20 @@ export const STATE_CODES = [
   "WV",
   "WI",
   "WY",
+];
+
+export const AFFIRMATION =
+  "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.";
+
+export const ATTESTATION =
+  "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.";
+const SHARED_HEADER_COLUMNS = [
+  "hospital_name", // string
+  "last_updated_on", // date
+  "version", // string - maybe one of the known versions?
+  "hospital_address", // string
+  "license_number | [state]", // string, check for valid postal code in header
+  // AFFIRMATION, // "true" or "false"
 ];
 
 export function objectFromKeysValues(
@@ -255,7 +270,7 @@ export function dynaValidateOptionalFloatField(
   }
   if (!/^(?:\d+|\d+\.\d+|\d+\.|\.\d+)$/.test(value) || parseFloat(value) <= 0) {
     return [
-      new InvalidNumberError(
+      new InvalidPositiveNumberError(
         row,
         columnIndex,
         enteredColumns[columnIndex] ?? "",
@@ -317,4 +332,26 @@ export function dynaValidateRequiredField(
     ];
   }
   return [];
+}
+export function getBillingCodesByVersion(version: string): string[] {
+  const extraCodes: string[] = [];
+  if (semver.satisfies(version, ">=3.0.0")) {
+    extraCodes.push("CMG");
+  }
+  return [...BILLING_CODE_TYPES, ...extraCodes];
+}
+
+export function getHeaderColumnsByVersion(version: string): string[] {
+  const extraColumns: string[] = [];
+  if (semver.satisfies(version, ">=3.0.0")) {
+    extraColumns.push(
+      "location_name",
+      "type_2_npi",
+      ATTESTATION,
+      "attester_name"
+    );
+  } else {
+    extraColumns.push("hospital_location", AFFIRMATION);
+  }
+  return [...SHARED_HEADER_COLUMNS, ...extraColumns];
 }

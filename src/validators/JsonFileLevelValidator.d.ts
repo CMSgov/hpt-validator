@@ -1,4 +1,4 @@
-import { ValidationError } from "../errors/ValidationError.js";
+import { ValidationError } from "../errors/ValidationError.ts";
 import { Ajv } from "ajv";
 import { JsonTypes } from "@streamparser/json";
 
@@ -7,7 +7,7 @@ export type JsonFileLevelValidator = {
   applicableVersion: string;
   state: { [key: string]: any };
   standardChargeSchema?: any;
-  fileSchema?: any;
+  metadataSchema?: any;
   standardChargeCheck: (
     standardCharge: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct,
     state: JsonFileLevelValidator["state"],

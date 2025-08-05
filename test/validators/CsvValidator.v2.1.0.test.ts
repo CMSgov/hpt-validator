@@ -1,8 +1,5 @@
 import _ from "lodash";
-import {
-  AFFIRMATION,
-  CsvValidator,
-} from "../../src/validators/CsvValidator.js";
+import { CsvValidator } from "../../src/validators/CsvValidator.js";
 import {
   AllowedValuesError,
   CodePairMissingError,
@@ -11,13 +8,16 @@ import {
   DuplicateHeaderColumnError,
   HeaderColumnMissingError,
   InvalidDateError,
-  InvalidNumberError,
+  InvalidPositiveNumberError,
   InvalidStateCodeError,
   ItemRequiresChargeError,
   OtherMethodologyNotesError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
-import { BILLING_CODE_TYPES } from "../../src/validators/CsvHelpers.js";
+import {
+  BILLING_CODE_TYPES,
+  AFFIRMATION,
+} from "../../src/validators/CsvHelpers.js";
 const { shuffle } = _;
 
 describe("CsvValidator v2.1.0", () => {
@@ -569,7 +569,7 @@ describe("CsvValidator v2.1.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | gross"),
           "standard_charge  | gross",
@@ -583,7 +583,7 @@ describe("CsvValidator v2.1.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | discounted_cash"),
           "standard_charge | discounted_cash",
@@ -597,7 +597,7 @@ describe("CsvValidator v2.1.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | min"),
           "standard_charge | min",
@@ -611,7 +611,7 @@ describe("CsvValidator v2.1.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | max"),
           "standard_charge | max",

@@ -1,6 +1,7 @@
 export * from "./CsvValidationError.js";
 export * from "./AllowedValuesError.js";
 export * from "./AmbiguousFormatError.js";
+export * from "./ChargeWithPayerPlanError.js";
 export * from "./CodePairMissingError.js";
 export * from "./ColumnMissingError.js";
 export * from "./DollarNeedsMinMaxError.js";

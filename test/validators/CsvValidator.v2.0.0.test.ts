@@ -1,8 +1,5 @@
 import _ from "lodash";
-import {
-  AFFIRMATION,
-  CsvValidator,
-} from "../../src/validators/CsvValidator.js";
+import { CsvValidator } from "../../src/validators/CsvValidator.js";
 import {
   AllowedValuesError,
   CodePairMissingError,
@@ -10,11 +7,12 @@ import {
   DuplicateHeaderColumnError,
   HeaderColumnMissingError,
   InvalidDateError,
-  InvalidNumberError,
+  InvalidPositiveNumberError,
   InvalidStateCodeError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
 import {
+  AFFIRMATION,
   BILLING_CODE_TYPES,
   STANDARD_CHARGE_METHODOLOGY,
 } from "../../src/validators/CsvHelpers.js";
@@ -570,7 +568,7 @@ describe("schema v2.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | gross"),
           "standard_charge  | gross",
@@ -584,7 +582,7 @@ describe("schema v2.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | discounted_cash"),
           "standard_charge | discounted_cash",
@@ -598,7 +596,7 @@ describe("schema v2.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | min"),
           "standard_charge | min",
@@ -612,7 +610,7 @@ describe("schema v2.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | max"),
           "standard_charge | max",
@@ -622,15 +620,15 @@ describe("schema v2.0.0", () => {
     });
 
     it("should return an error when standard charge dollar is present, but not a positive number", () => {
-      row["standard_charge | negotiated_dollar"] = "0";
+      row["standard_charge | negotiated_dollar"] = "XX";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | negotiated_dollar"),
           "standard_charge | negotiated_dollar",
-          "0"
+          "XX"
         )
       );
     });
@@ -640,7 +638,7 @@ describe("schema v2.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | negotiated_percentage"),
           "standard_charge |  negotiated_percentage",
@@ -817,7 +815,7 @@ describe("schema v2.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf(
             "standard_charge | Payer ABC | Plan 1 | negotiated_dollar"
@@ -834,7 +832,7 @@ describe("schema v2.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf(
             "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"

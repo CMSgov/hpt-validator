@@ -134,7 +134,11 @@ export class JsonValidator extends BaseValidator {
         "$.version",
         "$.hospital_address",
         "$.hospital_location",
+        "$.location_name",
         "$.affirmation",
+        "$.attestation",
+        "$.attester_name",
+        "$.type_2_npi",
         "$.modifier_information",
         "$.standard_charge_information.*",
       ],
@@ -250,8 +254,8 @@ export class JsonValidator extends BaseValidator {
         this.fileLevelValidators.forEach((flv) => {
           if (metadata != null) {
             let validatorErrors: Ajv["errors"] = [];
-            if (flv.fileSchema != null) {
-              validator.validate(flv.fileSchema, metadata);
+            if (flv.metadataSchema != null) {
+              validator.validate(flv.metadataSchema, metadata);
               validatorErrors = validator.errors ?? [];
             }
             const bonusErrors = flv.fileCheck(
@@ -265,8 +269,8 @@ export class JsonValidator extends BaseValidator {
         this.fileLevelAlerters.forEach((fla) => {
           if (metadata != null) {
             let validatorErrors: Ajv["errors"] = [];
-            if (fla.fileSchema != null) {
-              validator.validate(fla.fileSchema, metadata);
+            if (fla.metadataSchema != null) {
+              validator.validate(fla.metadataSchema, metadata);
               validatorErrors = validator.errors ?? [];
             }
             const bonusAlerts = fla.fileCheck(

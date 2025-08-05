@@ -1,0 +1,58 @@
+{
+  "hospital_name": "West Mercy Hospital",
+  "last_updated_on": "2024-07-01",
+  "version": "2.0.0",
+  "location_name": ["West Mercy Hospital", "West Mercy Surgical Center"],
+  "hospital_address": [
+    "12 Main Street, Fullerton, CA  92832",
+    "23 Ocean Ave, San Jose, CA 94088"
+  ],
+  "license_information": {
+    "license_number": "50056",
+    "state": "CA"
+  },
+  "attestation": {
+    "attestation": "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.",
+    "confirm_attestation": true
+  },
+  "attester_name": "Malcom Attester",
+  "type_2_npi": ["1122334455", "6677889900"],
+  "standard_charge_information": [
+    {
+      "description": "Aspirin 81 milligram chewable tablet",
+      "drug_information": {
+        "unit": 1,
+        "type": "UN"
+      },
+      "code_information": [
+        {
+          "code": "10135-0729-62",
+          "type": "NDC"
+        }
+      ],
+      "standard_charges": [
+        {
+          "gross_charge": 2,
+          "discounted_cash": 1.5,
+          "minimum": 0.75,
+          "maximum": 0.95,
+          "setting": "both",
+          "payers_information": [
+            {
+              "payer_name": "Platform Health Insurance",
+              "plan_name": "PPO",
+              "standard_charge_dollar": 0.75,
+              "methodology": "fee schedule"
+            },
+            {
+              "payer_name": "Region Health Insurance",
+              "plan_name": "HMO",
+              "standard_charge_dollar": 0.95,
+              "methodology": "fee schedule"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

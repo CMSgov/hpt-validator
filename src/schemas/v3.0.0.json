@@ -28,31 +28,33 @@
             "EAPG",
             "CDT",
             "RC",
-            "CDM"
+            "CDM",
+            "CMG",
+            "MS-LTC-DRG"
           ],
           "type": "string"
         }
       },
       "required": ["code", "type"]
     },
-    "affirmation": {
+    "attestation": {
       "type": "object",
       "properties": {
-        "affirmation": {
+        "attestation": {
           "const": "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated."
         },
-        "confirm_affirmation": {
+        "confirm_attestation": {
           "type": "boolean"
         }
       },
-      "required": ["affirmation", "confirm_affirmation"]
+      "required": ["attestation", "confirm_attestation"]
     },
     "drug_information": {
       "type": "object",
       "properties": {
         "unit": {
-          "type": "string",
-          "minLength": 1
+          "type": "number",
+          "exclusiveMinimum": 0
         },
         "type": {
           "enum": ["GR", "ML", "ME", "UN", "F2", "GM", "EA"],
@@ -158,6 +160,14 @@
           "enum": ["inpatient", "outpatient", "both"],
           "type": "string"
         },
+        "modifier_code": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
         "payers_information": {
           "type": "array",
           "items": {
@@ -166,7 +176,8 @@
           "minItems": 1
         },
         "additional_generic_notes": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": ["setting"],
@@ -199,7 +210,8 @@
                     "required": ["standard_charge_percentage"]
                   }
                 ]
-              }
+              },
+              "minItems": 1
             }
           },
           "required": ["payers_information"]
@@ -213,7 +225,8 @@
             "contains": {
               "type": "object",
               "required": ["standard_charge_dollar"]
-            }
+            },
+            "minItems": 1
           }
         },
         "required": ["payers_information"]
@@ -239,6 +252,10 @@
             "$ref": "#/definitions/modifier_payer_information"
           },
           "minItems": 1
+        },
+        "setting": {
+          "enum": ["inpatient", "outpatient", "both"],
+          "type": "string"
         }
       },
       "required": ["description", "modifier_payer_information", "code"]
@@ -298,10 +315,13 @@
                 "type": {
                   "const": "NDC"
                 }
-              }
-            }
+              },
+              "required": ["type"]
+            },
+            "minItems": 1
           }
-        }
+        },
+        "required": ["code_information"]
       },
       "then": {
         "required": ["drug_information"]
@@ -319,22 +339,36 @@
           "minLength": 1
         },
         "additional_payer_notes": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "standard_charge_dollar": {
           "type": "number",
           "exclusiveMinimum": 0
         },
         "standard_charge_algorithm": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "standard_charge_percentage": {
           "type": "number",
           "exclusiveMinimum": 0
         },
-        "estimated_amount": {
+        "median_amount": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "10th_percentile": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "90th_percentile": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
         },
         "methodology": {
           "enum": [
@@ -350,6 +384,19 @@
       "required": ["payer_name", "plan_name", "methodology"],
       "allOf": [
         {
+          "anyOf": [
+            {
+              "required": ["standard_charge_dollar"]
+            },
+            {
+              "required": ["standard_charge_percentage"]
+            },
+            {
+              "required": ["standard_charge_algorithm"]
+            }
+          ]
+        },
+        {
           "if": {
             "properties": {
               "methodology": {
@@ -359,13 +406,22 @@
             "required": ["methodology"]
           },
           "then": {
-            "properties": {
-              "additional_payer_notes": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
             "required": ["additional_payer_notes"]
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "required": ["standard_charge_percentage"]
+              },
+              {
+                "required": ["standard_charge_algorithm"]
+              }
+            ]
+          },
+          "then": {
+            "required": ["count"]
           }
         },
         {
@@ -379,11 +435,29 @@
               }
             ],
             "not": {
-              "required": ["standard_charge_dollar"]
+              "properties": {
+                "count": {
+                  "const": 0
+                }
+              },
+              "required": ["count"]
             }
           },
           "then": {
-            "required": ["estimated_amount"]
+            "required": ["median_amount", "10th_percentile", "90th_percentile"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "count": {
+                "const": 0
+              }
+            },
+            "required": ["count"]
+          },
+          "then": {
+            "required": ["additional_payer_notes"]
           }
         }
       ]
@@ -398,7 +472,8 @@
     "hospital_address": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
       },
       "minItems": 1
     },
@@ -406,8 +481,12 @@
       "type": "string",
       "format": "date"
     },
-    "affirmation": {
-      "$ref": "#/definitions/affirmation"
+    "attestation": {
+      "$ref": "#/definitions/attestation"
+    },
+    "attester_name": {
+      "type": "string",
+      "minLength": 1
     },
     "license_information": {
       "$ref": "#/definitions/license_information"
@@ -416,10 +495,19 @@
       "type": "string",
       "minLength": 1
     },
-    "hospital_location": {
+    "location_name": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "type_2_npi": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
       },
       "minItems": 1
     },
@@ -434,17 +522,20 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/modifier_information"
-      }
+      },
+      "minItems": 1
     }
   },
   "required": [
     "hospital_name",
     "standard_charge_information",
     "last_updated_on",
-    "hospital_location",
+    "location_name",
     "hospital_address",
+    "type_2_npi",
     "license_information",
-    "affirmation",
+    "attestation",
+    "attester_name",
     "version"
   ]
 }

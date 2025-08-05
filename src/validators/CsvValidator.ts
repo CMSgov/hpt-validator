@@ -7,14 +7,14 @@ import * as csvErr from "../errors/csv/index.js";
 import { CsvNineNinesAlert, CsvNoPayerChargeAlert } from "../alerts/index.js";
 import _ from "lodash";
 const { range, partial, bind } = _;
-import { BranchingValidator, FileLevelValidator } from "./CsvFieldTypes.js";
+import { BranchingValidator, CsvFileLevelValidator } from "./CsvFieldTypes.js";
 import {
   matchesString,
   sepColumnsEqual,
   isValidDate,
   objectFromKeysValues,
   DRUG_UNITS,
-  BILLING_CODE_TYPES,
+  getBillingCodesByVersion,
   STANDARD_CHARGE_METHODOLOGY,
   STATE_CODES,
   dynaValidateOptionalFloatField,
@@ -23,20 +23,10 @@ import {
   dynaValidateRequiredFloatField,
   validateRequiredHeaderEnum,
   dynaValidateOptionalEnumField,
+  getHeaderColumnsByVersion,
+  AFFIRMATION,
+  ATTESTATION,
 } from "./CsvHelpers.js";
-
-export const AFFIRMATION =
-  "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.";
-
-export const HEADER_COLUMNS = [
-  "hospital_name", // string
-  "last_updated_on", // date
-  "version", // string - maybe one of the known versions?
-  "hospital_location", // string
-  "hospital_address", // string
-  "license_number | [state]", // string, check for valid postal code in header
-  AFFIRMATION, // "true" or "false"
-];
 
 export type ColumnDefinition = {
   label: string;
@@ -61,8 +51,8 @@ export class CsvValidator extends BaseValidator {
 
   public rowValidators: BranchingValidator[] = [];
   public rowAlerters: BranchingValidator[] = [];
-  public fileValidators: FileLevelValidator[] = [];
-  public fileAlerters: FileLevelValidator[] = [];
+  public fileValidators: CsvFileLevelValidator[] = [];
+  public fileAlerters: CsvFileLevelValidator[] = [];
   public payersPlans: string[] = [];
   public codeCount: number = 0;
 
@@ -144,6 +134,7 @@ export class CsvValidator extends BaseValidator {
 
     // if code | 1 is not null, code | 1 | type is requiredEnum
     // if code | 1 | type is not null, code | 1 is required
+    const allowedBillingCodes = getBillingCodesByVersion(this.version);
     range(1, this.codeCount + 1).forEach((codeIndex) => {
       this.rowValidators.push(
         {
@@ -168,7 +159,7 @@ export class CsvValidator extends BaseValidator {
             if (dataRow[`code | ${codeIndex}`]) {
               return validateRequiredEnumField(
                 `code | ${codeIndex} | type`,
-                BILLING_CODE_TYPES,
+                allowedBillingCodes,
                 "",
                 dataRow,
                 row
@@ -224,6 +215,45 @@ export class CsvValidator extends BaseValidator {
         applicableVersion: "^2.2.0",
         validator: partial(validateOptionalFloatField, "estimated_amount"),
       });
+      // 3.0.0 removes estimated_amount, adds median, 10th percentile, 90th percentile
+      ["median_amount", "10th_percentile", "90th_percentile"].forEach(
+        (chargeColumn) => {
+          this.rowValidators.push({
+            name: chargeColumn,
+            applicableVersion: ">=3.0.0",
+            validator: partial(validateOptionalFloatField, chargeColumn),
+          });
+        }
+      );
+      // 3.0.0 adds count, which is a number but is allowed to be 0
+      // since this is currently the only one that allows 0, we have a one-off validator
+      // but if more fields start to allow it, we can build a reusable one.
+      this.rowValidators.push({
+        name: "count",
+        applicableVersion: ">=3.0.0",
+        validator: (dataRow, row) => {
+          const value = dataRow["count"];
+          if (!value) {
+            return [];
+          }
+          if (
+            !/^(?:\d+|\d+\.\d+|\d+\.|\.\d+)$/.test(value) ||
+            parseFloat(value) < 0
+          ) {
+            const columnIndex = this.normalizedColumns.indexOf("count");
+            return [
+              new csvErr.InvalidNonNegativeNumberError(
+                row,
+                columnIndex,
+                this.dataColumns[columnIndex] ?? "",
+                value
+              ),
+            ];
+          }
+          return [];
+        },
+      });
+
       // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
       // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
       nonModifierChecks.push({
@@ -365,9 +395,46 @@ export class CsvValidator extends BaseValidator {
             `estimated_amount | ${payerPlan}`
           ),
         });
-      });
-
-      this.payersPlans.forEach((payerPlan) => {
+        // 3.0.0 removes estimated_amount, adds median, 10th percentile, 90th percentile
+        [
+          `median_amount | ${payerPlan}`,
+          `10th_percentile | ${payerPlan}`,
+          `90th_percentile | ${payerPlan}`,
+        ].forEach((chargeColumn) => {
+          this.rowValidators.push({
+            name: chargeColumn,
+            applicableVersion: ">=3.0.0",
+            validator: partial(validateOptionalFloatField, chargeColumn),
+          });
+        });
+        // 3.0.0 adds count, which is a number but is allowed to be 0
+        this.rowValidators.push({
+          name: `count | ${payerPlan}`,
+          applicableVersion: ">=3.0.0",
+          validator: (dataRow, row) => {
+            const value = dataRow[`count | ${payerPlan}`];
+            if (!value) {
+              return [];
+            }
+            if (
+              !/^(?:\d+|\d+\.\d+|\d+\.|\.\d+)$/.test(value) ||
+              parseFloat(value) < 0
+            ) {
+              const columnIndex = this.normalizedColumns.indexOf(
+                `count | ${payerPlan}`
+              );
+              return [
+                new csvErr.InvalidNonNegativeNumberError(
+                  row,
+                  columnIndex,
+                  this.dataColumns[columnIndex] ?? "",
+                  value
+                ),
+              ];
+            }
+            return [];
+          },
+        });
         // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
         // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
         nonModifierChecks.push({
@@ -422,9 +489,7 @@ export class CsvValidator extends BaseValidator {
         chargeFields.push(
           `standard_charge | ${payerPlan} | negotiated_dollar`,
           `standard_charge | ${payerPlan} | negotiated_percentage`,
-          `standard_charge | ${payerPlan} | negotiated_algorithm`,
-          `estimated_amount | ${payerPlan}`,
-          `additional_payer_notes | ${payerPlan}`
+          `standard_charge | ${payerPlan} | negotiated_algorithm`
         );
       });
       nonModifierChecks.push({
@@ -580,8 +645,98 @@ export class CsvValidator extends BaseValidator {
           return [];
         },
       });
-      // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
-      // amount data element within the MRF and should instead encode an actual dollar amount.
+      // If a "payer specific negotiated charge" is expressed as a percentage or algorithm,
+      // then count of allowed amounts is required. new in v3.0.0
+      nonModifierChecks.push({
+        name: "count of allowed amounts is required when percentage or algorithm charges are present",
+        applicableVersion: ">=3.0.0",
+        validator: (dataRow, row) => {
+          if (
+            (dataRow["standard_charge | negotiated_percentage"] ||
+              dataRow["standard_charge | negotiated_algorithm"]) &&
+            !dataRow["count"]
+          ) {
+            return [
+              new csvErr.PercentageAlgorithmCountError(
+                row,
+                this.normalizedColumns.indexOf("count")
+              ),
+            ];
+          }
+          return [];
+        },
+      });
+      // If a "payer specific negotiated charge" is expressed as a percentage or algorithm,
+      // And count of allowed amounts is not 0,
+      // then corresponding "Median", "10th percentile", and "90th percentile" must also be encoded. new in v3.0.0
+      // Note the differences between the last version's condition and this one!
+      // Having a standard charge dollar no longer lets a row avoid this requirement,
+      // but a count of allowed amounts of 0 does let a row avoid the requirement.
+      // Supersedes similar requirement from v2.2.0
+      nonModifierChecks.push({
+        name: "median, 10th percentile, and 90th percentile when percentage or algorithm charges are present and count of allowed amounts is not 0",
+        applicableVersion: ">=3.0.0",
+        validator: (dataRow, row) => {
+          const missing: csvErr.CsvValidationError[] = [];
+          if (
+            (dataRow["standard_charge | negotiated_percentage"] ||
+              dataRow["standard_charge | negotiated_algorithm"]) &&
+            parseFloat(dataRow["count"]) != 0
+          ) {
+            // there are three separate error classes, so check them separately
+            if (!dataRow.median_amount) {
+              missing.push(
+                new csvErr.PercentageAlgorithmMedianError(
+                  row,
+                  this.normalizedColumns.indexOf("median_amount")
+                )
+              );
+            }
+            if (!dataRow["10th_percentile"]) {
+              missing.push(
+                new csvErr.PercentageAlgorithm10thError(
+                  row,
+                  this.normalizedColumns.indexOf("10th_percentile")
+                )
+              );
+            }
+            if (!dataRow["90th_percentile"]) {
+              missing.push(
+                new csvErr.PercentageAlgorithm90thError(
+                  row,
+                  this.normalizedColumns.indexOf("90th_percentile")
+                )
+              );
+            }
+          }
+          return missing;
+        },
+      });
+      // if a payer name and plan name are encoded, a payer-specific charge must be encoded.
+      // new as of v3.0.0
+      nonModifierChecks.push({
+        name: "payer-specific charge when payer name and plan name are encoded",
+        applicableVersion: ">=3.0.0",
+        validator: (dataRow, row) => {
+          if (
+            dataRow["payer_name"] &&
+            dataRow["plan_name"] &&
+            !dataRow["standard_charge | negotiated_dollar"] &&
+            !dataRow["standard_charge | negotiated_algorithm"] &&
+            !dataRow["standard_charge | negotiated_percentage"]
+          ) {
+            return [
+              new csvErr.ChargeWithPayerPlanError(
+                row,
+                this.normalizedColumns.indexOf("payer_name")
+              ),
+            ];
+          }
+          return [];
+        },
+      });
+
+      // amount data element within the MRF and should instead encode an actual dollar amount. // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
       // new as of 2025/05/22, at which point v2.2.0 was in effect.
       this.rowAlerters.push({
         name: "discontinue encoding nine 9s for estimated amount",
@@ -632,7 +787,7 @@ export class CsvValidator extends BaseValidator {
         // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
         nonModifierChecks.push({
           name: `estimated allowed amount for ${payerPlan} required when charge is only percentage or algorithm`,
-          applicableVersion: ">=2.2.0",
+          applicableVersion: "^2.2.0",
           validator: (dataRow, row) => {
             if (
               !dataRow[`standard_charge | ${payerPlan} | negotiated_dollar`] &&
@@ -654,6 +809,87 @@ export class CsvValidator extends BaseValidator {
               ];
             }
             return [];
+          },
+        });
+        // If a "payer specific negotiated charge" is expressed as a percentage or algorithm,
+        // then count of allowed amounts is required. new in v3.0.0
+        nonModifierChecks.push({
+          name: `count of allowed amounts for ${payerPlan} is required when percentage or algorithm charges are present`,
+          applicableVersion: ">=3.0.0",
+          validator: (dataRow, row) => {
+            if (
+              (dataRow[
+                `standard_charge | ${payerPlan} | negotiated_percentage`
+              ] ||
+                dataRow[
+                  `standard_charge | ${payerPlan} | negotiated_algorithm`
+                ]) &&
+              !dataRow[`count | ${payerPlan}`]
+            ) {
+              return [
+                new csvErr.PercentageAlgorithmCountError(
+                  row,
+                  this.normalizedColumns.indexOf(`count | ${payerPlan}`)
+                ),
+              ];
+            }
+            return [];
+          },
+        });
+        // If a "payer specific negotiated charge" is expressed as a percentage or algorithm,
+        // And count of allowed amounts is not 0,
+        // then corresponding "Median", "10th percentile", and "90th percentile" must also be encoded. new in v3.0.0
+        // Note the differences between the last version's condition and this one!
+        // Having a standard charge dollar no longer lets a row avoid this requirement,
+        // but a count of allowed amounts of 0 does let a row avoid the requirement.
+        // Supersedes similar requirement from v2.2.0
+        nonModifierChecks.push({
+          name: `median, 10th percentile, and 90th percentile for ${payerPlan} when percentage or algorithm charges are present and count of allowed amounts is not 0`,
+          applicableVersion: ">=3.0.0",
+          validator: (dataRow, row) => {
+            const missing: csvErr.CsvValidationError[] = [];
+            if (
+              (dataRow[
+                `standard_charge | ${payerPlan} | negotiated_percentage`
+              ] ||
+                dataRow[
+                  `standard_charge | ${payerPlan} | negotiated_algorithm`
+                ]) &&
+              parseFloat(dataRow[`count | ${payerPlan}`]) != 0
+            ) {
+              // there are three separate error classes, so check them separately
+              if (!dataRow[`median_amount | ${payerPlan}`]) {
+                missing.push(
+                  new csvErr.PercentageAlgorithmMedianError(
+                    row,
+                    this.normalizedColumns.indexOf(
+                      `median_amount | ${payerPlan}`
+                    )
+                  )
+                );
+              }
+              if (!dataRow[`10th_percentile | ${payerPlan}`]) {
+                missing.push(
+                  new csvErr.PercentageAlgorithm10thError(
+                    row,
+                    this.normalizedColumns.indexOf(
+                      `10th_percentile | ${payerPlan}`
+                    )
+                  )
+                );
+              }
+              if (!dataRow[`90th_percentile | ${payerPlan}`]) {
+                missing.push(
+                  new csvErr.PercentageAlgorithm90thError(
+                    row,
+                    this.normalizedColumns.indexOf(
+                      `90th_percentile | ${payerPlan}`
+                    )
+                  )
+                );
+              }
+            }
+            return missing;
           },
         });
         // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
@@ -738,7 +974,7 @@ export class CsvValidator extends BaseValidator {
 
   buildFileValidators() {
     // alert: a file should have at least one payer-specific negotiated charge
-    let hasChargeRowCheck: FileLevelValidator["rowCheck"];
+    let hasChargeRowCheck: CsvFileLevelValidator["rowCheck"];
     if (this.isTall) {
       hasChargeRowCheck = (dataRow, state) => {
         if (!state.hasCharge) {
@@ -829,7 +1065,7 @@ export class CsvValidator extends BaseValidator {
   }
 
   validateHeaderColumns(columns: string[]): csvErr.CsvValidationError[] {
-    const remainingColumns = [...HEADER_COLUMNS];
+    const remainingColumns = getHeaderColumnsByVersion(this.version);
     const discoveredColumns: string[] = [];
     const errors: csvErr.CsvValidationError[] = [];
     columns.forEach((column, index) => {
@@ -897,7 +1133,10 @@ export class CsvValidator extends BaseValidator {
           !isValidDate(value)
         ) {
           errors.push(new csvErr.InvalidDateError(1, index, header, value));
-        } else if (sepColumnsEqual(header, AFFIRMATION)) {
+        } else if (
+          sepColumnsEqual(header, AFFIRMATION) ||
+          sepColumnsEqual(header, ATTESTATION)
+        ) {
           errors.push(
             ...validateRequiredHeaderEnum(1, index, header, value, [
               "true",
@@ -1079,6 +1318,10 @@ export class CsvValidator extends BaseValidator {
             {
               label: `90th_percentile | ${payerPlan}`,
               required: true,
+            },
+            {
+              label: `count | ${payerPlan}`,
+              required: true,
             }
           );
         });
@@ -1086,7 +1329,8 @@ export class CsvValidator extends BaseValidator {
         columns.push(
           { label: "median_amount", required: true },
           { label: "10th_percentile", required: true },
-          { label: "90th_percentile", required: true }
+          { label: "90th_percentile", required: true },
+          { label: "count", required: true }
         );
       }
     }
@@ -1113,6 +1357,7 @@ export class CsvValidator extends BaseValidator {
     // median_amount | Payer ABC | Plan 1
     // 10th_percentile | Payer ABC | Plan 1
     // 90th_percentile | Payer ABC | Plan 1
+    // count | Payer ABC | Plan 1
     const payersPlans = new Set<string>();
     columns.forEach((column) => {
       const splitColumn = column.split("|").map((p) => p.trim());
@@ -1136,7 +1381,8 @@ export class CsvValidator extends BaseValidator {
           otherPossibilities.push(
             "median_amount",
             "10th_percentile",
-            "90th_percentile"
+            "90th_percentile",
+            "count"
           );
         }
         if (otherPossibilities.some((p) => matchesString(p, splitColumn[0]))) {
@@ -1179,14 +1425,14 @@ export class CsvValidator extends BaseValidator {
 
   applyFileValidatorsToRow(
     row: { [key: string]: string },
-    validators: FileLevelValidator[]
+    validators: CsvFileLevelValidator[]
   ) {
     validators.forEach((validator) => {
       validator.rowCheck(row, validator.state);
     });
   }
 
-  applyFileValidatorsToFile(validators: FileLevelValidator[]) {
+  applyFileValidatorsToFile(validators: CsvFileLevelValidator[]) {
     const errors: csvErr.CsvValidationError[] = [];
     validators.forEach((validator) => {
       errors.push(...validator.fileCheck(validator.state));
