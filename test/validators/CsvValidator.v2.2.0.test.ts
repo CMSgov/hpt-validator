@@ -949,6 +949,20 @@ describe("CsvValidator v2.2.0", () => {
       );
     });
 
+    it("should return an error when estimated amount is present, but not a positive number", () => {
+      row.estimated_amount = "Unknown";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new InvalidNumberError(
+          validator.index,
+          normalizedColumns.indexOf("estimated_amount"),
+          "estimated_amount",
+          "Unknown"
+        )
+      );
+    });
+
     it("should return an error when no code pairs are present", () => {
       row["code | 1"] = "";
       row["code | 1 | type"] = "";
@@ -1485,6 +1499,20 @@ describe("CsvValidator v2.2.0", () => {
     it("should return no errors when a valid wide data row is provided", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
+    });
+
+    it("should return an error when estimated amount is present, but not a positive number", () => {
+      row["estimated_amount | Payer ABC | Plan 1"] = "-5";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new InvalidNumberError(
+          validator.index,
+          normalizedColumns.indexOf("estimated_amount | Payer ABC | Plan 1"),
+          "estimated_amount |  Payer ABC | Plan 1",
+          "-5"
+        )
+      );
     });
 
     // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm

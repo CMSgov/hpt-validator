@@ -618,6 +618,34 @@ describe("schema v2.0.0", () => {
       );
     });
 
+    it("should return an error when standard charge dollar is present, but not a positive number", () => {
+      row["standard_charge | negotiated_dollar"] = "0";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new InvalidNumberError(
+          validator.index,
+          normalizedColumns.indexOf("standard_charge | negotiated_dollar"),
+          "standard_charge | negotiated_dollar",
+          "0"
+        )
+      );
+    });
+
+    it("should return an error when standard charge percentage is present, but not a positive number", () => {
+      row["standard_charge | negotiated_percentage"] = "N/a";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new InvalidNumberError(
+          validator.index,
+          normalizedColumns.indexOf("standard_charge | negotiated_percentage"),
+          "standard_charge |  negotiated_percentage",
+          "N/a"
+        )
+      );
+    });
+
     it("should return an error when no code pairs are present", () => {
       row["code | 1"] = "";
       row["code | 1 | type"] = "";
@@ -766,6 +794,39 @@ describe("schema v2.0.0", () => {
     it("should return no errors when a valid wide data row is provided", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
+    });
+
+    it("should return an error when standard charge dollar is present, but not a positive number", () => {
+      row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] = "$5";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new InvalidNumberError(
+          validator.index,
+          normalizedColumns.indexOf(
+            "standard_charge | Payer ABC | Plan 1 | negotiated_dollar"
+          ),
+          "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+          "$5"
+        )
+      );
+    });
+
+    it("should return an error when standard charge percentage is present, but not a positive number", () => {
+      row["standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"] =
+        "free";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new InvalidNumberError(
+          validator.index,
+          normalizedColumns.indexOf(
+            "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"
+          ),
+          "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage",
+          "free"
+        )
+      );
     });
   });
 });

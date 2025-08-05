@@ -346,6 +346,23 @@ export class CsvValidator extends BaseValidator {
     const payerSpecificSuffix =
       " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm";
     if (this.isTall) {
+      // dollar and percentage fields must be numeric if present
+      [
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+      ].forEach((chargeColumn) => {
+        this.rowValidators.push({
+          name: chargeColumn,
+          applicableVersion: ">=2.0.0",
+          validator: partial(validateOptionalFloatField, chargeColumn),
+        });
+      });
+      // 2.2.0 defines estimated_amount
+      this.rowValidators.push({
+        name: "estimated_amount",
+        applicableVersion: "^2.2.0",
+        validator: partial(validateOptionalFloatField, "estimated_amount"),
+      });
       // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
       // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
       nonModifierChecks.push({
@@ -456,6 +473,29 @@ export class CsvValidator extends BaseValidator {
       // For the wide format, a set of columns will be repeated for each payer and plan.
       // So, some conditional checks are repeated for each of those payers and plans.
       // Other conditional checks apply to all payers and plans together.
+
+      // dollar and percentage fields must be numeric if present
+      this.payersPlans.forEach((payerPlan) => {
+        [
+          `standard_charge | ${payerPlan} | negotiated_dollar`,
+          `standard_charge | ${payerPlan} | negotiated_percentage`,
+        ].forEach((chargeColumn) => {
+          this.rowValidators.push({
+            name: chargeColumn,
+            applicableVersion: ">=2.0.0",
+            validator: partial(validateOptionalFloatField, chargeColumn),
+          });
+        });
+        // 2.2.0 defines estimated_amount
+        this.rowValidators.push({
+          name: `estimated_amount | ${payerPlan}`,
+          applicableVersion: "^2.2.0",
+          validator: partial(
+            validateOptionalFloatField,
+            `estimated_amount | ${payerPlan}`
+          ),
+        });
+      });
 
       // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
       // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
