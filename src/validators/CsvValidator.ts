@@ -2,31 +2,8 @@ import Papa from "papaparse";
 import semver from "semver";
 import { CsvValidationOptions, ValidationResult } from "../types.js";
 import { BaseValidator } from "./BaseValidator.js";
-import { removeBOM } from "../utils.js";
-import {
-  AllowedValuesError,
-  AmbiguousFormatError,
-  CodePairMissingError,
-  ColumnMissingError,
-  CsvValidationError,
-  DollarNeedsMinMaxError,
-  DrugInformationRequiredError,
-  DuplicateColumnError,
-  DuplicateHeaderColumnError,
-  HeaderBlankError,
-  HeaderColumnMissingError,
-  InvalidDateError,
-  InvalidNumberError,
-  InvalidStateCodeError,
-  InvalidVersionError,
-  ItemRequiresChargeError,
-  MinRowsError,
-  ModifierMissingInfoError,
-  OtherMethodologyNotesError,
-  PercentageAlgorithmEstimateError,
-  ProblemsInHeaderError,
-  RequiredValueError,
-} from "../errors/csv/index.js";
+import { addItemsWithLimit, removeBOM } from "../utils.js";
+import * as csvErr from "../errors/csv/index.js";
 import { CsvNineNinesAlert } from "../alerts/index.js";
 import _ from "lodash";
 const { range, partial, bind } = _;
@@ -40,6 +17,12 @@ import {
   BILLING_CODE_TYPES,
   STANDARD_CHARGE_METHODOLOGY,
   STATE_CODES,
+  dynaValidateOptionalFloatField,
+  dynaValidateRequiredEnumField,
+  dynaValidateRequiredField,
+  dynaValidateRequiredFloatField,
+  validateRequiredHeaderEnum,
+  dynaValidateOptionalEnumField,
 } from "./CsvHelpers.js";
 
 export const AFFIRMATION =
@@ -61,141 +44,6 @@ export type ColumnDefinition = {
   dataRequired?: boolean;
 };
 
-export function validateRequiredHeaderEnum(
-  row: number,
-  column: number,
-  columnName: string,
-  value: string,
-  allowedValues: string[],
-  suffix: string = ""
-) {
-  if (!value) {
-    return [new RequiredValueError(row, column, columnName, suffix)];
-  } else if (
-    !allowedValues.some((allowedValue) => matchesString(value, allowedValue))
-  ) {
-    return [
-      new AllowedValuesError(row, column, columnName, value, allowedValues),
-    ];
-  } else {
-    return [];
-  }
-}
-
-export function dynaValidateRequiredEnumField(
-  normalizedColumns: (string | undefined)[],
-  enteredColumns: (string | undefined)[],
-  field: string,
-  allowedValues: string[],
-  suffix: string = "",
-  dataRow: { [key: string]: string },
-  row: number
-) {
-  const value = dataRow[field];
-  const columnIndex = normalizedColumns.indexOf(field);
-  if (!value) {
-    return [
-      new RequiredValueError(
-        row,
-        columnIndex,
-        enteredColumns[columnIndex] ?? "",
-        suffix
-      ),
-    ];
-  } else if (
-    !allowedValues.some((allowedValue) => matchesString(value, allowedValue))
-  ) {
-    return [
-      new AllowedValuesError(
-        row,
-        columnIndex,
-        enteredColumns[columnIndex] ?? "",
-        value,
-        allowedValues
-      ),
-    ];
-  }
-  return [];
-}
-
-export function dynaValidateOptionalFloatField(
-  normalizedColumns: (string | undefined)[],
-  enteredColumns: (string | undefined)[],
-  field: string,
-  dataRow: { [key: string]: string },
-  row: number
-) {
-  const value = dataRow[field];
-  const columnIndex = normalizedColumns.indexOf(field);
-  if (!value) {
-    return [];
-  }
-  if (!/^(?:\d+|\d+\.\d+|\d+\.|\.\d+)$/.test(value) || parseFloat(value) <= 0) {
-    return [
-      new InvalidNumberError(
-        row,
-        columnIndex,
-        enteredColumns[columnIndex] ?? "",
-        value
-      ),
-    ];
-  }
-  return [];
-}
-
-export function dynaValidateRequiredFloatField(
-  normalizedColumns: (string | undefined)[],
-  enteredColumns: (string | undefined)[],
-  field: string,
-  suffix: string = "",
-  dataRow: { [key: string]: string },
-  row: number
-): CsvValidationError[] {
-  const value = dataRow[field];
-  const columnIndex = normalizedColumns.indexOf(field);
-  if (!value) {
-    return [
-      new RequiredValueError(
-        row,
-        columnIndex,
-        enteredColumns[columnIndex] ?? "",
-        suffix
-      ),
-    ];
-  } else {
-    return dynaValidateOptionalFloatField(
-      normalizedColumns,
-      enteredColumns,
-      field,
-      dataRow,
-      row
-    );
-  }
-}
-
-export function dynaValidateRequiredField(
-  normalizedColumns: (string | undefined)[],
-  enteredColumns: (string | undefined)[],
-  field: string,
-  suffix: string = "",
-  dataRow: { [key: string]: string },
-  row: number
-): CsvValidationError[] {
-  const value = dataRow[field];
-  const columnIndex = normalizedColumns.indexOf(field);
-  if (!value) {
-    return [
-      new RequiredValueError(
-        row,
-        columnIndex,
-        enteredColumns[columnIndex] ?? "",
-        suffix
-      ),
-    ];
-  }
-  return [];
-}
-
 export class CsvValidator extends BaseValidator {
   private _version: string = "";
   public index = 0;
@@ -205,8 +53,8 @@ export class CsvValidator extends BaseValidator {
   public dataColumns: (string | undefined)[] = [];
   // normalizedColumns are the columns after pipe separation, trim, and rejoining
   public normalizedColumns: (string | undefined)[] = [];
-  public errors: CsvValidationError[] = [];
-  public alerts: CsvValidationError[] = [];
+  public errors: csvErr.CsvValidationError[] = [];
+  public alerts: csvErr.CsvValidationError[] = [];
   public maxErrors: number;
   public dataCallback?: CsvValidationOptions["onValueCallback"];
   static allowedVersions = ["2.0.0", "2.1.0", "2.2.0"];
@@ -245,11 +93,15 @@ export class CsvValidator extends BaseValidator {
 
   buildRowValidators() {
     const modifierChecks: BranchingValidator[] = [];
-    const codeChecks: BranchingValidator[] = [];
 
     // do partial application on all dynamic validators, since they all use the same sets of columns
     const validateRequiredField = partial(
       dynaValidateRequiredField,
+      this.normalizedColumns,
+      this.dataColumns
+    );
+    const validateOptionalEnumField = partial(
+      dynaValidateOptionalEnumField,
       this.normalizedColumns,
       this.dataColumns
     );
@@ -290,7 +142,7 @@ export class CsvValidator extends BaseValidator {
     // if code | 1 is not null, code | 1 | type is requiredEnum
     // if code | 1 | type is not null, code | 1 is required
     range(1, this.codeCount + 1).forEach((codeIndex) => {
-      codeChecks.push(
+      this.rowValidators.push(
         {
           name: `code | ${codeIndex}`,
           applicableVersion: ">=2.0.0",
@@ -325,8 +177,6 @@ export class CsvValidator extends BaseValidator {
       );
     });
 
-    this.rowValidators.push(...codeChecks);
-
     // standard charges must be numeric if present
     [
       "standard_charge | gross",
@@ -356,6 +206,16 @@ export class CsvValidator extends BaseValidator {
           applicableVersion: ">=2.0.0",
           validator: partial(validateOptionalFloatField, chargeColumn),
         });
+      });
+      // methodology must be one of the allowed values, if present
+      this.rowValidators.push({
+        name: "standard_charge | methodology",
+        applicableVersion: ">=2.0.0",
+        validator: partial(
+          validateOptionalEnumField,
+          "standard_charge | methodology",
+          STANDARD_CHARGE_METHODOLOGY
+        ),
       });
       // 2.2.0 defines estimated_amount
       this.rowValidators.push({
@@ -398,9 +258,8 @@ export class CsvValidator extends BaseValidator {
             name: "standard_charge | methodology",
             applicableVersion: ">=2.1.0",
             validator: partial(
-              validateRequiredEnumField,
+              validateRequiredField,
               "standard_charge | methodology",
-              STANDARD_CHARGE_METHODOLOGY,
               payerSpecificSuffix
             ),
           },
@@ -419,7 +278,7 @@ export class CsvValidator extends BaseValidator {
             const columnIndex = this.normalizedColumns.indexOf(
               "additional_generic_notes"
             );
-            return [new OtherMethodologyNotesError(row, columnIndex)];
+            return [new csvErr.OtherMethodologyNotesError(row, columnIndex)];
           }
           return [];
         },
@@ -442,7 +301,7 @@ export class CsvValidator extends BaseValidator {
             const columnIndex = this.normalizedColumns.indexOf(
               "standard_charge | gross"
             );
-            return [new ItemRequiresChargeError(row, columnIndex)];
+            return [new csvErr.ItemRequiresChargeError(row, columnIndex)];
           }
           return [];
         },
@@ -462,7 +321,7 @@ export class CsvValidator extends BaseValidator {
               const columnIndex = this.normalizedColumns.indexOf(
                 missingBounds[0]
               );
-              return [new DollarNeedsMinMaxError(row, columnIndex)];
+              return [new csvErr.DollarNeedsMinMaxError(row, columnIndex)];
             }
           }
 
@@ -486,6 +345,16 @@ export class CsvValidator extends BaseValidator {
             validator: partial(validateOptionalFloatField, chargeColumn),
           });
         });
+        // methodology must be one of the allowed values, if present
+        this.rowValidators.push({
+          name: `standard_charge | ${payerPlan} | methodology`,
+          applicableVersion: ">=2.0.0",
+          validator: partial(
+            validateOptionalEnumField,
+            `standard_charge | ${payerPlan} | methodology`,
+            STANDARD_CHARGE_METHODOLOGY
+          ),
+        });
         // 2.2.0 defines estimated_amount
         this.rowValidators.push({
           name: `estimated_amount | ${payerPlan}`,
@@ -497,59 +366,50 @@ export class CsvValidator extends BaseValidator {
         });
       });
 
-      // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
-      // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
-      nonModifierChecks.push(
-        ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
-          return {
-            name: `conditional for ${payerPlan} negotiated charge methodology`,
-            applicableVersion: ">=2.1.0",
-            validator: (dataRow, row) => {
-              const hasStandardCharge = Boolean(
-                dataRow[`standard_charge | ${payerPlan} | negotiated_dollar`] ||
-                  dataRow[
-                    `standard_charge | ${payerPlan} | negotiated_percentage`
-                  ] ||
-                  dataRow[
-                    `standard_charge | ${payerPlan} | negotiated_algorithm`
-                  ]
+      this.payersPlans.forEach((payerPlan) => {
+        // If a "payer specific negotiated charge" is encoded as a dollar amount, percentage, or algorithm
+        // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
+        nonModifierChecks.push({
+          name: `conditional for ${payerPlan} negotiated charge methodology`,
+          applicableVersion: ">=2.1.0",
+          validator: (dataRow, row) => {
+            const hasStandardCharge = Boolean(
+              dataRow[`standard_charge | ${payerPlan} | negotiated_dollar`] ||
+                dataRow[
+                  `standard_charge | ${payerPlan} | negotiated_percentage`
+                ] ||
+                dataRow[`standard_charge | ${payerPlan} | negotiated_algorithm`]
+            );
+            if (hasStandardCharge) {
+              return validateRequiredField(
+                `standard_charge | ${payerPlan} | methodology`,
+                payerSpecificSuffix,
+                dataRow,
+                row
               );
-              if (hasStandardCharge) {
-                return validateRequiredEnumField(
-                  `standard_charge | ${payerPlan} | methodology`,
-                  STANDARD_CHARGE_METHODOLOGY,
-                  payerSpecificSuffix,
-                  dataRow,
-                  row
-                );
-              }
-              return [];
-            },
-          };
-        })
-      );
-      // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
-      // in the "additional notes" for the associated payer-specific negotiated charge.
-      nonModifierChecks.push(
-        ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
-          return {
-            name: `${payerPlan} other methodology requires notes`,
-            applicableVersion: ">=2.1.0",
-            validator: (dataRow, row) => {
-              const methodologyIsOther = matchesString(
-                dataRow[`standard_charge | ${payerPlan} | methodology`] ?? "",
-                "other"
-              );
-              const columnName = `additional_payer_notes | ${payerPlan}`;
-              if (methodologyIsOther && !dataRow[columnName]) {
-                const columnIndex = this.normalizedColumns.indexOf(columnName);
-                return [new OtherMethodologyNotesError(row, columnIndex)];
-              }
-              return [];
-            },
-          };
-        })
-      );
+            }
+            return [];
+          },
+        });
+        // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
+        // in the "additional notes" for the associated payer-specific negotiated charge.
+        nonModifierChecks.push({
+          name: `${payerPlan} other methodology requires notes`,
+          applicableVersion: ">=2.1.0",
+          validator: (dataRow, row) => {
+            const methodologyIsOther = matchesString(
+              dataRow[`standard_charge | ${payerPlan} | methodology`] ?? "",
+              "other"
+            );
+            const columnName = `additional_payer_notes | ${payerPlan}`;
+            if (methodologyIsOther && !dataRow[columnName]) {
+              const columnIndex = this.normalizedColumns.indexOf(columnName);
+              return [new csvErr.OtherMethodologyNotesError(row, columnIndex)];
+            }
+            return [];
+          },
+        });
+      });
       // If an item or service is encoded, a corresponding valid value must be encoded for at least one of the following:
       // "Gross Charge", "Discounted Cash Price", "Payer-Specific Negotiated Charge: Dollar Amount", "Payer-Specific Negotiated Charge: Percentage",
       // "Payer-Specific Negotiated Charge: Algorithm".
@@ -562,7 +422,6 @@ export class CsvValidator extends BaseValidator {
           `standard_charge | ${payerPlan} | negotiated_dollar`,
           `standard_charge | ${payerPlan} | negotiated_percentage`,
           `standard_charge | ${payerPlan} | negotiated_algorithm`,
-          `standard_charge | ${payerPlan} | methodology`,
           `estimated_amount | ${payerPlan}`,
           `additional_payer_notes | ${payerPlan}`
         );
@@ -575,7 +434,7 @@ export class CsvValidator extends BaseValidator {
             const columnIndex = this.normalizedColumns.indexOf(
               "standard_charge | gross"
             );
-            return [new ItemRequiresChargeError(row, columnIndex)];
+            return [new csvErr.ItemRequiresChargeError(row, columnIndex)];
           }
           return [];
         },
@@ -600,7 +459,7 @@ export class CsvValidator extends BaseValidator {
               const columnIndex = this.normalizedColumns.indexOf(
                 missingBounds[0]
               );
-              return [new DollarNeedsMinMaxError(row, columnIndex)];
+              return [new csvErr.DollarNeedsMinMaxError(row, columnIndex)];
             }
           }
 
@@ -660,7 +519,7 @@ export class CsvValidator extends BaseValidator {
           ].filter((field) => !Boolean(dataRow[field]));
           if (missingDrugFields.length > 0) {
             return [
-              new DrugInformationRequiredError(
+              new csvErr.DrugInformationRequiredError(
                 row,
                 this.normalizedColumns.indexOf(missingDrugFields[0])
               ),
@@ -689,7 +548,7 @@ export class CsvValidator extends BaseValidator {
             ].some((field) => Boolean(dataRow[field]))
           ) {
             return [
-              new ModifierMissingInfoError(
+              new csvErr.ModifierMissingInfoError(
                 row,
                 this.normalizedColumns.indexOf("additional_generic_notes")
               ),
@@ -711,7 +570,7 @@ export class CsvValidator extends BaseValidator {
             !dataRow.estimated_amount
           ) {
             return [
-              new PercentageAlgorithmEstimateError(
+              new csvErr.PercentageAlgorithmEstimateError(
                 row,
                 this.normalizedColumns.indexOf("estimated_amount")
               ),
@@ -758,7 +617,7 @@ export class CsvValidator extends BaseValidator {
         validator: (dataRow, row) => {
           if (!extraInfoFields.some((field) => Boolean(dataRow[field]))) {
             return [
-              new ModifierMissingInfoError(
+              new csvErr.ModifierMissingInfoError(
                 row,
                 this.normalizedColumns.indexOf("additional_generic_notes")
               ),
@@ -767,66 +626,58 @@ export class CsvValidator extends BaseValidator {
           return [];
         },
       });
-      // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
-      // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
-      nonModifierChecks.push(
-        ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
-          return {
-            name: `estimated allowed amount for ${payerPlan} required when charge is only percentage or algorithm`,
-            applicableVersion: ">=2.2.0",
-            validator: (dataRow, row) => {
-              if (
-                !dataRow[
-                  `standard_charge | ${payerPlan} | negotiated_dollar`
-                ] &&
-                (dataRow[
-                  `standard_charge | ${payerPlan} | negotiated_percentage`
-                ] ||
-                  dataRow[
-                    `standard_charge | ${payerPlan} | negotiated_algorithm`
-                  ]) &&
-                !dataRow[`estimated_amount | ${payerPlan}`]
-              ) {
-                return [
-                  new PercentageAlgorithmEstimateError(
-                    row,
-                    this.normalizedColumns.indexOf(
-                      `estimated_amount | ${payerPlan}`
-                    )
-                  ),
-                ];
-              }
-              return [];
-            },
-          };
-        })
-      );
-      // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
-      // amount data element within the MRF and should instead encode an actual dollar amount.
-      // new as of 2025/05/22, at which point v2.2.0 was in effect.
-      this.rowAlerters.push(
-        ...this.payersPlans.map<BranchingValidator>((payerPlan) => {
-          return {
-            name: "discontinue encoding nine 9s for estimated amount",
-            applicableVersion: ">=2.2.0",
-            validator: (dataRow, row) => {
-              if (
-                Number(dataRow[`estimated_amount | ${payerPlan}`]) === 999999999
-              ) {
-                return [
-                  new CsvNineNinesAlert(
-                    row,
-                    this.normalizedColumns.indexOf(
-                      `estimated_amount | ${payerPlan}`
-                    )
-                  ),
-                ];
-              }
-              return [];
-            },
-          };
-        })
-      );
+      this.payersPlans.forEach((payerPlan) => {
+        // If a "payer specific negotiated charge" can only be expressed as a percentage or algorithm,
+        // then a corresponding "Estimated Allowed Amount" must also be encoded. new in v2.2.0
+        nonModifierChecks.push({
+          name: `estimated allowed amount for ${payerPlan} required when charge is only percentage or algorithm`,
+          applicableVersion: ">=2.2.0",
+          validator: (dataRow, row) => {
+            if (
+              !dataRow[`standard_charge | ${payerPlan} | negotiated_dollar`] &&
+              (dataRow[
+                `standard_charge | ${payerPlan} | negotiated_percentage`
+              ] ||
+                dataRow[
+                  `standard_charge | ${payerPlan} | negotiated_algorithm`
+                ]) &&
+              !dataRow[`estimated_amount | ${payerPlan}`]
+            ) {
+              return [
+                new csvErr.PercentageAlgorithmEstimateError(
+                  row,
+                  this.normalizedColumns.indexOf(
+                    `estimated_amount | ${payerPlan}`
+                  )
+                ),
+              ];
+            }
+            return [];
+          },
+        });
+        // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+        // amount data element within the MRF and should instead encode an actual dollar amount.
+        // new as of 2025/05/22, at which point v2.2.0 was in effect.
+        this.rowAlerters.push({
+          name: "discontinue encoding nine 9s for estimated amount",
+          applicableVersion: ">=2.2.0",
+          validator: (dataRow, row) => {
+            if (
+              Number(dataRow[`estimated_amount | ${payerPlan}`]) === 999999999
+            ) {
+              return [
+                new CsvNineNinesAlert(
+                  row,
+                  this.normalizedColumns.indexOf(
+                    `estimated_amount | ${payerPlan}`
+                  )
+                ),
+              ];
+            }
+            return [];
+          },
+        });
+      });
     }
 
     // that's all for the conditional checks. so now build the tree out, branching on whether
@@ -841,7 +692,7 @@ export class CsvValidator extends BaseValidator {
       negativeValidator: (_dataRow, row) => {
         // since getting here means that we know no code pair was found,
         // just go ahead and return the CodePairMissingError.
-        return [new CodePairMissingError(row, this.dataColumns.length)];
+        return [new csvErr.CodePairMissingError(row, this.dataColumns.length)];
       },
       negativeChildren: nonModifierChecks, // non-modifier row
     };
@@ -873,7 +724,9 @@ export class CsvValidator extends BaseValidator {
           );
         });
         if (!hasCodeInfo) {
-          return [new CodePairMissingError(row, this.dataColumns.length)];
+          return [
+            new csvErr.CodePairMissingError(row, this.dataColumns.length),
+          ];
         }
         return [];
       },
@@ -888,7 +741,9 @@ export class CsvValidator extends BaseValidator {
       return new Promise((resolve) => {
         resolve({
           valid: false,
-          errors: [new InvalidVersionError(CsvValidator.allowedVersions)],
+          errors: [
+            new csvErr.InvalidVersionError(CsvValidator.allowedVersions),
+          ],
           alerts: [],
         });
       });
@@ -913,10 +768,10 @@ export class CsvValidator extends BaseValidator {
     });
   }
 
-  validateHeaderColumns(columns: string[]): CsvValidationError[] {
+  validateHeaderColumns(columns: string[]): csvErr.CsvValidationError[] {
     const remainingColumns = [...HEADER_COLUMNS];
     const discoveredColumns: string[] = [];
-    const errors: CsvValidationError[] = [];
+    const errors: csvErr.CsvValidationError[] = [];
     columns.forEach((column, index) => {
       const matchingColumnIndex = remainingColumns.findIndex(
         (requiredColumn) => {
@@ -931,7 +786,9 @@ export class CsvValidator extends BaseValidator {
               if (STATE_CODES.includes(splitColumn[1].toUpperCase())) {
                 return true;
               } else {
-                errors.push(new InvalidStateCodeError(index, splitColumn[1]));
+                errors.push(
+                  new csvErr.InvalidStateCodeError(index, splitColumn[1])
+                );
                 return false;
               }
             } else {
@@ -951,22 +808,22 @@ export class CsvValidator extends BaseValidator {
           return discovered != null && sepColumnsEqual(discovered, column);
         });
         if (existingColumn) {
-          errors.push(new DuplicateHeaderColumnError(index, column));
+          errors.push(new csvErr.DuplicateHeaderColumnError(index, column));
         }
       }
     });
 
     errors.push(
       ...remainingColumns.map(
-        (requiredColumn) => new HeaderColumnMissingError(requiredColumn)
+        (requiredColumn) => new csvErr.HeaderColumnMissingError(requiredColumn)
       )
     );
     this.headerColumns = discoveredColumns;
     return errors;
   }
 
-  validateHeaderRow(row: string[]): CsvValidationError[] {
-    const errors: CsvValidationError[] = [];
+  validateHeaderRow(row: string[]): csvErr.CsvValidationError[] {
+    const errors: csvErr.CsvValidationError[] = [];
     this.headerColumns.forEach((header, index) => {
       if (/^license_number\s*\|\s*.{2}$/.test(header)) {
         return;
@@ -974,12 +831,12 @@ export class CsvValidator extends BaseValidator {
       if (header != null) {
         const value = row[index] ?? "";
         if (!value) {
-          errors.push(new RequiredValueError(1, index, header));
+          errors.push(new csvErr.RequiredValueError(1, index, header));
         } else if (
           sepColumnsEqual(header, "last_updated_on") &&
           !isValidDate(value)
         ) {
-          errors.push(new InvalidDateError(1, index, header, value));
+          errors.push(new csvErr.InvalidDateError(1, index, header, value));
         } else if (sepColumnsEqual(header, AFFIRMATION)) {
           errors.push(
             ...validateRequiredHeaderEnum(1, index, header, value, [
@@ -993,22 +850,22 @@ export class CsvValidator extends BaseValidator {
     return errors;
   }
 
-  validateHeader(row: string[]): CsvValidationError[] {
+  validateHeader(row: string[]): csvErr.CsvValidationError[] {
     return [
       ...this.validateHeaderColumns(this.headerColumns),
       ...this.validateHeaderRow(row),
     ];
   }
 
-  validateColumns(columns: string[]): CsvValidationError[] {
+  validateColumns(columns: string[]): csvErr.CsvValidationError[] {
     this.isTall = this.areMyColumnsTall(columns);
     this.payersPlans = CsvValidator.getPayersPlans(columns);
     if (this.isTall === this.payersPlans.length > 0) {
-      return [new AmbiguousFormatError()];
+      return [new csvErr.AmbiguousFormatError()];
     }
     this.dataColumns = [];
     this.normalizedColumns = [];
-    const errors: CsvValidationError[] = [];
+    const errors: csvErr.CsvValidationError[] = [];
     this.codeCount = this.getCodeCount(columns);
     const expectedDataColumns = CsvValidator.getExpectedDataColumns(
       this.version,
@@ -1029,7 +886,7 @@ export class CsvValidator extends BaseValidator {
           return dataColumn != null && sepColumnsEqual(dataColumn, column);
         });
         if (isDuplicate) {
-          errors.push(new DuplicateColumnError(index, column));
+          errors.push(new csvErr.DuplicateColumnError(index, column));
         } else {
           this.dataColumns[index] = column;
         }
@@ -1046,7 +903,7 @@ export class CsvValidator extends BaseValidator {
     expectedDataColumns
       .filter((expectedColumn) => expectedColumn.required)
       .forEach((expectedColumn) => {
-        errors.push(new ColumnMissingError(expectedColumn.label));
+        errors.push(new csvErr.ColumnMissingError(expectedColumn.label));
       });
     return errors;
   }
@@ -1195,8 +1052,8 @@ export class CsvValidator extends BaseValidator {
   applyValidators(
     row: { [key: string]: string },
     startingValidators: BranchingValidator[]
-  ): CsvValidationError[] {
-    const errors: CsvValidationError[] = [];
+  ): csvErr.CsvValidationError[] {
+    const errors: csvErr.CsvValidationError[] = [];
     const validatorsToRun = [...startingValidators];
     while (validatorsToRun.length > 0) {
       const currentValidator = validatorsToRun.shift() as BranchingValidator;
@@ -1240,7 +1097,7 @@ export class CsvValidator extends BaseValidator {
     if (isEmpty && (this.index === 0 || this.index === 2)) {
       resolve({
         valid: false,
-        errors: [new HeaderBlankError(this.index)],
+        errors: [new csvErr.HeaderBlankError(this.index)],
         alerts: this.alerts,
       });
       parser.abort();
@@ -1252,13 +1109,13 @@ export class CsvValidator extends BaseValidator {
     if (this.index === 0) {
       this.headerColumns = row;
     } else if (this.index === 1) {
-      this.errors.push(...this.validateHeader(row));
+      addItemsWithLimit(this.validateHeader(row), this.errors, this.maxErrors);
     } else if (this.index === 2) {
-      this.errors.push(...this.validateColumns(row));
+      addItemsWithLimit(this.validateColumns(row), this.errors, this.maxErrors);
       if (this.errors.length > 0) {
         resolve({
           valid: false,
-          errors: [...this.errors, new ProblemsInHeaderError()],
+          errors: [...this.errors, new csvErr.ProblemsInHeaderError()],
           alerts: this.alerts,
         });
         parser.abort();
@@ -1269,21 +1126,15 @@ export class CsvValidator extends BaseValidator {
       // regular data row
       const rowRecord = objectFromKeysValues(this.normalizedColumns, row);
       const rowErrors = this.validateDataRow(rowRecord);
-      this.errors.push(...rowErrors);
+      addItemsWithLimit(rowErrors, this.errors, this.maxErrors);
       // if we have room for more alerts, collect alerts
-      let rowAlerts: CsvValidationError[] = [];
+      let rowAlerts: csvErr.CsvValidationError[] = [];
       if (
         this.maxErrors === 0 ||
         (this.maxErrors > 0 && this.alerts.length < this.maxErrors)
       ) {
         rowAlerts = this.alertDataRow(rowRecord);
-        if (this.maxErrors > 0) {
-          this.alerts.push(
-            ...rowAlerts.slice(0, this.maxErrors - this.alerts.length)
-          );
-        } else {
-          this.alerts.push(...rowAlerts);
-        }
+        addItemsWithLimit(rowAlerts, this.alerts, this.maxErrors);
       }
       if (this.dataCallback) {
         this.dataCallback(rowRecord, rowErrors, rowAlerts);
@@ -1307,7 +1158,7 @@ export class CsvValidator extends BaseValidator {
     if (this.index < 4) {
       resolve({
         valid: false,
-        errors: [new MinRowsError()],
+        errors: [new csvErr.MinRowsError()],
         alerts: this.alerts,
       });
     } else {

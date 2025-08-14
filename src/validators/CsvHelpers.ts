@@ -1,3 +1,10 @@
+import {
+  AllowedValuesError,
+  CsvValidationError,
+  InvalidNumberError,
+  RequiredValueError,
+} from "../errors/index.js";
+
 export const DRUG_UNITS = ["GR", "ME", "ML", "UN", "F2", "EA", "GM"];
 
 export const BILLING_CODE_TYPES = [
@@ -147,4 +154,163 @@ export function isValidDate(value: string) {
     );
   }
   return false;
+}
+
+export function validateRequiredHeaderEnum(
+  row: number,
+  column: number,
+  columnName: string,
+  value: string,
+  allowedValues: string[],
+  suffix: string = ""
+) {
+  if (!value) {
+    return [new RequiredValueError(row, column, columnName, suffix)];
+  } else if (
+    !allowedValues.some((allowedValue) => matchesString(value, allowedValue))
+  ) {
+    return [
+      new AllowedValuesError(row, column, columnName, value, allowedValues),
+    ];
+  } else {
+    return [];
+  }
+}
+
+export function dynaValidateOptionalEnumField(
+  normalizedColumns: (string | undefined)[],
+  enteredColumns: (string | undefined)[],
+  field: string,
+  allowedValues: string[],
+  dataRow: { [key: string]: string },
+  row: number
+) {
+  const value = dataRow[field];
+  const columnIndex = normalizedColumns.indexOf(field);
+  if (!value) {
+    return [];
+  } else if (
+    !allowedValues.some((allowedValue) => matchesString(value, allowedValue))
+  ) {
+    return [
+      new AllowedValuesError(
+        row,
+        columnIndex,
+        enteredColumns[columnIndex] ?? "",
+        value,
+        allowedValues
+      ),
+    ];
+  }
+  return [];
+}
+
+export function dynaValidateRequiredEnumField(
+  normalizedColumns: (string | undefined)[],
+  enteredColumns: (string | undefined)[],
+  field: string,
+  allowedValues: string[],
+  suffix: string = "",
+  dataRow: { [key: string]: string },
+  row: number
+) {
+  const value = dataRow[field];
+  const columnIndex = normalizedColumns.indexOf(field);
+  if (!value) {
+    return [
+      new RequiredValueError(
+        row,
+        columnIndex,
+        enteredColumns[columnIndex] ?? "",
+        suffix
+      ),
+    ];
+  } else {
+    return dynaValidateOptionalEnumField(
+      normalizedColumns,
+      enteredColumns,
+      field,
+      allowedValues,
+      dataRow,
+      row
+    );
+  }
+}
+
+export function dynaValidateOptionalFloatField(
+  normalizedColumns: (string | undefined)[],
+  enteredColumns: (string | undefined)[],
+  field: string,
+  dataRow: { [key: string]: string },
+  row: number
+) {
+  const value = dataRow[field];
+  const columnIndex = normalizedColumns.indexOf(field);
+  if (!value) {
+    return [];
+  }
+  if (!/^(?:\d+|\d+\.\d+|\d+\.|\.\d+)$/.test(value) || parseFloat(value) <= 0) {
+    return [
+      new InvalidNumberError(
+        row,
+        columnIndex,
+        enteredColumns[columnIndex] ?? "",
+        value
+      ),
+    ];
+  }
+  return [];
+}
+
+export function dynaValidateRequiredFloatField(
+  normalizedColumns: (string | undefined)[],
+  enteredColumns: (string | undefined)[],
+  field: string,
+  suffix: string = "",
+  dataRow: { [key: string]: string },
+  row: number
+): CsvValidationError[] {
+  const value = dataRow[field];
+  const columnIndex = normalizedColumns.indexOf(field);
+  if (!value) {
+    return [
+      new RequiredValueError(
+        row,
+        columnIndex,
+        enteredColumns[columnIndex] ?? "",
+        suffix
+      ),
+    ];
+  } else {
+    return dynaValidateOptionalFloatField(
+      normalizedColumns,
+      enteredColumns,
+      field,
+      dataRow,
+      row
+    );
+  }
+}
+
+export function dynaValidateRequiredField(
+  normalizedColumns: (string | undefined)[],
+  enteredColumns: (string | undefined)[],
+  field: string,
+  suffix: string = "",
+  dataRow: { [key: string]: string },
+  row: number
+): CsvValidationError[] {
+  const value = dataRow[field];
+  const columnIndex = normalizedColumns.indexOf(field);
+  if (!value) {
+    return [
+      new RequiredValueError(
+        row,
+        columnIndex,
+        enteredColumns[columnIndex] ?? "",
+        suffix
+      ),
+    ];
+  }
+  return [];
 }

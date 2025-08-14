@@ -14,7 +14,10 @@ import {
   InvalidStateCodeError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
-import { BILLING_CODE_TYPES } from "../../src/validators/CsvHelpers.js";
+import {
+  BILLING_CODE_TYPES,
+  STANDARD_CHARGE_METHODOLOGY,
+} from "../../src/validators/CsvHelpers.js";
 
 const { shuffle } = _;
 
@@ -646,6 +649,21 @@ describe("schema v2.0.0", () => {
       );
     });
 
+    it("should return an error when standard charge methodology is present, but not one of the allowed values", () => {
+      row["standard_charge | methodology"] = "something else";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new AllowedValuesError(
+          validator.index,
+          normalizedColumns.indexOf("standard_charge | methodology"),
+          "standard_charge | methodology",
+          "something else",
+          STANDARD_CHARGE_METHODOLOGY
+        )
+      );
+    });
+
     it("should return an error when no code pairs are present", () => {
       row["code | 1"] = "";
       row["code | 1 | type"] = "";
@@ -825,6 +843,23 @@ describe("schema v2.0.0", () => {
           ),
           "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage",
           "free"
+        )
+      );
+    });
+
+    it("should return an error when standard charge methodology is present, but not one of the allowed values", () => {
+      row["standard_charge | Payer ABC | Plan 1 | methodology"] = "incorrect";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new AllowedValuesError(
+          validator.index,
+          normalizedColumns.indexOf(
+            "standard_charge | Payer ABC | Plan 1 | methodology"
+          ),
+          "standard_charge | Payer ABC | Plan 1 | methodology",
+          "incorrect",
+          STANDARD_CHARGE_METHODOLOGY
         )
       );
     });

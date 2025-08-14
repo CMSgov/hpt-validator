@@ -17,10 +17,3 @@ export type BranchingValidator = {
   children?: BranchingValidator[];
   negativeChildren?: BranchingValidator[];
 };
-
-export type OriginalFlavorValidator = {
-  name: string;
-  applicableVersion: string;
-  predicate?: (row: { [key: string]: string }) => boolean;
-  validator?: DynaReadyValidator;
-};

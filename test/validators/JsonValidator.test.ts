@@ -221,6 +221,14 @@ describe("JsonValidator", () => {
       expect(result.errors).toHaveLength(2);
     });
 
+    it("should limit the number of alerts returned when the maxErrors option is used", async () => {
+      // this file would generate five alerts, but the option limits the output
+      const input = createFixtureStream("sample-lots-of-alerts.json");
+      const result = await validator.validate(input, { maxErrors: 2 });
+      expect(result.valid).toBe(true);
+      expect(result.alerts).toHaveLength(2);
+    });
+
     it("should validate a file that uses drug information correctly", async () => {
       const input = createFixtureStream("sample-valid-drug-info.json");
       const result = await validator.validate(input);
