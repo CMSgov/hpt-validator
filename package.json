@@ -25,7 +25,7 @@
     "lint:fix": "tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
     "prettier": "prettier --check \"**/*.{js,ts}\"",
     "prettier:fix": "prettier --write \"**/*.{js,ts}\"",
-    "test": "vitest",
+    "test": "vitest run --coverage",
     "prepublish": "tsc"
   },
   "dependencies": {
@@ -43,6 +43,7 @@
     "@types/semver": "^7.5.8",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "copyfiles": "^2.4.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.16.0",

@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import { ValidationError } from "src/errors/ValidationError.js";
 import { InvalidJsonError } from "../../src/errors/json/InvalidJsonError.js";
 import { JsonValidator } from "../../src/validators/JsonValidator.js";
@@ -32,6 +34,94 @@ describe("JsonValidator", () => {
       const result = await validator.validate(input);
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
+    });
+
+    it("should validate a valid File object", async () => {
+      const inputText = fs.readFileSync(
+        new URL(
+          path.join("..", "fixtures", "sample-valid.json"),
+          import.meta.url
+        ),
+        {
+          encoding: "utf-8",
+        }
+      );
+      const input = new File([inputText], "sample-valid.json");
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("should call a supplied data callback for each standard charge information object", async () => {
+      const collectedCodes: any[] = [];
+      function myDataCallback(val: any) {
+        if (Array.isArray(val.code_information)) {
+          collectedCodes.push(...val.code_information);
+        }
+      }
+      const input = createFixtureStream("sample-valid.json");
+      const result = await validator.validate(input, {
+        onValueCallback: myDataCallback,
+      });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(collectedCodes).toEqual([
+        {
+          code: "470",
+          type: "MS-DRG",
+        },
+        {
+          code: "175869",
+          type: "LOCAL",
+        },
+        {
+          code: "92626",
+          type: "CPT",
+        },
+        {
+          code: "H0017",
+          type: "HCPCS",
+        },
+        {
+          code: "762",
+          type: "RC",
+        },
+      ]);
+    });
+
+    it("should call a supplied metadata callback once with the collected metadata", async () => {
+      const hospitalInfo: any[] = [];
+      function myMetadataCallback(metadata: { [key: string]: any }) {
+        if (
+          Array.isArray(metadata.hospital_location) &&
+          Array.isArray(metadata.hospital_address)
+        ) {
+          metadata.hospital_location.forEach((location, idx) => {
+            if (idx < metadata.hospital_address.length) {
+              hospitalInfo.push({
+                location: location,
+                address: metadata.hospital_address[idx],
+              });
+            }
+          });
+        }
+      }
+      const input = createFixtureStream("sample-valid.json");
+      const result = await validator.validate(input, {
+        onMetadataCallback: myMetadataCallback,
+      });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(hospitalInfo).toEqual([
+        {
+          location: "West Mercy Hospital",
+          address: "12 Main Street, Fullerton, CA  92832",
+        },
+        {
+          location: "West Mercy Surgical Center",
+          address: "23 Ocean Ave, San Jose, CA 94088",
+        },
+      ]);
     });
 
     it("should validate a file that starts with a byte-order mark", async () => {

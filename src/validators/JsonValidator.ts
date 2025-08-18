@@ -218,7 +218,7 @@ export async function parseJson(
   jsonInput: File | NodeJS.ReadableStream,
   parser: JSONParser
 ): Promise<void> {
-  if (typeof window !== "undefined" && jsonInput instanceof File) {
+  if (jsonInput instanceof File) {
     const stream = jsonInput.stream();
     const reader = stream.getReader();
     const textDecoder = new TextDecoder("utf-8");

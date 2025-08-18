@@ -93,6 +93,7 @@ export class CsvValidator extends BaseValidator {
 
   buildRowValidators() {
     const modifierChecks: BranchingValidator[] = [];
+    const nonModifierChecks: BranchingValidator[] = [];
 
     // do partial application on all dynamic validators, since they all use the same sets of columns
     const validateRequiredField = partial(
@@ -127,8 +128,8 @@ export class CsvValidator extends BaseValidator {
       applicableVersion: ">=2.0.0",
       validator: partial(validateRequiredField, "description", ""),
     });
-    // setting is always required
-    this.rowValidators.push({
+    // setting is required in a non-modifier row
+    nonModifierChecks.push({
       name: "setting",
       applicableVersion: ">=2.0.0",
       validator: partial(
@@ -190,8 +191,6 @@ export class CsvValidator extends BaseValidator {
         validator: partial(validateOptionalFloatField, chargeColumn),
       });
     });
-
-    const nonModifierChecks: BranchingValidator[] = [];
 
     const payerSpecificSuffix =
       " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm";
