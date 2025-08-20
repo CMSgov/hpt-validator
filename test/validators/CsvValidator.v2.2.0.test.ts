@@ -1,5 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
 import _ from "lodash";
 import {
   AFFIRMATION,
@@ -29,6 +27,7 @@ import {
   BILLING_CODE_TYPES,
   DRUG_UNITS,
 } from "../../src/validators/CsvHelpers.js";
+import { createFixtureStream } from "test/testhelpers/createFixtureStream.js";
 
 const { shuffle } = _;
 
@@ -41,24 +40,14 @@ describe("CsvValidator v2.2.0", () => {
 
   describe("#validate", () => {
     it("should validate a valid tall CSV file", async () => {
-      const input = fs.createReadStream(
-        new URL(
-          path.join("..", "fixtures", "sample-tall-valid.csv"),
-          import.meta.url
-        )
-      );
+      const input = createFixtureStream("sample-tall-valid.csv");
       const result = await validator.validate(input);
       expect(result.errors).toHaveLength(0);
       expect(result.valid).toBe(true);
     });
 
     it("should validate a valid wide CSV file", async () => {
-      const input = fs.createReadStream(
-        new URL(
-          path.join("..", "fixtures", "sample-wide-valid.csv"),
-          import.meta.url
-        )
-      );
+      const input = createFixtureStream("sample-wide-valid.csv");
       const result = await validator.validate(input);
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);

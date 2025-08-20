@@ -1,5 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
 import { CsvValidator } from "../../src/validators/CsvValidator.js";
 import {
   HeaderBlankError,
@@ -7,6 +5,7 @@ import {
   MinRowsError,
   ProblemsInHeaderError,
 } from "../../src/errors/csv/index.js";
+import { createFixtureStream } from "test/testhelpers/createFixtureStream.js";
 
 describe("CsvValidator", () => {
   describe("constructor", () => {
@@ -37,12 +36,7 @@ describe("CsvValidator", () => {
   describe("#validate", () => {
     it("should return an error when attempting to validate against an invalid version", async () => {
       const validator = new CsvValidator("x.y.z");
-      const input = fs.createReadStream(
-        new URL(
-          path.join("..", "fixtures", "sample-tall-valid.csv"),
-          import.meta.url
-        )
-      );
+      const input = createFixtureStream("sample-tall-valid.csv");
       const results = await validator.validate(input);
       expect(results.valid).toBe(false);
       expect(results.errors).toHaveLength(1);
@@ -51,12 +45,7 @@ describe("CsvValidator", () => {
 
     it("should return an error when a header row is blank", async () => {
       const validator = new CsvValidator("v2.2.0");
-      const input = fs.createReadStream(
-        new URL(
-          path.join("..", "fixtures", "sample-blank-header.csv"),
-          import.meta.url
-        )
-      );
+      const input = createFixtureStream("sample-blank-header.csv");
       const results = await validator.validate(input);
       expect(results.valid).toBe(false);
       expect(results.errors).toHaveLength(1);
@@ -65,12 +54,7 @@ describe("CsvValidator", () => {
 
     it("should return an error when there are no data rows", async () => {
       const validator = new CsvValidator("v2.2.0");
-      const input = fs.createReadStream(
-        new URL(
-          path.join("..", "fixtures", "sample-no-data.csv"),
-          import.meta.url
-        )
-      );
+      const input = createFixtureStream("sample-no-data.csv");
       const results = await validator.validate(input);
       expect(results.valid).toBe(false);
       expect(results.errors).toHaveLength(1);
@@ -79,16 +63,46 @@ describe("CsvValidator", () => {
 
     it("should stop validation when there are problems in the header", async () => {
       const validator = new CsvValidator("v2.2.0");
-      const input = fs.createReadStream(
-        new URL(
-          path.join("..", "fixtures", "sample-bad-header.csv"),
-          import.meta.url
-        )
-      );
+      const input = createFixtureStream("sample-bad-header.csv");
       const results = await validator.validate(input);
       expect(results.valid).toBe(false);
       expect(results.errors).toHaveLength(2);
       expect(results.errors[1]).toBeInstanceOf(ProblemsInHeaderError);
+    });
+
+    it("should limit the number of errors returned when the maxErrors option is used", async () => {
+      const validator = new CsvValidator("v2.2.0", {
+        maxErrors: 5,
+      });
+      const input = createFixtureStream("sample-lots-of-errors.csv");
+      const results = await validator.validate(input);
+      expect(results.valid).toBe(false);
+      expect(results.errors).toHaveLength(5);
+    });
+
+    it("should call a supplied data callback for each item or service row", async () => {
+      const codeTypes = new Set<string>();
+      function myDataCallback(
+        this: CsvValidator,
+        val: { [key: string]: string }
+      ) {
+        for (let codeIdx = 1; codeIdx <= this.codeCount; codeIdx++) {
+          if (val[`code | ${codeIdx} | type`]) {
+            codeTypes.add(val[`code | ${codeIdx} | type`].toLocaleUpperCase());
+          }
+        }
+      }
+      const input = createFixtureStream("sample-tall-valid.csv");
+      const validator = new CsvValidator("v2.2.0", {
+        onValueCallback: myDataCallback,
+      });
+      const result = await validator.validate(input);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(0);
+      expect(result.valid).toBe(true);
+      expect(codeTypes).toEqual(
+        new Set(["MS-DRG", "LOCAL", "CPT", "HCPCS", "RC"])
+      );
     });
   });
 });

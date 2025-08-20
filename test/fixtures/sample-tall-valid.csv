@@ -8,6 +8,7 @@ Major hip and knee joint replacement or reattachment of lower extremity without 
 "Evaluation of hearing function to determine candidacy for, or postoperative status of, surgically implanted hearing device; first hour",92626,CPT,,,,outpatient,,,150,125,Platform Health Insurance,PPO,98.98,,,,fee schedule,98.98,98.98,110% of the Medicare fee schedule
 "Evaluation of hearing function to determine candidacy for, or postoperative status of, surgically implanted hearing device; first hour",92626,CPT,,,,outpatient,,,150,125,Region Health Insurance,HMO,,115,,105.34,fee schedule,98.98,98.98,115% of the state's workers' compensation amount
 "Behavioral health; residential (hospital residential treatment program), without room and board, per diem",H0017,HCPCS,,,,inpatient,,,2500,2250,Platform Health Insurance,PPO,1500,,,,per diem,1500,1500,
+
 "Behavioral health; residential (hospital residential treatment program), without room and board, per diem, days 1-3",H0017,hcpcs,,,,inpatient,,,2500,2250,Region Health Insurance,HMO,2000,,,,per diem,2000,2000,
 "Behavioral health; residential (hospital residential treatment program), without room and board, per diem, days 4-5",H0017,HCPCS,,,,inpatient,,,2500,2250,Region Health Insurance,HMO,1800,,,,per diem,1800,1800,
 "Behavioral health; residential (hospital residential treatment program), without room and board, per diem, days 6+",H0017,HCPCS,,,,inpatient,,,2500,2250,Region Health Insurance,HMO,1200,,,,per diem,1200,1200,
