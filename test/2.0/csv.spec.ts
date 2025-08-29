@@ -466,7 +466,7 @@ test("validateRow tall", (t) => {
     wrongMaxResult[0].message,
     '"standard_charge | max" value "-2" is not a positive number. You must encode a positive, non-zero, numeric value.'
   )
-  // no code pairs is invalid
+  // no code pairs is invalid. the error applies to the row
   const noCodesRow = { ...basicRow, "code | 1": "", "code | 1 | type": "" }
   const noCodesResult = validateRow(noCodesRow, 21, columns, false)
   t.is(noCodesResult.length, 1)
@@ -474,6 +474,7 @@ test("validateRow tall", (t) => {
     noCodesResult[0].message,
     "If a standard charge is encoded, there must be a corresponding code and code type pairing. The code and code type pairing do not need to be in the first code and code type columns (i.e., code|1 and code|1|type)."
   )
+  t.is(noCodesResult[0].column, -1)
   // a code pair not in the first column is valid
   const secondCodeRow = {
     ...basicRow,
