@@ -385,9 +385,7 @@ export function validateRow(
   }
 
   if (!foundCode) {
-    errors.push(
-      csvErr(index, columns.length, "code | 1", ERRORS.CODE_ONE_REQUIRED())
-    )
+    errors.push(csvErr(index, -1, "code | 1", ERRORS.CODE_ONE_REQUIRED()))
   }
 
   errors.push(
