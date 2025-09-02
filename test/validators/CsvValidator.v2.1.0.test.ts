@@ -625,9 +625,7 @@ describe("CsvValidator v2.1.0", () => {
       row["code | 1 | type"] = "";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual(
-        new CodePairMissingError(validator.index, columns.length)
-      );
+      expect(result[0]).toEqual(new CodePairMissingError(validator.index));
     });
 
     it("should return no errors when the first code pair is empty, but another code pair is present", () => {

@@ -691,7 +691,7 @@ export class CsvValidator extends BaseValidator {
       negativeValidator: (_dataRow, row) => {
         // since getting here means that we know no code pair was found,
         // just go ahead and return the CodePairMissingError.
-        return [new csvErr.CodePairMissingError(row, this.dataColumns.length)];
+        return [new csvErr.CodePairMissingError(row)];
       },
       negativeChildren: nonModifierChecks, // non-modifier row
     };
@@ -723,9 +723,7 @@ export class CsvValidator extends BaseValidator {
           );
         });
         if (!hasCodeInfo) {
-          return [
-            new csvErr.CodePairMissingError(row, this.dataColumns.length),
-          ];
+          return [new csvErr.CodePairMissingError(row)];
         }
         return [];
       },
