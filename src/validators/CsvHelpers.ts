@@ -100,9 +100,13 @@ export function objectFromKeysValues(
   keys: (string | undefined)[],
   values: string[]
 ): { [key: string]: string } {
-  return Object.fromEntries(
-    keys.map((key, index) => [key, values[index]]).filter((entry) => entry)
-  );
+  const result: { [key: string]: string } = {};
+  keys.forEach((key, index) => {
+    if (key) {
+      result[key] = values[index];
+    }
+  });
+  return result;
 }
 
 export function sepColumnsEqual(colA: string, colB: string) {
