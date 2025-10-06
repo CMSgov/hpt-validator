@@ -137,8 +137,6 @@ export class JsonValidator extends BaseValidator {
         "$.location_name",
         "$.affirmation",
         "$.attestation",
-        "$.attester_name",
-        "$.type_2_npi",
         "$.modifier_information",
         "$.standard_charge_information.*",
       ],

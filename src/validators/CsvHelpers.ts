@@ -101,14 +101,13 @@ export const AFFIRMATION =
   "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.";
 
 export const ATTESTATION =
-  "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.";
+  "To the best of its knowledge and belief, this hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date in the file. This hospital has included all payer-specific negotiated charges in dollars that can be expressed as a dollar amount. For payer-specific negotiated charges that cannot be expressed as a dollar amount in the machine-readable file or not knowable in advance, the hospital attests that the payer-specific negotiated charge is based on a contractual algorithm, percentage or formula that precludes the provision of a dollar amount and has provided all necessary information available to the hospital for the public to be able to derive the dollar amount, including, but not limited to, the specific fee schedule or components referenced in such percentage, algorithm or formula.";
 const SHARED_HEADER_COLUMNS = [
   "hospital_name", // string
   "last_updated_on", // date
   "version", // string - maybe one of the known versions?
   "hospital_address", // string
   "license_number | [state]", // string, check for valid postal code in header
-  // AFFIRMATION, // "true" or "false"
 ];
 
 export function objectFromKeysValues(
