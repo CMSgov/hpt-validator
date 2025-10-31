@@ -21,6 +21,12 @@ export interface CsvValidationOptions {
     errors: CsvValidationError[],
     alerts: CsvValidationError[]
   ) => void;
+  onMetadataCallback?: (
+    headerColumns: string[],
+    headerRow: string[],
+    errors: CsvValidationError[],
+    alerts: CsvValidationError[]
+  ) => void;
 }
 
 export interface JsonValidationOptions {

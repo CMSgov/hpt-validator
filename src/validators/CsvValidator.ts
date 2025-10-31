@@ -47,6 +47,7 @@ export class CsvValidator extends BaseValidator {
   public alerts: csvErr.CsvValidationError[] = [];
   public maxErrors: number;
   public dataCallback?: CsvValidationOptions["onValueCallback"];
+  public metadataCallback?: CsvValidationOptions["onMetadataCallback"];
   static allowedVersions = ["2.0.0", "2.1.0", "2.2.0", "3.0.0"];
 
   public rowValidators: BranchingValidator[] = [];
@@ -63,6 +64,10 @@ export class CsvValidator extends BaseValidator {
     if (options.onValueCallback) {
       this.dataCallback = options.onValueCallback;
       bind(this.dataCallback, this);
+    }
+    if (options.onMetadataCallback) {
+      this.metadataCallback = options.onMetadataCallback;
+      bind(this.metadataCallback, this);
     }
   }
 
@@ -1470,7 +1475,11 @@ export class CsvValidator extends BaseValidator {
     if (this.index === 0) {
       this.headerColumns = row;
     } else if (this.index === 1) {
-      addItemsWithLimit(this.validateHeader(row), this.errors, this.maxErrors);
+      const headerErrors = this.validateHeader(row);
+      addItemsWithLimit(headerErrors, this.errors, this.maxErrors);
+      if (this.metadataCallback) {
+        this.metadataCallback(this.headerColumns, row, headerErrors, []);
+      }
     } else if (this.index === 2) {
       addItemsWithLimit(this.validateColumns(row), this.errors, this.maxErrors);
       if (this.errors.length > 0) {
