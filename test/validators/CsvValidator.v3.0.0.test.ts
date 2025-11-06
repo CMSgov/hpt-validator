@@ -1,10 +1,11 @@
 import _ from "lodash";
 import { CsvValidator } from "../../src/validators/CsvValidator.js";
 import {
+  AllowedCountZeroNotesError,
   AmbiguousFormatError,
   ChargeWithPayerPlanError,
   ColumnMissingError,
-  InvalidNonNegativeNumberError,
+  InvalidCountNumberError,
   InvalidPositiveNumberError,
   PercentageAlgorithm10thError,
   PercentageAlgorithm90thError,
@@ -416,7 +417,7 @@ describe("CsvValidator v3.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNonNegativeNumberError(
+        new InvalidCountNumberError(
           validator.index,
           normalizedColumns.indexOf("count"),
           "count",
@@ -472,7 +473,7 @@ describe("CsvValidator v3.0.0", () => {
     // If a "payer specific negotiated charge" is expressed as a percentage or algorithm, and count of allowed amounts is not 0,
     // then corresponding "Median", "10th percentile", and "90th percentile" must also be encoded. new in v3.0.0
     // Supersedes similar requirement from v2.2.0
-    it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts, median, 10th percentile, and 90th percentile", () => {
+    it("should return no errors when a payer-specific percentage or algorithm is encoded with a positive count of allowed amounts, median, 10th percentile, and 90th percentile", () => {
       row.payer_name = "Payer Three";
       row.plan_name = "Plan W";
       row["standard_charge | negotiated_percentage"] = "85";
@@ -485,14 +486,58 @@ describe("CsvValidator v3.0.0", () => {
       expect(result).toHaveLength(0);
     });
 
-    it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts of 0", () => {
+    it("should return no errors when a payer-specific percentage or algorithm is encoded with 1 through 10 count of allowed amounts, median, 10th percentile, and 90th percentile", () => {
+      row.payer_name = "Payer Three";
+      row.plan_name = "Plan W";
+      row["standard_charge | negotiated_percentage"] = "85";
+      row["standard_charge | methodology"] = "fee schedule";
+      row.count = "1 through 10";
+      row.median_amount = "370";
+      row["10th_percentile"] = "250";
+      row["90th_percentile"] = "505";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(0);
+    });
+
+    it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts of 0 and additional notes", () => {
       row.payer_name = "Payer Three";
       row.plan_name = "Plan W";
       row["standard_charge | negotiated_percentage"] = "85";
       row["standard_charge | methodology"] = "fee schedule";
       row.count = "0";
+      row.additional_generic_notes = "explanation for 0 count";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
+    });
+
+    it("should return an error when a payer-specific percentage or algorithm is encoded with count of allowed amounts of 0 and no additional notes", () => {
+      row.payer_name = "Payer Three";
+      row.plan_name = "Plan W";
+      row["standard_charge | negotiated_percentage"] = "85";
+      row["standard_charge | methodology"] = "fee schedule";
+      row.count = "0";
+      row.additional_generic_notes = "";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new AllowedCountZeroNotesError(validator.index, 13)
+      );
+    });
+
+    it("should return an error when count of allowed amounts is not 0, an integer 11 or greater, or the phrase 1 through 10", () => {
+      row.payer_name = "Payer Three";
+      row.plan_name = "Plan W";
+      row["standard_charge | negotiated_percentage"] = "85";
+      row["standard_charge | methodology"] = "fee schedule";
+      row.count = "5";
+      row.median_amount = "370";
+      row["10th_percentile"] = "250";
+      row["90th_percentile"] = "505";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new InvalidCountNumberError(validator.index, 23, "count", "5")
+      );
     });
 
     it("should return an error when a payer-specific percentage or algorithm is encoded without count of allowed amounts", () => {
@@ -695,7 +740,7 @@ describe("CsvValidator v3.0.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNonNegativeNumberError(
+        new InvalidCountNumberError(
           validator.index,
           normalizedColumns.indexOf("count | Payer XYZ | Plan 2"),
           "count | Payer XYZ | Plan 2",
@@ -764,14 +809,30 @@ describe("CsvValidator v3.0.0", () => {
       expect(result).toHaveLength(0);
     });
 
-    it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts of 0", () => {
+    it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts of 0 and additional notes", () => {
       row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
         "An Algorithm";
       row["standard_charge | Payer XYZ | Plan 2 | methodology"] =
         "fee schedule";
       row["count | Payer XYZ | Plan 2"] = "0";
+      row["additional_payer_notes | Payer XYZ | Plan 2"] =
+        "sufficient explanation";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
+    });
+
+    it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts of 0 and no additional notes", () => {
+      row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+        "An Algorithm";
+      row["standard_charge | Payer XYZ | Plan 2 | methodology"] =
+        "fee schedule";
+      row["count | Payer XYZ | Plan 2"] = "0";
+      row["additional_payer_notes | Payer XYZ | Plan 2"] = "";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new AllowedCountZeroNotesError(validator.index, 30)
+      );
     });
 
     it("should return an error when a payer-specific percentage or algorithm is encoded without count of allowed amounts", () => {

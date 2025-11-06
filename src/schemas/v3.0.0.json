@@ -379,8 +379,8 @@
           "exclusiveMinimum": 0
         },
         "count": {
-          "type": "integer",
-          "minimum": 0
+          "type": "string",
+          "pattern": "^(0|1 through 10|1[1-9]|[2-9]\\d+|[1-9]\\d{2,})$"
         },
         "methodology": {
           "enum": [
@@ -449,7 +449,7 @@
             "not": {
               "properties": {
                 "count": {
-                  "const": 0
+                  "const": "0"
                 }
               },
               "required": ["count"]
@@ -463,7 +463,7 @@
           "if": {
             "properties": {
               "count": {
-                "const": 0
+                "const": "0"
               }
             },
             "required": ["count"]

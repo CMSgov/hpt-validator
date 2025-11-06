@@ -230,7 +230,8 @@ export class CsvValidator extends BaseValidator {
           });
         }
       );
-      // 3.0.0 adds count, which is a number but is allowed to be 0
+      // 3.0.0 adds count, which is kind of strange.
+      // it can be 0, an integer greater than or equal to 11, or the phrase "1 through 10"
       // since this is currently the only one that allows 0, we have a one-off validator
       // but if more fields start to allow it, we can build a reusable one.
       this.rowValidators.push({
@@ -242,12 +243,15 @@ export class CsvValidator extends BaseValidator {
             return [];
           }
           if (
-            !/^(?:\d+|\d+\.\d+|\d+\.|\.\d+)$/.test(value) ||
-            parseFloat(value) < 0
+            matchesString(value, "0") ||
+            matchesString(value, "1 through 10")
           ) {
+            return [];
+          }
+          if (!/^(1[1-9]|[2-9]\d+|[1-9]\d{2,})$/.test(value)) {
             const columnIndex = this.normalizedColumns.indexOf("count");
             return [
-              new csvErr.InvalidNonNegativeNumberError(
+              new csvErr.InvalidCountNumberError(
                 row,
                 columnIndex,
                 this.dataColumns[columnIndex] ?? "",
@@ -422,14 +426,17 @@ export class CsvValidator extends BaseValidator {
               return [];
             }
             if (
-              !/^(?:\d+|\d+\.\d+|\d+\.|\.\d+)$/.test(value) ||
-              parseFloat(value) < 0
+              matchesString(value, "0") ||
+              matchesString(value, "1 through 10")
             ) {
+              return [];
+            }
+            if (!/^(1[1-9]|[2-9]\d+|[1-9]\d{2,})$/.test(value)) {
               const columnIndex = this.normalizedColumns.indexOf(
                 `count | ${payerPlan}`
               );
               return [
-                new csvErr.InvalidNonNegativeNumberError(
+                new csvErr.InvalidCountNumberError(
                   row,
                   columnIndex,
                   this.dataColumns[columnIndex] ?? "",
@@ -474,9 +481,9 @@ export class CsvValidator extends BaseValidator {
               dataRow[`standard_charge | ${payerPlan} | methodology`] ?? "",
               "other"
             );
-            const columnName = `additional_payer_notes | ${payerPlan}`;
-            if (methodologyIsOther && !dataRow[columnName]) {
-              const columnIndex = this.normalizedColumns.indexOf(columnName);
+            const notesColumn = `additional_payer_notes | ${payerPlan}`;
+            if (methodologyIsOther && !dataRow[notesColumn]) {
+              const columnIndex = this.normalizedColumns.indexOf(notesColumn);
               return [new csvErr.OtherMethodologyNotesError(row, columnIndex)];
             }
             return [];
@@ -686,7 +693,7 @@ export class CsvValidator extends BaseValidator {
           if (
             (dataRow["standard_charge | negotiated_percentage"] ||
               dataRow["standard_charge | negotiated_algorithm"]) &&
-            parseFloat(dataRow["count"]) != 0
+            dataRow["count"] != "0"
           ) {
             // there are three separate error classes, so check them separately
             if (!dataRow.median_amount) {
@@ -715,6 +722,22 @@ export class CsvValidator extends BaseValidator {
             }
           }
           return missing;
+        },
+      });
+      // if count of allowed amounts is 0,
+      // additional notes are required.
+      // new in v3.0.0
+      nonModifierChecks.push({
+        name: "additional notes when count of allowed amounts is 0",
+        applicableVersion: ">=3.0.0",
+        validator: (dataRow, row) => {
+          if (dataRow["count"] == "0" && !dataRow.additional_generic_notes) {
+            const columnIndex = this.normalizedColumns.indexOf(
+              "additional_generic_notes"
+            );
+            return [new csvErr.AllowedCountZeroNotesError(row, columnIndex)];
+          }
+          return [];
         },
       });
       // if a payer name and plan name are encoded, a payer-specific charge must be encoded.
@@ -860,7 +883,7 @@ export class CsvValidator extends BaseValidator {
                 dataRow[
                   `standard_charge | ${payerPlan} | negotiated_algorithm`
                 ]) &&
-              parseFloat(dataRow[`count | ${payerPlan}`]) != 0
+              dataRow[`count | ${payerPlan}`] != "0"
             ) {
               // there are three separate error classes, so check them separately
               if (!dataRow[`median_amount | ${payerPlan}`]) {
@@ -895,6 +918,24 @@ export class CsvValidator extends BaseValidator {
               }
             }
             return missing;
+          },
+        });
+        // if count of allowed amounts is 0,
+        // additional notes are required.
+        // new in v3.0.0
+        nonModifierChecks.push({
+          name: `additional notes for ${payerPlan} when count of allowed amounts is 0`,
+          applicableVersion: ">=3.0.0",
+          validator: (dataRow, row) => {
+            const notesColumn = `additional_payer_notes | ${payerPlan}`;
+            if (
+              dataRow[`count | ${payerPlan}`] == "0" &&
+              !dataRow[notesColumn]
+            ) {
+              const columnIndex = this.normalizedColumns.indexOf(notesColumn);
+              return [new csvErr.AllowedCountZeroNotesError(row, columnIndex)];
+            }
+            return [];
           },
         });
         // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed

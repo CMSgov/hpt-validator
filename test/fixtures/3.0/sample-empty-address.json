@@ -41,7 +41,7 @@
               "median_amount": 22243.34,
               "10th_percentile": 18500.08,
               "90th_percentile": 25440.9,
-              "count": 123,
+              "count": "123",
               "methodology": "case rate"
             },
             {
@@ -52,7 +52,7 @@
               "median_amount": 22243.34,
               "10th_percentile": 18500.08,
               "90th_percentile": 25440.9,
-              "count": 234,
+              "count": "234",
               "methodology": "case rate"
             },
             {
@@ -63,7 +63,7 @@
               "median_amount": 22243.34,
               "10th_percentile": 18500.08,
               "90th_percentile": 25440.9,
-              "count": 345,
+              "count": "345",
               "methodology": "case rate"
             },
             {
@@ -73,7 +73,7 @@
               "median_amount": 22243.34,
               "10th_percentile": 18500.08,
               "90th_percentile": 25440.9,
-              "count": 456,
+              "count": "456",
               "methodology": "percent of total billed charges"
             }
           ]
@@ -110,7 +110,7 @@
               "median_amount": 105.34,
               "10th_percentile": 85.08,
               "90th_percentile": 115.9,
-              "count": 567,
+              "count": "567",
               "methodology": "fee schedule",
               "additional_payer_notes": "115% of the state's workers' compensation amount"
             }
