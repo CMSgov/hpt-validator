@@ -1,7 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import { ValidationError } from "src/errors/ValidationError.js";
+import { ValidationError } from "../../src/errors/ValidationError.js";
 import { InvalidJsonError } from "../../src/errors/json/InvalidJsonError.js";
+import {
+  JsonFalseAffirmationAlert,
+  JsonFalseAttestationAlert,
+} from "../../src/alerts/FalseStatementAlert.js";
 import { JsonValidator } from "../../src/validators/JsonValidator.js";
 import { createFixtureStream } from "../testhelpers/createFixtureStream.js";
 
@@ -151,6 +155,17 @@ describe("JsonValidator", () => {
       const result = await validator.validate(input, { maxErrors: 2 });
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(2);
+    });
+
+    it("should validate a file where affirmation confirmation is false", async () => {
+      const input = createFixtureStream(path.join("false-confirmation.json"));
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual<ValidationError>(
+        new JsonFalseAffirmationAlert()
+      );
     });
   });
 
@@ -632,6 +647,19 @@ describe("JsonValidator", () => {
           message: "must match a schema in anyOf",
           path: "/standard_charge_information/2/standard_charges/0/payers_information/1",
         })
+      );
+    });
+
+    it("should validate a file where attestation confirmation is false", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "false-confirmation.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual<ValidationError>(
+        new JsonFalseAttestationAlert()
       );
     });
   });

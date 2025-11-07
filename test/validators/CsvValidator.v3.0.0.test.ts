@@ -13,7 +13,8 @@ import {
   PercentageAlgorithmMedianError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
-import { ATTESTATION } from "src/validators/CsvHelpers.js";
+import { ATTESTATION } from "../../src/validators/CsvHelpers.js";
+import { CsvFalseAttestationAlert } from "../../src/alerts/FalseStatementAlert.js";
 
 const { shuffle } = _;
 
@@ -109,9 +110,56 @@ describe("CsvValidator v3.0.0", () => {
       });
     });
   });
-  // IF we have dollar and percentage, the median/10th/90th are required
-  // previously if you had a dollar you had the escape. now it's
-  // if you have percentage || algorithm, you must have median/10th/90th/count if count != 0, or must have count == 0
+
+  describe("#alertHeaderRow", () => {
+    const headerColumns = [
+      "hospital_name",
+      "last_updated_on",
+      "version",
+      "location_name",
+      "hospital_address",
+      "license_number | MD",
+      ATTESTATION,
+      "attester_name",
+      "type_2_npi",
+    ];
+
+    beforeEach(() => {
+      validator.headerColumns = [...headerColumns];
+    });
+
+    it("should return an alert when the attestation confirmation is false", () => {
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "1.0.0",
+        "Woodlawn",
+        "123 Address",
+        "001 | MD",
+        "false",
+        "Alex Attester",
+        "1122334455",
+      ]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(new CsvFalseAttestationAlert(6));
+    });
+
+    it("should return no alerts when the attestation confirmation is anything other than false", () => {
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "1.0.0",
+        "Woodlawn",
+        "123 Address",
+        "001 | MD",
+        "I agree",
+        "Alex Attester",
+        "1122334455",
+      ]);
+      expect(result).toHaveLength(0);
+    });
+  });
+
   describe("#validateColumns", () => {
     it("should return no errors when valid tall columns are provided", () => {
       // order of the columns does not matter

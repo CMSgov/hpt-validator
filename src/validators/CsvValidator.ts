@@ -27,6 +27,10 @@ import {
   AFFIRMATION,
   ATTESTATION,
 } from "./CsvHelpers.js";
+import {
+  CsvFalseAffirmationAlert,
+  CsvFalseAttestationAlert,
+} from "src/alerts/FalseStatementAlert.js";
 
 export type ColumnDefinition = {
   label: string;
@@ -1195,6 +1199,25 @@ export class CsvValidator extends BaseValidator {
     return errors;
   }
 
+  alertHeaderRow(row: string[]): csvErr.CsvValidationError[] {
+    if (semver.satisfies(this.version, ">=3.0.0")) {
+      const statementIndex = this.headerColumns.findIndex((headerCol) =>
+        matchesString(headerCol, ATTESTATION)
+      );
+      if (statementIndex > -1 && matchesString(row[statementIndex], "false")) {
+        return [new CsvFalseAttestationAlert(statementIndex)];
+      }
+    } else if (semver.satisfies(this.version, "2.*")) {
+      const statementIndex = this.headerColumns.findIndex((headerCol) =>
+        matchesString(headerCol, AFFIRMATION)
+      );
+      if (statementIndex > -1 && matchesString(row[statementIndex], "false")) {
+        return [new CsvFalseAffirmationAlert(statementIndex)];
+      }
+    }
+    return [];
+  }
+
   validateHeader(row: string[]): csvErr.CsvValidationError[] {
     return [
       ...this.validateHeaderColumns(this.headerColumns),
@@ -1520,6 +1543,10 @@ export class CsvValidator extends BaseValidator {
       addItemsWithLimit(headerErrors, this.errors, this.maxErrors);
       if (this.metadataCallback) {
         this.metadataCallback(this.headerColumns, row, headerErrors, []);
+      }
+      if (headerErrors.length === 0) {
+        const headerAlerts = this.alertHeaderRow(row);
+        addItemsWithLimit(headerAlerts, this.alerts, this.maxErrors);
       }
     } else if (this.index === 2) {
       addItemsWithLimit(this.validateColumns(row), this.errors, this.maxErrors);

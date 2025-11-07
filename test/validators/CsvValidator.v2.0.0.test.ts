@@ -16,6 +16,7 @@ import {
   BILLING_CODE_TYPES,
   STANDARD_CHARGE_METHODOLOGY,
 } from "../../src/validators/CsvHelpers.js";
+import { CsvFalseAffirmationAlert } from "../../src/alerts/FalseStatementAlert.js";
 
 const { shuffle } = _;
 
@@ -244,6 +245,49 @@ describe("schema v2.0.0", () => {
       expect(result[0]).toEqual<AllowedValuesError>(
         new AllowedValuesError(1, 6, AFFIRMATION, "yes", ["true", "false"])
       );
+    });
+  });
+
+  describe("#alertHeaderRow", () => {
+    const headerColumns = [
+      "hospital_name",
+      "last_updated_on",
+      "version",
+      "hospital_location",
+      "hospital_address",
+      "license_number | MD",
+      AFFIRMATION,
+    ];
+
+    beforeEach(() => {
+      validator.headerColumns = [...headerColumns];
+    });
+
+    it("should return an alert when the affirmation confirmation is false", () => {
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "1.0.0",
+        "Woodlawn",
+        "123 Address",
+        "001 | MD",
+        "false",
+      ]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(new CsvFalseAffirmationAlert(6));
+    });
+
+    it("should return no alerts when the affirmation confirmation is anything other than false", () => {
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "1.0.0",
+        "Woodlawn",
+        "123 Address",
+        "001 | MD",
+        "I agree",
+      ]);
+      expect(result).toHaveLength(0);
     });
   });
 

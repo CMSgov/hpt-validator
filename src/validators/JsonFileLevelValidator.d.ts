@@ -8,14 +8,14 @@ export type JsonFileLevelValidator = {
   state: { [key: string]: any };
   standardChargeSchema?: any;
   metadataSchema?: any;
-  standardChargeCheck: (
+  standardChargeCheck?: (
     standardCharge: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct,
     state: JsonFileLevelValidator["state"],
-    validatorErrors: Ajv["errors"]
+    validatorErrors: NonNullable<Ajv["errors"]>
   ) => void;
   fileCheck: (
     metadata: JsonTypes.JsonPrimitive | JsonTypes.JsonStruct,
     state: JsonFileLevelValidator["state"],
-    validatorErrors: Ajv["errors"]
+    validatorErrors: NonNullable<Ajv["errors"]>
   ) => ValidationError[];
 };

@@ -24,6 +24,10 @@ import v220alerts from "../alert-schemas/v2.2.0.json" with { type: "json" };
 import v220payerCharge from "../alert-schemas/v2.2.0-payer-charge.json" with { type: "json" };
 import semver from "semver";
 import { JsonFileLevelValidator } from "./JsonFileLevelValidator.js";
+import {
+  JsonFalseAffirmationAlert,
+  JsonFalseAttestationAlert,
+} from "src/alerts/FalseStatementAlert.js";
 
 export class JsonValidator extends BaseValidator {
   public fullSchema: any;
@@ -102,6 +106,28 @@ export class JsonValidator extends BaseValidator {
         fileCheck: (_metadata, state) => {
           if (!state.hasCharge) {
             return [new JsonNoPayerChargeAlert()];
+          }
+          return [];
+        },
+      },
+      {
+        name: "affirmation confirmation is true",
+        applicableVersion: "2.*",
+        state: {},
+        fileCheck: (metadata) => {
+          if ((metadata as any)?.affirmation?.confirm_affirmation === false) {
+            return [new JsonFalseAffirmationAlert()];
+          }
+          return [];
+        },
+      },
+      {
+        name: "attestation confirmation is true",
+        applicableVersion: ">=3.0.0",
+        state: {},
+        fileCheck: (metadata) => {
+          if ((metadata as any)?.attestation?.confirm_attestation === false) {
+            return [new JsonFalseAttestationAlert()];
           }
           return [];
         },
@@ -196,7 +222,9 @@ export class JsonValidator extends BaseValidator {
                 validator.validate(flv.standardChargeSchema, value);
                 validatorErrors = validator.errors ?? [];
               }
-              flv.standardChargeCheck(value, flv.state, validatorErrors);
+              if (flv.standardChargeCheck) {
+                flv.standardChargeCheck(value, flv.state, validatorErrors);
+              }
             }
           });
           this.fileLevelAlerters.forEach((fla) => {
@@ -207,7 +235,9 @@ export class JsonValidator extends BaseValidator {
                 validator.validate(fla.standardChargeSchema, value);
                 validatorErrors = validator.errors ?? [];
               }
-              fla.standardChargeCheck(value, fla.state, validatorErrors);
+              if (fla.standardChargeCheck) {
+                fla.standardChargeCheck(value, fla.state, validatorErrors);
+              }
             }
           });
 
