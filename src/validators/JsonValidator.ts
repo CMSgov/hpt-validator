@@ -27,7 +27,7 @@ import { JsonFileLevelValidator } from "./JsonFileLevelValidator.js";
 import {
   JsonFalseAffirmationAlert,
   JsonFalseAttestationAlert,
-} from "src/alerts/FalseStatementAlert.js";
+} from "../alerts/FalseStatementAlert.js";
 
 export class JsonValidator extends BaseValidator {
   public fullSchema: any;
@@ -164,6 +164,7 @@ export class JsonValidator extends BaseValidator {
         "$.affirmation",
         "$.attestation",
         "$.modifier_information",
+        "$.type_2_npi",
         "$.standard_charge_information.*",
       ],
       keepStack: false,

@@ -1,4 +1,4 @@
-import { ValidationError } from "../errors/ValidationError.ts";
+import { ValidationError } from "../errors/ValidationError.js";
 import { Ajv } from "ajv";
 import { JsonTypes } from "@streamparser/json";
 

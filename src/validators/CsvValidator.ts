@@ -30,7 +30,7 @@ import {
 import {
   CsvFalseAffirmationAlert,
   CsvFalseAttestationAlert,
-} from "src/alerts/FalseStatementAlert.js";
+} from "../alerts/FalseStatementAlert.js";
 
 export type ColumnDefinition = {
   label: string;

@@ -137,17 +137,9 @@
             "WY"
           ],
           "type": "string"
-        },
-        "type_2_npi": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 1
         }
       },
-      "required": ["state", "type_2_npi"]
+      "required": ["state"]
     },
     "standard_charges": {
       "type": "object",
@@ -511,6 +503,14 @@
       },
       "minItems": 1
     },
+    "type_2_npi": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
     "standard_charge_information": {
       "type": "array",
       "items": {
@@ -532,6 +532,7 @@
     "last_updated_on",
     "location_name",
     "hospital_address",
+    "type_2_npi",
     "license_information",
     "attestation",
     "version"
