@@ -425,19 +425,6 @@ describe("JsonValidator", () => {
         })
       );
     });
-
-    it("should validate a file that has no payer-specific charges", async () => {
-      const input = createFixtureStream("sample-no-payer-charges.json");
-      const result = await validator.validate(input);
-      expect(result.valid).toBe(true);
-      expect(result.alerts).toHaveLength(1);
-      expect(result.alerts[0]).toEqual(
-        expect.objectContaining({
-          message: "File does not have any payer-specific charges.",
-          path: "/standard_charge_information",
-        })
-      );
-    });
   });
 
   describe("schema v3.0.0", () => {

@@ -62,7 +62,6 @@
               "payer_name": "Region Health Insurance",
               "plan_name": "HMO",
               "standard_charge_percentage": 50,
-              "estimated_amount": 23145.98,
               "methodology": "percent of total billed charges"
             }
           ]

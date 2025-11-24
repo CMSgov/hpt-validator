@@ -4,7 +4,7 @@ import { CsvValidationOptions, ValidationResult } from "../types.js";
 import { BaseValidator } from "./BaseValidator.js";
 import { addItemsWithLimit, removeBOM } from "../utils.js";
 import * as csvErr from "../errors/csv/index.js";
-import { CsvNineNinesAlert, CsvNoPayerChargeAlert } from "../alerts/index.js";
+import { CsvNineNinesAlert } from "../alerts/index.js";
 import _ from "lodash";
 const { range, partial, bind } = _;
 import { BranchingValidator, CsvFileLevelValidator } from "./CsvFieldTypes.js";
@@ -234,7 +234,7 @@ export class CsvValidator extends BaseValidator {
           });
         }
       );
-      // 3.0.0 adds count, which is kind of strange.
+      // 3.0.0 adds count, which is kind of unusual.
       // it can be 0, an integer greater than or equal to 11, or the phrase "1 through 10"
       // since this is currently the only one that allows 0, we have a one-off validator
       // but if more fields start to allow it, we can build a reusable one.
@@ -1023,63 +1023,9 @@ export class CsvValidator extends BaseValidator {
   }
 
   buildFileValidators() {
-    // alert: a file should have at least one payer-specific negotiated charge
-    let hasChargeRowCheck: CsvFileLevelValidator["rowCheck"];
-    if (this.isTall) {
-      hasChargeRowCheck = (dataRow, state) => {
-        if (!state.hasCharge) {
-          state.hasCharge = [
-            "standard_charge | negotiated_dollar",
-            "standard_charge | negotiated_percentage",
-            "standard_charge | negotiated_algorithm",
-          ].some((field) => Boolean(dataRow[field]));
-        }
-      };
-    } else {
-      const chargeFields: string[] = [];
-      this.payersPlans.forEach((payerPlan) => {
-        chargeFields.push(
-          `standard_charge | ${payerPlan} | negotiated_dollar`,
-          `standard_charge | ${payerPlan} | negotiated_percentage`,
-          `standard_charge | ${payerPlan} | negotiated_algorithm`
-        );
-      });
-      hasChargeRowCheck = (dataRow, state) => {
-        if (!state.hasCharge) {
-          state.hasCharge = chargeFields.some((field) =>
-            Boolean(dataRow[field])
-          );
-        }
-      };
-    }
-    this.fileAlerters.push({
-      name: "at least one payer-specific charge",
-      applicableVersion: ">=2.2.0",
-      state: {
-        hasCharge: false,
-      },
-      rowCheck: hasChargeRowCheck,
-      fileCheck: (state) => {
-        if (!state.hasCharge) {
-          return [
-            new CsvNoPayerChargeAlert(
-              this.normalizedColumns.indexOf(
-                "standard_charge | negotiated_dollar"
-              )
-            ),
-          ];
-        }
-        return [];
-      },
-    });
-
-    this.fileValidators = this.fileValidators.filter((val) =>
-      semver.satisfies(this.version, val.applicableVersion)
-    );
-
-    this.fileAlerters = this.fileAlerters.filter((val) =>
-      semver.satisfies(this.version, val.applicableVersion)
-    );
+    // empty implementation, since there are no currently defined file-level validation checks in the data dictionary.
+    // however, by defining a function, we can have a call to it, which could be useful for someone
+    // who wanted to add their own file-level validation checks.
   }
 
   validate(input: File | NodeJS.ReadableStream): Promise<ValidationResult> {

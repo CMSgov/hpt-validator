@@ -14,14 +14,12 @@ import {
 } from "../utils.js";
 import { ValidationError } from "../errors/ValidationError.js";
 import { InvalidJsonError } from "../errors/json/InvalidJsonError.js";
-import { JsonNoPayerChargeAlert } from "../alerts/JsonNoPayerChargeAlert.js";
 
 import v200schema from "../schemas/v2.0.0.json" with { type: "json" };
 import v210schema from "../schemas/v2.1.0.json" with { type: "json" };
 import v220schema from "../schemas/v2.2.0.json" with { type: "json" };
 import v300schema from "../schemas/v3.0.0.json" with { type: "json" };
 import v220alerts from "../alert-schemas/v2.2.0.json" with { type: "json" };
-import v220payerCharge from "../alert-schemas/v2.2.0-payer-charge.json" with { type: "json" };
 import semver from "semver";
 import { JsonFileLevelValidator } from "./JsonFileLevelValidator.js";
 import {
@@ -91,25 +89,6 @@ export class JsonValidator extends BaseValidator {
 
   buildFileLevelChecks() {
     const fileLevelChecks: JsonFileLevelValidator[] = [
-      {
-        name: "at least one payer-specific charge",
-        applicableVersion: ">=2.2.0",
-        state: {
-          hasCharge: false,
-        },
-        standardChargeSchema: v220payerCharge,
-        standardChargeCheck: (_standardCharge, state, validatorErrors) => {
-          if (!state.hasCharge) {
-            state.hasCharge = validatorErrors?.length === 0;
-          }
-        },
-        fileCheck: (_metadata, state) => {
-          if (!state.hasCharge) {
-            return [new JsonNoPayerChargeAlert()];
-          }
-          return [];
-        },
-      },
       {
         name: "affirmation confirmation is true",
         applicableVersion: "2.*",

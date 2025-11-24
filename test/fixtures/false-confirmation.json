@@ -40,7 +40,7 @@
               "standard_charge_dollar": 20000,
               "standard_charge_algorithm": "MS-DRG",
               "estimated_amount": 22243.34,
-              "methodology": "case rate"
+              "methodology": "other"
             },
             {
               "payer_name": "Platform Health Insurance",
