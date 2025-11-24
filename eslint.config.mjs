@@ -16,10 +16,11 @@ export default [
   {
     ignores: [
       'node_modules/',
-      'lib/'
+      'lib/',
+      'coverage/'
     ]
   },
-  ...compat.extends('plugin:@typescript-eslint/recommended', 'prettier'),
+  ...compat.extends('plugin:@typescript-eslint/eslint-recommended', 'plugin:@typescript-eslint/recommended', 'prettier'),
   {
     languageOptions: {
       parser: tsParser,
