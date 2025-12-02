@@ -13,7 +13,7 @@
   },
   "affirmation": {
     "affirmation": "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.",
-    "confirm_affirmation": true
+    "confirm_affirmation": false
   },
   "standard_charge_information": [
     {
@@ -62,6 +62,7 @@
               "payer_name": "Region Health Insurance",
               "plan_name": "HMO",
               "standard_charge_percentage": 50,
+              "estimated_amount": 23145.98,
               "methodology": "percent of total billed charges"
             }
           ]

@@ -1,6 +1,7 @@
 export * from "./CsvValidationError.js";
 export * from "./AllowedValuesError.js";
 export * from "./AmbiguousFormatError.js";
+export * from "./ChargeWithPayerPlanError.js";
 export * from "./CodePairMissingError.js";
 export * from "./ColumnMissingError.js";
 export * from "./DollarNeedsMinMaxError.js";
@@ -16,7 +17,7 @@ export * from "./InvalidVersionError.js";
 export * from "./ItemRequiresChargeError.js";
 export * from "./MinRowsError.js";
 export * from "./ModifierMissingInfoError.js";
-export * from "./OtherMethodologyNotesError.js";
+export * from "./NotesRequiredError.js";
 export * from "./PercentageAlgorithmEstimateError.js";
 export * from "./ProblemsInHeaderError.js";
 export * from "./RequiredValueError.js";

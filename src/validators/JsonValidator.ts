@@ -18,20 +18,28 @@ import { InvalidJsonError } from "../errors/json/InvalidJsonError.js";
 import v200schema from "../schemas/v2.0.0.json" with { type: "json" };
 import v210schema from "../schemas/v2.1.0.json" with { type: "json" };
 import v220schema from "../schemas/v2.2.0.json" with { type: "json" };
+import v300schema from "../schemas/v3.0.0.json" with { type: "json" };
 import v220alerts from "../alert-schemas/v2.2.0.json" with { type: "json" };
 import semver from "semver";
+import { JsonFileLevelValidator } from "./JsonFileLevelValidator.js";
+import {
+  JsonFalseAffirmationAlert,
+  JsonFalseAttestationAlert,
+} from "../alerts/FalseStatementAlert.js";
 
 export class JsonValidator extends BaseValidator {
   public fullSchema: any;
   public standardChargeSchema: any;
   public metadataSchema: any;
   public alertSchema: any;
+  public fileLevelValidators: JsonFileLevelValidator[] = [];
+  public fileLevelAlerters: JsonFileLevelValidator[] = [];
   public errors: ValidationError[] = [];
   public alerts: ValidationError[] = [];
   public dataCallback?: JsonValidationOptions["onValueCallback"];
   public metadataCallback?: JsonValidationOptions["onMetadataCallback"];
 
-  static allowedVersions = ["2.0.0", "2.1.0", "2.2.0"];
+  static allowedVersions = ["2.0.0", "2.1.0", "2.2.0", "3.0.0"];
 
   constructor(public version: string) {
     super("json");
@@ -49,12 +57,15 @@ export class JsonValidator extends BaseValidator {
           this.fullSchema = v220schema;
           this.alertSchema = v220alerts;
           break;
+        case "3.0.0":
+          this.fullSchema = v300schema;
+          break;
         default:
           throw new Error("unrecognized version");
       }
-      // console.dir(this.fullSchema);
       this.buildStandardChargeSchema();
       this.buildMetadataSchema();
+      this.buildFileLevelChecks();
     } catch {
       throw Error(`Could not load JSON schema with version: ${version}`);
     }
@@ -73,6 +84,36 @@ export class JsonValidator extends BaseValidator {
     delete this.metadataSchema.properties.standard_charge_information;
     this.metadataSchema.required = this.metadataSchema.required.filter(
       (propertyName: string) => propertyName !== "standard_charge_information"
+    );
+  }
+
+  buildFileLevelChecks() {
+    const fileLevelChecks: JsonFileLevelValidator[] = [
+      {
+        name: "affirmation confirmation is true",
+        applicableVersion: "2.*",
+        state: {},
+        fileCheck: (metadata) => {
+          if ((metadata as any)?.affirmation?.confirm_affirmation === false) {
+            return [new JsonFalseAffirmationAlert()];
+          }
+          return [];
+        },
+      },
+      {
+        name: "attestation confirmation is true",
+        applicableVersion: ">=3.0.0",
+        state: {},
+        fileCheck: (metadata) => {
+          if ((metadata as any)?.attestation?.confirm_attestation === false) {
+            return [new JsonFalseAttestationAlert()];
+          }
+          return [];
+        },
+      },
+    ];
+    this.fileLevelAlerters = fileLevelChecks.filter((val) =>
+      semver.satisfies(this.version, val.applicableVersion)
     );
   }
 
@@ -98,14 +139,16 @@ export class JsonValidator extends BaseValidator {
         "$.version",
         "$.hospital_address",
         "$.hospital_location",
+        "$.location_name",
         "$.affirmation",
+        "$.attestation",
         "$.modifier_information",
+        "$.type_2_npi",
         "$.standard_charge_information.*",
       ],
       keepStack: false,
     });
     const metadata: { [key: string]: any } = {};
-    let valid = true;
     let hasCharges = false;
     if (options.onValueCallback) {
       this.dataCallback = options.onValueCallback;
@@ -137,7 +180,6 @@ export class JsonValidator extends BaseValidator {
               error.path = `/${pathPrefix}/${key}${error.path}`;
             });
             addItemsWithLimit(newErrors, errors, options.maxErrors);
-            valid = errors.length === 0;
           }
           let newAlerts: ValidationError[] = [];
           if (alertValidator != null) {
@@ -150,6 +192,35 @@ export class JsonValidator extends BaseValidator {
               addItemsWithLimit(newAlerts, alerts, options.maxErrors);
             }
           }
+
+          // other "run this on each standard charge object" functions go here
+          this.fileLevelValidators.forEach((flv) => {
+            if (value != null) {
+              let validatorErrors: Ajv["errors"] = [];
+              // if there is a standard charge schema, validate against it
+              if (flv.standardChargeSchema != null) {
+                validator.validate(flv.standardChargeSchema, value);
+                validatorErrors = validator.errors ?? [];
+              }
+              if (flv.standardChargeCheck) {
+                flv.standardChargeCheck(value, flv.state, validatorErrors);
+              }
+            }
+          });
+          this.fileLevelAlerters.forEach((fla) => {
+            if (value != null) {
+              let validatorErrors: Ajv["errors"] = [];
+              // if there is a standard charge schema, validate against it
+              if (fla.standardChargeSchema != null) {
+                validator.validate(fla.standardChargeSchema, value);
+                validatorErrors = validator.errors ?? [];
+              }
+              if (fla.standardChargeCheck) {
+                fla.standardChargeCheck(value, fla.state, validatorErrors);
+              }
+            }
+          });
+
           if (this.dataCallback && value != null) {
             this.dataCallback(
               value,
@@ -186,13 +257,44 @@ export class JsonValidator extends BaseValidator {
           metadataErrors =
             validator.errors?.map(errorObjectToValidationError) ?? [];
           addItemsWithLimit(metadataErrors, errors, options.maxErrors);
-          valid = errors.length === 0;
         }
+        // final run for file level checkers
+        this.fileLevelValidators.forEach((flv) => {
+          if (metadata != null) {
+            let validatorErrors: Ajv["errors"] = [];
+            if (flv.metadataSchema != null) {
+              validator.validate(flv.metadataSchema, metadata);
+              validatorErrors = validator.errors ?? [];
+            }
+            const bonusErrors = flv.fileCheck(
+              metadata,
+              flv.state,
+              validatorErrors
+            );
+            addItemsWithLimit(bonusErrors, errors, options.maxErrors);
+          }
+        });
+        this.fileLevelAlerters.forEach((fla) => {
+          if (metadata != null) {
+            let validatorErrors: Ajv["errors"] = [];
+            if (fla.metadataSchema != null) {
+              validator.validate(fla.metadataSchema, metadata);
+              validatorErrors = validator.errors ?? [];
+            }
+            const bonusAlerts = fla.fileCheck(
+              metadata,
+              fla.state,
+              validatorErrors
+            );
+            addItemsWithLimit(bonusAlerts, alerts, options.maxErrors);
+          }
+        });
+
         if (this.metadataCallback && metadata != null) {
           this.metadataCallback(metadata, metadataErrors, []);
         }
         resolve({
-          valid,
+          valid: errors.length === 0,
           errors,
           alerts,
         });

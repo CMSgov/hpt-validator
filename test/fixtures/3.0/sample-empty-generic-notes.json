@@ -2,7 +2,7 @@
   "hospital_name": "West Mercy Hospital",
   "last_updated_on": "2024-07-01",
   "version": "2.0.0",
-  "hospital_location": ["West Mercy Hospital", "West Mercy Surgical Center"],
+  "location_name": ["West Mercy Hospital", "West Mercy Surgical Center"],
   "hospital_address": [
     "12 Main Street, Fullerton, CA  92832",
     "23 Ocean Ave, San Jose, CA 94088"
@@ -11,9 +11,11 @@
     "license_number": "50056",
     "state": "CA"
   },
-  "affirmation": {
-    "affirmation": "To the best of its knowledge and belief, the hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date indicated.",
-    "confirm_affirmation": true
+  "type_2_npi": ["1122334455", "6677889900"],
+  "attestation": {
+    "attestation": "To the best of its knowledge and belief, this hospital has included all applicable standard charge information in accordance with the requirements of 45 CFR 180.50, and the information encoded is true, accurate, and complete as of the date in the file. This hospital has included all payer-specific negotiated charges in dollars that can be expressed as a dollar amount. For payer-specific negotiated charges that cannot be expressed as a dollar amount in the machine-readable file or not knowable in advance, the hospital attests that the payer-specific negotiated charge is based on a contractual algorithm, percentage or formula that precludes the provision of a dollar amount and has provided all necessary information available to the hospital for the public to be able to derive the dollar amount, including, but not limited to, the specific fee schedule or components referenced in such percentage, algorithm or formula.",
+    "attester_name": "Malcom Attester",
+    "confirm_attestation": true
   },
   "standard_charge_information": [
     {
@@ -39,15 +41,21 @@
               "plan_name": "PPO",
               "standard_charge_dollar": 20000,
               "standard_charge_algorithm": "MS-DRG",
-              "estimated_amount": 22243.34,
-              "methodology": "other"
+              "median_amount": 22243.34,
+              "10th_percentile": 18500.08,
+              "90th_percentile": 25440.9,
+              "count": "123",
+              "methodology": "case rate"
             },
             {
               "payer_name": "Platform Health Insurance",
               "plan_name": "PPO",
               "standard_charge_dollar": 20000,
               "standard_charge_algorithm": "https://www.cms.gov/Outreach-and-Education/Medicare-Learning-Network-MLN/MLNProducts/html/images/OP.jpg",
-              "estimated_amount": 22243.34,
+              "median_amount": 22243.34,
+              "10th_percentile": 18500.08,
+              "90th_percentile": 25440.9,
+              "count": "234",
               "methodology": "case rate"
             },
             {
@@ -55,13 +63,20 @@
               "plan_name": "PPO",
               "standard_charge_dollar": 20000,
               "standard_charge_algorithm": "The adjusted base payment rate indicated in the standard_charge|negotiated_dollar data element may be further adjusted for additional factors including transfers and outliers.",
-              "estimated_amount": 22243.34,
+              "median_amount": 22243.34,
+              "10th_percentile": 18500.08,
+              "90th_percentile": 25440.9,
+              "count": "345",
               "methodology": "case rate"
             },
             {
               "payer_name": "Region Health Insurance",
               "plan_name": "HMO",
               "standard_charge_percentage": 50,
+              "median_amount": 22243.34,
+              "10th_percentile": 18500.08,
+              "90th_percentile": 25440.9,
+              "count": "456",
               "methodology": "percent of total billed charges"
             }
           ]
@@ -83,6 +98,7 @@
           "discounted_cash": 125,
           "minimum": 98.98,
           "maximum": 98.98,
+          "additional_generic_notes": "",
           "payers_information": [
             {
               "payer_name": "Platform Health Insurance",
@@ -95,7 +111,10 @@
               "payer_name": "Region Health Insurance",
               "plan_name": "HMO",
               "standard_charge_percentage": 115,
-              "estimated_amount": 105.34,
+              "median_amount": 105.34,
+              "10th_percentile": 85.08,
+              "90th_percentile": 115.9,
+              "count": "567",
               "methodology": "fee schedule",
               "additional_payer_notes": "115% of the state's workers' compensation amount"
             }

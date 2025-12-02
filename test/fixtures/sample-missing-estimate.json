@@ -39,7 +39,7 @@
               "plan_name": "PPO",
               "standard_charge_dollar": 20000,
               "standard_charge_algorithm": "MS-DRG",
-              "estimated_amount": 22243.34,
+              "estimated_amount": 999999999,
               "methodology": "case rate"
             },
             {
@@ -47,7 +47,7 @@
               "plan_name": "PPO",
               "standard_charge_dollar": 20000,
               "standard_charge_algorithm": "https://www.cms.gov/Outreach-and-Education/Medicare-Learning-Network-MLN/MLNProducts/html/images/OP.jpg",
-              "estimated_amount": 22243.34,
+              "estimated_amount": 999999999,
               "methodology": "case rate"
             },
             {
@@ -55,7 +55,7 @@
               "plan_name": "PPO",
               "standard_charge_dollar": 20000,
               "standard_charge_algorithm": "The adjusted base payment rate indicated in the standard_charge|negotiated_dollar data element may be further adjusted for additional factors including transfers and outliers.",
-              "estimated_amount": 22243.34,
+              "estimated_amount": 999999999,
               "methodology": "case rate"
             },
             {
@@ -95,7 +95,7 @@
               "payer_name": "Region Health Insurance",
               "plan_name": "HMO",
               "standard_charge_percentage": 115,
-              "estimated_amount": 105.34,
+              "estimated_amount": 999999999,
               "methodology": "fee schedule",
               "additional_payer_notes": "115% of the state's workers' compensation amount"
             }

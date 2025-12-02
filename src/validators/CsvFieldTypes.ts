@@ -17,3 +17,14 @@ export type BranchingValidator = {
   children?: BranchingValidator[];
   negativeChildren?: BranchingValidator[];
 };
+
+export type CsvFileLevelValidator = {
+  name: string;
+  applicableVersion: string;
+  state: { [key: string]: any };
+  rowCheck: (
+    dataRow: { [key: string]: string },
+    state: CsvFileLevelValidator["state"]
+  ) => void;
+  fileCheck: (state: CsvFileLevelValidator["state"]) => CsvValidationError[];
+};

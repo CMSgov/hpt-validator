@@ -1,8 +1,5 @@
 import _ from "lodash";
-import {
-  AFFIRMATION,
-  CsvValidator,
-} from "../../src/validators/CsvValidator.js";
+import { CsvValidator } from "../../src/validators/CsvValidator.js";
 import {
   AllowedValuesError,
   AmbiguousFormatError,
@@ -14,7 +11,7 @@ import {
   DuplicateHeaderColumnError,
   HeaderColumnMissingError,
   InvalidDateError,
-  InvalidNumberError,
+  InvalidPositiveNumberError,
   InvalidStateCodeError,
   ItemRequiresChargeError,
   ModifierMissingInfoError,
@@ -26,6 +23,7 @@ import { CsvNineNinesAlert } from "../../src/alerts/index.js";
 import {
   BILLING_CODE_TYPES,
   DRUG_UNITS,
+  AFFIRMATION,
 } from "../../src/validators/CsvHelpers.js";
 import { createFixtureStream } from "test/testhelpers/createFixtureStream.js";
 
@@ -43,14 +41,16 @@ describe("CsvValidator v2.2.0", () => {
       const input = createFixtureStream("sample-tall-valid.csv");
       const result = await validator.validate(input);
       expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(0);
       expect(result.valid).toBe(true);
     });
 
     it("should validate a valid wide CSV file", async () => {
       const input = createFixtureStream("sample-wide-valid.csv");
       const result = await validator.validate(input);
-      expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(0);
+      expect(result.valid).toBe(true);
     });
   });
 
@@ -827,7 +827,7 @@ describe("CsvValidator v2.2.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("drug_unit_of_measurement"),
           "drug_unit_of_measurement",
@@ -887,7 +887,7 @@ describe("CsvValidator v2.2.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | gross"),
           "standard_charge  | gross",
@@ -901,7 +901,7 @@ describe("CsvValidator v2.2.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | discounted_cash"),
           "standard_charge | discounted_cash",
@@ -915,7 +915,7 @@ describe("CsvValidator v2.2.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | min"),
           "standard_charge | min",
@@ -929,7 +929,7 @@ describe("CsvValidator v2.2.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("standard_charge | max"),
           "standard_charge | max",
@@ -943,7 +943,7 @@ describe("CsvValidator v2.2.0", () => {
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("estimated_amount"),
           "estimated_amount",
@@ -1449,7 +1449,7 @@ describe("CsvValidator v2.2.0", () => {
       validator.normalizedColumns = normalizedColumns;
       validator.isTall = false;
       validator.codeCount = validator.getCodeCount(columns);
-      validator.payersPlans = CsvValidator.getPayersPlans(columns);
+      validator.payersPlans = validator.getPayersPlans(columns);
       validator.rowValidators = [];
       validator.buildRowValidators();
       // start with the minimum amount of valid information
@@ -1471,13 +1471,13 @@ describe("CsvValidator v2.2.0", () => {
         "standard_charge | Payer ABC | Plan 1 | negotiated_percentage": "",
         "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm": "",
         "standard_charge | Payer ABC | Plan 1 | methodology": "",
-        "estimated_amount |  Payer ABC | Plan 1": "",
+        "estimated_amount | Payer ABC | Plan 1": "",
         "additional_payer_notes | Payer ABC | Plan 1": "",
         "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar": "",
         "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage": "",
         "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm": "",
         "standard_charge | Payer XYZ | Plan 2 | methodology": "",
-        "estimated_amount |  Payer XYZ | Plan 2": "",
+        "estimated_amount | Payer XYZ | Plan 2": "",
         "additional_payer_notes | Payer XYZ | Plan 2": "",
         additional_generic_notes: "",
       };
@@ -1489,15 +1489,15 @@ describe("CsvValidator v2.2.0", () => {
     });
 
     it("should return an error when estimated amount is present, but not a positive number", () => {
-      row["estimated_amount | Payer ABC | Plan 1"] = "-5";
+      row["estimated_amount | Payer ABC | Plan 1"] = "Unknown";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
-        new InvalidNumberError(
+        new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf("estimated_amount | Payer ABC | Plan 1"),
           "estimated_amount |  Payer ABC | Plan 1",
-          "-5"
+          "Unknown"
         )
       );
     });

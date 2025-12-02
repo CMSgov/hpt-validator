@@ -1,7 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import { ValidationError } from "src/errors/ValidationError.js";
+import { ValidationError } from "../../src/errors/ValidationError.js";
 import { InvalidJsonError } from "../../src/errors/json/InvalidJsonError.js";
+import {
+  JsonFalseAffirmationAlert,
+  JsonFalseAttestationAlert,
+} from "../../src/alerts/FalseStatementAlert.js";
 import { JsonValidator } from "../../src/validators/JsonValidator.js";
 import { createFixtureStream } from "../testhelpers/createFixtureStream.js";
 
@@ -25,7 +29,7 @@ describe("JsonValidator", () => {
     // this is the earliest version of the schema supported by the validator.
     let validator: JsonValidator;
 
-    beforeAll(() => {
+    beforeEach(() => {
       validator = new JsonValidator("v2.0.0");
     });
 
@@ -152,6 +156,17 @@ describe("JsonValidator", () => {
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(2);
     });
+
+    it("should validate a file where affirmation confirmation is false", async () => {
+      const input = createFixtureStream(path.join("false-confirmation.json"));
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual<ValidationError>(
+        new JsonFalseAffirmationAlert()
+      );
+    });
   });
 
   describe("schema v2.1.0", () => {
@@ -165,7 +180,7 @@ describe("JsonValidator", () => {
     // valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
     let validator: JsonValidator;
 
-    beforeAll(() => {
+    beforeEach(() => {
       validator = new JsonValidator("v2.1.0");
     });
 
@@ -271,7 +286,7 @@ describe("JsonValidator", () => {
     // 5. If code type is NDC, then the corresponding drug unit of measure and drug type of measure data elements must be encoded.
     let validator: JsonValidator;
 
-    beforeAll(() => {
+    beforeEach(() => {
       validator = new JsonValidator("v2.2.0");
     });
 
@@ -382,6 +397,7 @@ describe("JsonValidator", () => {
       const input = createFixtureStream("sample-ndc-no-drug-info.json");
       const result = await validator.validate(input);
       expect(result.valid).toBe(false);
+      expect(result.alerts).toHaveLength(0);
       expect(result.errors).toHaveLength(2);
       expect(result.errors).toContainEqual<ValidationError>(
         expect.objectContaining({
@@ -407,6 +423,230 @@ describe("JsonValidator", () => {
           message: "Nine 9s used for estimated amount.",
           path: "/standard_charge_information/0/standard_charges/0/payers_information/2/estimated_amount",
         })
+      );
+    });
+  });
+
+  describe("schema v3.0.0", () => {
+    // this version removes the estimated_amount field and replaces it with median_amount,
+    // 10th_percentile, and 90th_percentile fields.
+    // several string fields that previously had no minimum length now have minimum length 1.
+    // there are also some new conditionals.
+    let validator: JsonValidator;
+
+    beforeEach(() => {
+      validator = new JsonValidator("v3.0.0");
+    });
+
+    it("should validate a valid file", async () => {
+      const input = createFixtureStream(path.join("3.0", "sample-valid.json"));
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    // string elements with new minimum length requirements
+    it("should validate a file with a hospital address that is an empty string", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-empty-address.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toEqual(
+        expect.objectContaining({
+          message: "must NOT have fewer than 1 characters",
+          path: "/hospital_address/1",
+        })
+      );
+    });
+
+    it("should validate a file with a location name that is an empty string", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-empty-location.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toEqual(
+        expect.objectContaining({
+          message: "must NOT have fewer than 1 characters",
+          path: "/location_name/0",
+        })
+      );
+    });
+
+    it("should validate a file with additional generic notes that are an empty string", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-empty-generic-notes.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toEqual(
+        expect.objectContaining({
+          message: "must NOT have fewer than 1 characters",
+          path: "/standard_charge_information/1/standard_charges/0/additional_generic_notes",
+        })
+      );
+    });
+
+    it("should validate a file with additional payer notes that are an empty string", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-empty-payer-notes.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toEqual(
+        expect.objectContaining({
+          message: "must NOT have fewer than 1 characters",
+          path: "/standard_charge_information/1/standard_charges/0/payers_information/0/additional_payer_notes",
+        })
+      );
+    });
+
+    it("should validate a file with a standard charge algorithm that is an empty string", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-empty-algorithm.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toEqual(
+        expect.objectContaining({
+          message: "must NOT have fewer than 1 characters",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/2/standard_charge_algorithm",
+        })
+      );
+    });
+
+    // drug_information.unit is now a number, not a string
+    it("should validate a file that uses drug information correctly", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-valid-drug-info.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    // modifier information now has an optional setting property with enum values
+    it("should validate a file where a modifier setting is not one of the allowed values", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-modifier-invalid-setting.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toEqual(
+        expect.objectContaining({
+          message: "must be equal to one of the allowed values",
+          path: "/modifier_information/0/setting",
+        })
+      );
+    });
+
+    // count of allowed amounts is a new field in a payers_information object
+    // it is required when there is a percentage or algorithm
+    it("should validate a file where a count of allowed amounts is missing", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-missing-count-of-allowed-amounts.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "must have required property 'count'",
+          path: "/standard_charge_information/1/standard_charges/0/payers_information/1",
+        })
+      );
+    });
+
+    // conditionals that previously required an estimated_amount now require
+    // median_amount, 10th_percentile, and 90th_percentile
+    it("should validate a file where a charge is expressed as a percentage or algorithm, and count of allowed amounts is greater than 0, but no median amount is provided", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-missing-median.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: 'must match "then" schema',
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
+        })
+      );
+    });
+
+    it("should validate a file where a charge is expressed as a percentage or algorithm, and count of allowed amounts is greater than 0, but no 10th percentile amount is provided", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-missing-10th.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: 'must match "then" schema',
+          path: "/standard_charge_information/1/standard_charges/0/payers_information/1",
+        })
+      );
+    });
+
+    it("should validate a file where a charge is expressed as a percentage or algorithm, and count of allowed amounts is greater than 0, but no 90th percentile amount is provided", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-missing-90th.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: 'must match "then" schema',
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
+        })
+      );
+    });
+
+    it("should validate a file where a charge is expressed as a percentage or algorithm, count of allowed amounts is 0, and the allowed amount fields are omitted", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-valid-allowed-amount-zero.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    // a payers_information object must have at least one standard charge in it
+    it("should validate a file where a payers information object has no standard charge", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "sample-payer-no-charge.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(4);
+      // one error for the failed anyOf keyword, one error for each failed subschema
+      expect(result.errors).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "must match a schema in anyOf",
+          path: "/standard_charge_information/2/standard_charges/0/payers_information/1",
+        })
+      );
+    });
+
+    it("should validate a file where attestation confirmation is false", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "false-confirmation.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual<ValidationError>(
+        new JsonFalseAttestationAlert()
       );
     });
   });
