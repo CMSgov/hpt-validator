@@ -275,8 +275,8 @@ export class CsvValidator extends BaseValidator {
         predicate: (row) => {
           return Boolean(
             row["standard_charge | negotiated_dollar"] ||
-              row["standard_charge | negotiated_percentage"] ||
-              row["standard_charge | negotiated_algorithm"]
+            row["standard_charge | negotiated_percentage"] ||
+            row["standard_charge | negotiated_algorithm"]
           );
         },
         children: [
@@ -459,10 +459,10 @@ export class CsvValidator extends BaseValidator {
           validator: (dataRow, row) => {
             const hasStandardCharge = Boolean(
               dataRow[`standard_charge | ${payerPlan} | negotiated_dollar`] ||
-                dataRow[
-                  `standard_charge | ${payerPlan} | negotiated_percentage`
-                ] ||
-                dataRow[`standard_charge | ${payerPlan} | negotiated_algorithm`]
+              dataRow[
+                `standard_charge | ${payerPlan} | negotiated_percentage`
+              ] ||
+              dataRow[`standard_charge | ${payerPlan} | negotiated_algorithm`]
             );
             if (hasStandardCharge) {
               return validateRequiredField(
