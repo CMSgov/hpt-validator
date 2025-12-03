@@ -1234,8 +1234,9 @@ export class CsvValidator extends BaseValidator {
         )
         .filter(
           (c) =>
-            c[0] === "code" &&
-            (c.length === 2 || (c.length === 3 && c[2] === "type"))
+            c.length > 0 &&
+            matchesString(c[0], "code") &&
+            (c.length === 2 || (c.length === 3 && matchesString(c[2], "type")))
         )
         .map((c) => +c[1].replace(/\D/g, ""))
         .filter((v) => !isNaN(v))
