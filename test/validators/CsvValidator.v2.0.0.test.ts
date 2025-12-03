@@ -490,6 +490,112 @@ describe("schema v2.0.0", () => {
     });
   });
 
+  describe("#getCodeCount", () => {
+    it("should get the code count when there is one code column pair", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+      ]);
+      const result = validator.getCodeCount(columns);
+      expect(result).toBe(1);
+    });
+
+    it("should get the code count when there are multiple code column pairs", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "code | 2",
+        "code | 2 | type",
+        "code | 3",
+        "code | 3 | type",
+        "setting",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+      ]);
+      const result = validator.getCodeCount(columns);
+      expect(result).toBe(3);
+    });
+
+    it("should get the code count regardless of capitalization of code columns", () => {
+      const columns = shuffle([
+        "description",
+        "Code | 1",
+        "Code | 1 | Type",
+        "CODE | 2",
+        "CODE | 2 | TYPE",
+        "COde | 3",
+        "COdE | 3 | tyPE",
+        "setting",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+      ]);
+      const result = validator.getCodeCount(columns);
+      expect(result).toBe(3);
+    });
+
+    it("should get the code count when there are blanks in the list of columns", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "code | 2",
+        "code | 2 | type",
+        "code | 3",
+        "code | 3 | type",
+        "setting",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+        "",
+        "",
+        "",
+        "",
+      ]);
+      const result = validator.getCodeCount(columns);
+      expect(result).toBe(3);
+    });
+  });
+
   describe("#validateDataRow tall", () => {
     const columns = [
       "description",
