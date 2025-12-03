@@ -1148,14 +1148,14 @@ export class CsvValidator extends BaseValidator {
   alertHeaderRow(row: string[]): csvErr.CsvValidationError[] {
     if (semver.satisfies(this.version, ">=3.0.0")) {
       const statementIndex = this.headerColumns.findIndex((headerCol) =>
-        matchesString(headerCol, ATTESTATION)
+        matchesString(headerCol ?? "", ATTESTATION)
       );
       if (statementIndex > -1 && matchesString(row[statementIndex], "false")) {
         return [new CsvFalseAttestationAlert(statementIndex)];
       }
     } else if (semver.satisfies(this.version, "2.*")) {
       const statementIndex = this.headerColumns.findIndex((headerCol) =>
-        matchesString(headerCol, AFFIRMATION)
+        matchesString(headerCol ?? "", AFFIRMATION)
       );
       if (statementIndex > -1 && matchesString(row[statementIndex], "false")) {
         return [new CsvFalseAffirmationAlert(statementIndex)];

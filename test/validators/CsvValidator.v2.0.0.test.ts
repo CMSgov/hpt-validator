@@ -52,6 +52,24 @@ describe("schema v2.0.0", () => {
       );
     });
 
+    it("should return no errors when a non-required header column is present, but not include it in the stored header columns", () => {
+      const columns = shuffle([
+        "hospital_name",
+        "last_updated_on",
+        "version",
+        "hospital_location",
+        "hospital_address",
+        "license_number | MD",
+        AFFIRMATION,
+      ]);
+      columns.splice(2, 0, "financial_aid_policy");
+      const result = validator.validateHeaderColumns(columns);
+      expect(result).toHaveLength(0);
+      const expectedColumns = [...columns];
+      delete expectedColumns[2];
+      expect(validator.headerColumns).toEqual(expectedColumns);
+    });
+
     it("should return errors and remove duplicates when a header column appears more than once", () => {
       const columns = [
         "hospital_name",
@@ -286,6 +304,31 @@ describe("schema v2.0.0", () => {
         "123 Address",
         "001 | MD",
         "I agree",
+      ]);
+      expect(result).toHaveLength(0);
+    });
+
+    it("should handle a case when a header column is blank", () => {
+      validator.headerColumns = [
+        "hospital_name",
+        "last_updated_on",
+        "delete_this_one",
+        "version",
+        "hospital_location",
+        "hospital_address",
+        "license_number | MD",
+        AFFIRMATION,
+      ];
+      delete validator.headerColumns[2];
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "",
+        "1.0.0",
+        "Woodlawn",
+        "123 Address",
+        "001 | MD",
+        "true",
       ]);
       expect(result).toHaveLength(0);
     });

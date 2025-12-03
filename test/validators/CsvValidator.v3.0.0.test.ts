@@ -158,6 +158,35 @@ describe("CsvValidator v3.0.0", () => {
       ]);
       expect(result).toHaveLength(0);
     });
+
+    it("should handle a case where a header column is blank", () => {
+      validator.headerColumns = [
+        "hospital_name",
+        "last_updated_on",
+        "version",
+        "location_name",
+        "this_one_is_deleted",
+        "hospital_address",
+        "license_number | MD",
+        ATTESTATION,
+        "attester_name",
+        "type_2_npi",
+      ];
+      delete validator.headerColumns[4];
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "1.0.0",
+        "Woodlawn",
+        "",
+        "123 Address",
+        "001 | MD",
+        "true",
+        "Alex Attester",
+        "1122334455",
+      ]);
+      expect(result).toHaveLength(0);
+    });
   });
 
   describe("#validateColumns", () => {
