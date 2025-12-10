@@ -34,6 +34,15 @@ describe("CsvValidator", () => {
   });
 
   describe("#validate", () => {
+    it("should validate a file with mixed line endings", async () => {
+      const validator = new CsvValidator("v2.0.0");
+      const input = createFixtureStream("sample-tall-mixed-line-endings.csv");
+      const results = await validator.validate(input);
+      expect(results.valid).toBe(true);
+      expect(results.errors).toHaveLength(0);
+      expect(results.alerts).toHaveLength(0);
+    });
+
     it("should return an error when attempting to validate against an invalid version", async () => {
       const validator = new CsvValidator("x.y.z");
       const input = createFixtureStream("sample-tall-valid.csv");
