@@ -1389,7 +1389,9 @@ export class CsvValidator extends BaseValidator {
             "methodology",
           ].some((p) => matchesString(p, splitColumn[3]))
         ) {
-          payersPlans.add(splitColumn.slice(1, 3).join(" | "));
+          payersPlans.add(
+            splitColumn.slice(1, 3).join(" | ").toLocaleLowerCase()
+          );
         }
       } else if (splitColumn.length === 3) {
         const otherPossibilities = ["additional_payer_notes"];
@@ -1404,7 +1406,9 @@ export class CsvValidator extends BaseValidator {
           );
         }
         if (otherPossibilities.some((p) => matchesString(p, splitColumn[0]))) {
-          payersPlans.add(splitColumn.slice(1, 3).join(" | "));
+          payersPlans.add(
+            splitColumn.slice(1, 3).join(" | ").toLocaleLowerCase()
+          );
         }
       }
     });

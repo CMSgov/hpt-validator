@@ -334,6 +334,58 @@ describe("schema v2.0.0", () => {
     });
   });
 
+  describe("#getPayersPlans", () => {
+    it("should get no payers and plans for a set of tall-format columns", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+      ]);
+      const payersPlans = validator.getPayersPlans(columns);
+      expect(payersPlans).toHaveLength(0);
+    });
+
+    it("should get the payers and plans for a set of wide-format columns, regardless of payer or plan capitalization", () => {
+      const columns = [
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer abc | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | PLAN 1 | negotiated_algorithm",
+        "standard_charge | PAYER ABC | Plan 1 | methodology",
+        "additional_payer_notes | Payer Abc | Plan 1",
+        "standard_charge | Another payer | Different plan | negotiated_dollar",
+        "standard_charge | another payer | Different plan | negotiated_percentage",
+        "standard_charge | Another payer | different plan | negotiated_algorithm",
+        "standard_charge | Another payer | Different plan | methodology",
+        "additional_payer_notes | Another payer | Different plan",
+        "additional_generic_notes",
+      ];
+      const payersPlans = validator.getPayersPlans(columns);
+      expect(payersPlans).toHaveLength(2);
+      expect(payersPlans).toContain("payer abc | plan 1");
+      expect(payersPlans).toContain("another payer | different plan");
+    });
+  });
+
   describe("#validateColumns", () => {
     it("should return no errors when valid tall columns are provided", () => {
       // order of the columns does not matter
@@ -416,11 +468,11 @@ describe("schema v2.0.0", () => {
         "standard_charge | discounted_cash",
         "standard_charge | min",
         "standard_charge | max",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
-        "standard_charge | Payer ABC | Plan 1 | methodology",
-        "additional_payer_notes | Payer ABC | Plan 1",
+        "standard_charge | payer abc | plan 1 | negotiated_dollar",
+        "standard_charge | payer abc | plan 1 | negotiated_percentage",
+        "standard_charge | payer abc | plan 1 | negotiated_algorithm",
+        "standard_charge | payer abc | plan 1 | methodology",
+        "additional_payer_notes | payer abc | plan 1",
         "additional_generic_notes",
       ]);
     });
@@ -495,6 +547,28 @@ describe("schema v2.0.0", () => {
       expect(validator.dataColumns).toEqual(columns);
     });
 
+    it("should return no errors when payer-plans differ only by capitalization", () => {
+      const columns = [
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer abc | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | PLAN 1 | negotiated_algorithm",
+        "standard_charge | PAYER ABC | Plan 1 | methodology",
+        "additional_payer_notes | Payer Abc | Plan 1",
+        "additional_generic_notes",
+      ];
+      const result = validator.validateColumns(columns);
+      expect(result).toHaveLength(0);
+      expect(validator.isTall).toBe(false);
+    });
+
     it("should return errors when some payer-plan specific columns are missing", () => {
       const columns = shuffle([
         "description",
@@ -514,21 +588,21 @@ describe("schema v2.0.0", () => {
       expect(result).toHaveLength(4);
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_dollar"
+          "standard_charge | payer abc | plan 1 | negotiated_dollar"
         )
       );
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_percentage"
+          "standard_charge | payer abc | plan 1 | negotiated_percentage"
         )
       );
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"
+          "standard_charge | payer abc | plan 1 | negotiated_algorithm"
         )
       );
       expect(result).toContainEqual(
-        new ColumnMissingError("additional_payer_notes | Payer ABC | Plan 1")
+        new ColumnMissingError("additional_payer_notes | payer abc | plan 1")
       );
     });
   });
@@ -949,16 +1023,16 @@ describe("schema v2.0.0", () => {
       "standard_charge | discounted_cash",
       "standard_charge | min",
       "standard_charge | max",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
-      "standard_charge | Payer ABC | Plan 1 | methodology",
-      "additional_payer_notes | Payer ABC | Plan 1",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm",
-      "standard_charge | Payer XYZ | Plan 2 | methodology",
-      "additional_payer_notes | Payer XYZ | Plan 2",
+      "standard_charge | payer abc | plan 1 | negotiated_dollar",
+      "standard_charge | payer abc | plan 1 | negotiated_percentage",
+      "standard_charge | payer abc | plan 1 | negotiated_algorithm",
+      "standard_charge | payer abc | plan 1 | methodology",
+      "additional_payer_notes | payer abc | plan 1",
+      "standard_charge | payer xyz | plan 2 | negotiated_dollar",
+      "standard_charge | payer xyz | plan 2 | negotiated_percentage",
+      "standard_charge | payer xyz | plan 2 | negotiated_algorithm",
+      "standard_charge | payer xyz | plan 2 | methodology",
+      "additional_payer_notes | payer xyz | plan 2",
       "additional_generic_notes",
     ];
     let row: { [key: string]: string } = {};
@@ -984,16 +1058,16 @@ describe("schema v2.0.0", () => {
         "standard_charge | discounted_cash": "",
         "standard_charge | min": "",
         "standard_charge | max": "",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar": "",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage": "",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm": "",
-        "standard_charge | Payer ABC | Plan 1 | methodology": "",
-        "additional_payer_notes | Payer ABC | Plan 1": "",
-        "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar": "",
-        "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage": "",
-        "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm": "",
-        "standard_charge | Payer XYZ | Plan 2 | methodology": "",
-        "additional_payer_notes | Payer XYZ | Plan 2": "",
+        "standard_charge | payer abc | plan 1 | negotiated_dollar": "",
+        "standard_charge | payer abc | plan 1 | negotiated_percentage": "",
+        "standard_charge | payer abc | plan 1 | negotiated_algorithm": "",
+        "standard_charge | payer abc | plan 1 | methodology": "",
+        "additional_payer_notes | payer abc | plan 1": "",
+        "standard_charge | payer xyz | plan 2 | negotiated_dollar": "",
+        "standard_charge | payer xyz | plan 2 | negotiated_percentage": "",
+        "standard_charge | payer xyz | plan 2 | negotiated_algorithm": "",
+        "standard_charge | payer xyz | plan 2 | methodology": "",
+        "additional_payer_notes | payer xyz | plan 2": "",
         additional_generic_notes: "",
       };
     });
@@ -1004,14 +1078,14 @@ describe("schema v2.0.0", () => {
     });
 
     it("should return an error when standard charge dollar is present, but not a positive number", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] = "$5";
+      row["standard_charge | payer abc | plan 1 | negotiated_dollar"] = "$5";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf(
-            "standard_charge | Payer ABC | Plan 1 | negotiated_dollar"
+            "standard_charge | payer abc | plan 1 | negotiated_dollar"
           ),
           "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
           "$5"
@@ -1020,7 +1094,7 @@ describe("schema v2.0.0", () => {
     });
 
     it("should return an error when standard charge percentage is present, but not a positive number", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_percentage"] =
         "free";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
@@ -1028,7 +1102,7 @@ describe("schema v2.0.0", () => {
         new InvalidPositiveNumberError(
           validator.index,
           normalizedColumns.indexOf(
-            "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"
+            "standard_charge | payer xyz | plan 2 | negotiated_percentage"
           ),
           "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage",
           "free"
@@ -1037,14 +1111,14 @@ describe("schema v2.0.0", () => {
     });
 
     it("should return an error when standard charge methodology is present, but not one of the allowed values", () => {
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] = "incorrect";
+      row["standard_charge | payer abc | plan 1 | methodology"] = "incorrect";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new AllowedValuesError(
           validator.index,
           normalizedColumns.indexOf(
-            "standard_charge | Payer ABC | Plan 1 | methodology"
+            "standard_charge | payer abc | plan 1 | methodology"
           ),
           "standard_charge | Payer ABC | Plan 1 | methodology",
           "incorrect",

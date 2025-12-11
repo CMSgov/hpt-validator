@@ -330,11 +330,11 @@ describe("CsvValidator v2.1.0", () => {
         "standard_charge | discounted_cash",
         "standard_charge | min",
         "standard_charge | max",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
-        "standard_charge | Payer ABC | Plan 1 | methodology",
-        "additional_payer_notes | Payer ABC | Plan 1",
+        "standard_charge | payer abc | plan 1 | negotiated_dollar",
+        "standard_charge | payer abc | plan 1 | negotiated_percentage",
+        "standard_charge | payer abc | plan 1 | negotiated_algorithm",
+        "standard_charge | payer abc | plan 1 | methodology",
+        "additional_payer_notes | payer abc | plan 1",
         "additional_generic_notes",
       ]);
     });
@@ -428,21 +428,21 @@ describe("CsvValidator v2.1.0", () => {
       expect(result).toHaveLength(4);
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_dollar"
+          "standard_charge | payer abc | plan 1 | negotiated_dollar"
         )
       );
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_percentage"
+          "standard_charge | payer abc | plan 1 | negotiated_percentage"
         )
       );
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"
+          "standard_charge | payer abc | plan 1 | negotiated_algorithm"
         )
       );
       expect(result).toContainEqual(
-        new ColumnMissingError("additional_payer_notes | Payer ABC | Plan 1")
+        new ColumnMissingError("additional_payer_notes | payer abc | plan 1")
       );
     });
   });
@@ -885,16 +885,16 @@ describe("CsvValidator v2.1.0", () => {
       "standard_charge | discounted_cash",
       "standard_charge | min",
       "standard_charge | max",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
-      "standard_charge | Payer ABC | Plan 1 | methodology",
-      "additional_payer_notes | Payer ABC | Plan 1",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm",
-      "standard_charge | Payer XYZ | Plan 2 | methodology",
-      "additional_payer_notes | Payer XYZ | Plan 2",
+      "standard_charge | payer abc | plan 1 | negotiated_dollar",
+      "standard_charge | payer abc | plan 1 | negotiated_percentage",
+      "standard_charge | payer abc | plan 1 | negotiated_algorithm",
+      "standard_charge | payer abc | plan 1 | methodology",
+      "additional_payer_notes | payer abc | plan 1",
+      "standard_charge | payer xyz | plan 2 | negotiated_dollar",
+      "standard_charge | payer xyz | plan 2 | negotiated_percentage",
+      "standard_charge | payer xyz | plan 2 | negotiated_algorithm",
+      "standard_charge | payer xyz | plan 2 | methodology",
+      "additional_payer_notes | payer xyz | plan 2",
       "additional_generic_notes",
     ];
     let row: { [key: string]: string } = {};
@@ -920,16 +920,16 @@ describe("CsvValidator v2.1.0", () => {
         "standard_charge | discounted_cash": "",
         "standard_charge | min": "",
         "standard_charge | max": "",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar": "",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage": "",
-        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm": "",
-        "standard_charge | Payer ABC | Plan 1 | methodology": "",
-        "additional_payer_notes | Payer ABC | Plan 1": "",
-        "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar": "",
-        "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage": "",
-        "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm": "",
-        "standard_charge | Payer XYZ | Plan 2 | methodology": "",
-        "additional_payer_notes | Payer XYZ | Plan 2": "",
+        "standard_charge | payer abc | plan 1 | negotiated_dollar": "",
+        "standard_charge | payer abc | plan 1 | negotiated_percentage": "",
+        "standard_charge | payer abc | plan 1 | negotiated_algorithm": "",
+        "standard_charge | payer abc | plan 1 | methodology": "",
+        "additional_payer_notes | payer abc | plan 1": "",
+        "standard_charge | payer xyz | plan 2 | negotiated_dollar": "",
+        "standard_charge | payer xyz | plan 2 | negotiated_percentage": "",
+        "standard_charge | payer xyz | plan 2 | negotiated_algorithm": "",
+        "standard_charge | payer xyz | plan 2 | methodology": "",
+        "additional_payer_notes | payer xyz | plan 2": "",
         additional_generic_notes: "",
       };
     });
@@ -943,8 +943,8 @@ describe("CsvValidator v2.1.0", () => {
     // then a corresponding valid value for the payer name, plan name, and standard charge methodology must also be encoded.
     // Since the wide format incorporates payer name and plan name into the column name, only methodology is checked.
     it("should return no errors when a payer specific negotiated charge is a dollar amount and a valid value exists for methodology", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] = "500";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_dollar"] = "500";
+      row["standard_charge | payer abc | plan 1 | methodology"] =
         "fee schedule";
       row["standard_charge | min"] = "500";
       row["standard_charge | max"] = "500";
@@ -953,7 +953,7 @@ describe("CsvValidator v2.1.0", () => {
     });
 
     it("should return errors when a payer specific negotiated charge is a dollar amount, but no valid value exists for methodology", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] = "500";
+      row["standard_charge | payer abc | plan 1 | negotiated_dollar"] = "500";
       row["standard_charge | min"] = "500";
       row["standard_charge | max"] = "500";
       const result = validator.validateDataRow(row);
@@ -969,16 +969,16 @@ describe("CsvValidator v2.1.0", () => {
     });
 
     it("should return no errors when a payer specific negotiated charge is a percentage and a valid value exists for methodology", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_percentage"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
         "60";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+      row["standard_charge | payer abc | plan 1 | methodology"] =
         "percent of total billed charges";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
 
     it("should return errors when a payer specific negotiated charge is a percentage, but no valid value exists for methodology", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_percentage"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
         "60";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
@@ -993,16 +993,16 @@ describe("CsvValidator v2.1.0", () => {
     });
 
     it("should return no errors when a payer specific negotiated charge is an algorithm and a valid value exists for methodology", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_algorithm"] =
         "standard algorithm function";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+      row["standard_charge | payer abc | plan 1 | methodology"] =
         "fee schedule";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
 
     it("should return errors when a payer specific negotiated charge is an algorithm, but no valid value exists for methodology", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_algorithm"] =
         "standard algorithm function";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
@@ -1019,19 +1019,19 @@ describe("CsvValidator v2.1.0", () => {
     // If the "standard charge methodology" encoded value is "other", there must be a corresponding explanation found
     // in the "additional notes" for the associated payer-specific negotiated charge.
     it("should return no errors when a methodology is 'other' and payer-specific notes are provided", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_algorithm"] =
         "a complicated formula";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "other";
-      row["additional_payer_notes | Payer XYZ | Plan 2"] =
+      row["standard_charge | payer xyz | plan 2 | methodology"] = "other";
+      row["additional_payer_notes | payer xyz | plan 2"] =
         "explanation of the complicated formula.";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
 
     it("should return an error when a methodology is 'other' and payer-specific notes are not provided", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_algorithm"] =
         "a complicated formula";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "other";
+      row["standard_charge | payer xyz | plan 2 | methodology"] = "other";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result).toContainEqual(
@@ -1040,10 +1040,10 @@ describe("CsvValidator v2.1.0", () => {
     });
 
     it("should return an error when a methodology is 'other' and payer-specific notes are provided for a different payer and plan", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_algorithm"] =
         "a complicated formula";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "other";
-      row["additional_payer_notes | Payer ABC | Plan 1"] =
+      row["standard_charge | payer xyz | plan 2 | methodology"] = "other";
+      row["additional_payer_notes | payer abc | plan 1"] =
         "these notes are for the wrong payer and plan.";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
@@ -1075,8 +1075,8 @@ describe("CsvValidator v2.1.0", () => {
 
     it("should return no errors when an item or service with only a payer-specific dollar amount", () => {
       row["standard_charge | gross"] = "";
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] = "3800";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_dollar"] = "3800";
+      row["standard_charge | payer abc | plan 1 | methodology"] =
         "fee schedule";
       row["standard_charge | min"] = "3800";
       row["standard_charge | max"] = "3800";
@@ -1086,18 +1086,18 @@ describe("CsvValidator v2.1.0", () => {
 
     it("should return no errors when an item or service with only a payer-specific percentage", () => {
       row["standard_charge | gross"] = "";
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_percentage"] =
         "70";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "case rate";
+      row["standard_charge | payer xyz | plan 2 | methodology"] = "case rate";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
 
     it("should return no errors when an item or service with only a payer-specific algorithm", () => {
       row["standard_charge | gross"] = "";
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_algorithm"] =
         "adjusted scale of charges";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] = "case rate";
+      row["standard_charge | payer abc | plan 1 | methodology"] = "case rate";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
@@ -1105,8 +1105,8 @@ describe("CsvValidator v2.1.0", () => {
     // If there is a "payer specific negotiated charge" encoded as a dollar amount,
     // there must be a corresponding valid value encoded for the deidentified minimum and deidentified maximum negotiated charge data.
     it("should return an error when a payer-specific dollar amount is encoded without a minimum or maximum", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_dollar"] = "740";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] = "case rate";
+      row["standard_charge | payer abc | plan 1 | negotiated_dollar"] = "740";
+      row["standard_charge | payer abc | plan 1 | methodology"] = "case rate";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result).toContainEqual(
@@ -1115,17 +1115,17 @@ describe("CsvValidator v2.1.0", () => {
     });
 
     it("should return no errors when a payer-specific percentage is encoded without a minimum or maximum", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_percentage"] =
         "70";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] = "case rate";
+      row["standard_charge | payer xyz | plan 2 | methodology"] = "case rate";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
 
     it("should return no errors when a payer-specific algorithm is encoded without a minimum or maximum", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_algorithm"] =
         "adjusted scale of charges";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] = "case rate";
+      row["standard_charge | payer abc | plan 1 | methodology"] = "case rate";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
