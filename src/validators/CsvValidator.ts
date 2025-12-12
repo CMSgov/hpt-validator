@@ -1044,6 +1044,8 @@ export class CsvValidator extends BaseValidator {
     return new Promise((resolve, reject) => {
       Papa.parse(input, {
         header: false,
+        newline: "\n",
+        delimiter: ",",
         beforeFirstChunk: (chunk) => {
           return removeBOM(chunk);
         },
