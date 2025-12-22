@@ -189,6 +189,78 @@ describe("CsvValidator v3.0.0", () => {
     });
   });
 
+  describe("#getPayersPlans", () => {
+    it("should get no payers and plans for a set of tall-format columns", () => {
+      const columns = [
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+        "median_amount",
+        "10th_percentile",
+        "90th_percentile",
+        "count",
+      ];
+      const payersPlans = validator.getPayersPlans(columns);
+      expect(payersPlans).toHaveLength(0);
+    });
+
+    it("should get the payers and plans for a set of wide-format columns, regardless of payer or plan capitalization", () => {
+      const columns = [
+        "description",
+        "setting",
+        "code | 1",
+        "code | 1 | type",
+        "code | 2",
+        "code | 2 | type",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer abc | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | PLAN 1 | methodology",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile | Payer Abc | Plan 1",
+        "count | payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "standard_charge | Payer xyz | Plan 2 | negotiated_dollar",
+        "standard_charge | Payer XYZ | PLAN 2 | negotiated_percentage",
+        "standard_charge | PAYER XYZ | Plan 2 | negotiated_algorithm",
+        "standard_charge | Payer XYZ | Plan 2 | methodology",
+        "median_amount | Payer XYZ | plan 2",
+        "10th_percentile | Payer XYZ | Plan 2",
+        "90th_percentile | PAYER XYZ | PLAN 2",
+        "count | Payer XYZ | Plan 2",
+        "additional_payer_notes | PAYER xyz | Plan 2",
+        "additional_generic_notes",
+      ];
+      const payersPlans = validator.getPayersPlans(columns);
+      expect(payersPlans).toHaveLength(2);
+      expect(payersPlans).toContain("payer abc | plan 1");
+      expect(payersPlans).toContain("payer xyz | plan 2");
+    });
+  });
+
   describe("#validateColumns", () => {
     it("should return no errors when valid tall columns are provided", () => {
       // order of the columns does not matter
@@ -359,27 +431,27 @@ describe("CsvValidator v3.0.0", () => {
       expect(result).toHaveLength(6);
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_dollar"
+          "standard_charge | payer abc | plan 1 | negotiated_dollar"
         )
       );
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_percentage"
+          "standard_charge | payer abc | plan 1 | negotiated_percentage"
         )
       );
       expect(result).toContainEqual(
         new ColumnMissingError(
-          "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"
+          "standard_charge | payer abc | plan 1 | negotiated_algorithm"
         )
       );
       expect(result).toContainEqual(
-        new ColumnMissingError("median_amount | Payer ABC | Plan 1")
+        new ColumnMissingError("median_amount | payer abc | plan 1")
       );
       expect(result).toContainEqual(
-        new ColumnMissingError("additional_payer_notes | Payer ABC | Plan 1")
+        new ColumnMissingError("additional_payer_notes | payer abc | plan 1")
       );
       expect(result).toContainEqual(
-        new ColumnMissingError("count | Payer ABC | Plan 1")
+        new ColumnMissingError("count | payer abc | plan 1")
       );
     });
   });
@@ -737,24 +809,24 @@ describe("CsvValidator v3.0.0", () => {
       "standard_charge | discounted_cash",
       "standard_charge | min",
       "standard_charge | max",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
-      "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
-      "standard_charge | Payer ABC | Plan 1 | methodology",
-      "median_amount | Payer ABC | Plan 1",
-      "10th_percentile | Payer ABC | Plan 1",
-      "90th_percentile | Payer ABC | Plan 1",
-      "count | Payer ABC | Plan 1",
-      "additional_payer_notes | Payer ABC | Plan 1",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_dollar",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_percentage",
-      "standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm",
-      "standard_charge | Payer XYZ | Plan 2 | methodology",
-      "median_amount | Payer XYZ | Plan 2",
-      "10th_percentile | Payer XYZ | Plan 2",
-      "90th_percentile | Payer XYZ | Plan 2",
-      "count | Payer XYZ | Plan 2",
-      "additional_payer_notes | Payer XYZ | Plan 2",
+      "standard_charge | payer abc | plan 1 | negotiated_dollar",
+      "standard_charge | payer abc | plan 1 | negotiated_percentage",
+      "standard_charge | payer abc | plan 1 | negotiated_algorithm",
+      "standard_charge | payer abc | plan 1 | methodology",
+      "median_amount | payer abc | plan 1",
+      "10th_percentile | payer abc | plan 1",
+      "90th_percentile | payer abc | plan 1",
+      "count | payer abc | plan 1",
+      "additional_payer_notes | payer abc | plan 1",
+      "standard_charge | payer xyz | plan 2 | negotiated_dollar",
+      "standard_charge | payer xyz | plan 2 | negotiated_percentage",
+      "standard_charge | payer xyz | plan 2 | negotiated_algorithm",
+      "standard_charge | payer xyz | plan 2 | methodology",
+      "median_amount | payer xyz | plan 2",
+      "10th_percentile | payer xyz | plan 2",
+      "90th_percentile | payer xyz | plan 2",
+      "count | payer xyz | plan 2",
+      "additional_payer_notes | payer xyz | plan 2",
       "additional_generic_notes",
     ];
     let row: { [key: string]: string } = {};
@@ -813,13 +885,13 @@ describe("CsvValidator v3.0.0", () => {
     // count of allowed amounts, median, 10th percentile, and 90th percentile are new numeric fields
     // count of allowed amounts, unlike other numeric fields, may have a value of 0
     it("should return an error when count of allowed amounts is present, but not 0 or a postive number", () => {
-      row["count | Payer XYZ | Plan 2"] = "no claims";
+      row["count | payer xyz | plan 2"] = "no claims";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new InvalidCountNumberError(
           validator.index,
-          normalizedColumns.indexOf("count | Payer XYZ | Plan 2"),
+          normalizedColumns.indexOf("count | payer xyz | plan 2"),
           "count | Payer XYZ | Plan 2",
           "no claims"
         )
@@ -827,13 +899,13 @@ describe("CsvValidator v3.0.0", () => {
     });
 
     it("should return an error when median amount is present, but not a positive number", () => {
-      row["median_amount | Payer ABC | Plan 1"] = "N/A";
+      row["median_amount | payer abc | plan 1"] = "N/A";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new InvalidPositiveNumberError(
           validator.index,
-          normalizedColumns.indexOf("median_amount | Payer ABC | Plan 1"),
+          normalizedColumns.indexOf("median_amount | payer abc | plan 1"),
           "median_amount |  Payer ABC | Plan 1",
           "N/A"
         )
@@ -841,13 +913,13 @@ describe("CsvValidator v3.0.0", () => {
     });
 
     it("should return an error when 10th percentile amount is present, but not a positive number", () => {
-      row["10th_percentile | Payer XYZ | Plan 2"] = "0";
+      row["10th_percentile | payer xyz | plan 2"] = "0";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new InvalidPositiveNumberError(
           validator.index,
-          normalizedColumns.indexOf("10th_percentile | Payer XYZ | Plan 2"),
+          normalizedColumns.indexOf("10th_percentile | payer xyz | plan 2"),
           "10th_percentile | Payer XYZ | Plan 2",
           "0"
         )
@@ -855,13 +927,13 @@ describe("CsvValidator v3.0.0", () => {
     });
 
     it("should return an error when median amount is present, but not a positive number", () => {
-      row["90th_percentile | Payer ABC | Plan 1"] = "max allowed";
+      row["90th_percentile | payer abc | plan 1"] = "max allowed";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new InvalidPositiveNumberError(
           validator.index,
-          normalizedColumns.indexOf("90th_percentile | Payer ABC | Plan 1"),
+          normalizedColumns.indexOf("90th_percentile | payer abc | plan 1"),
           "90th_percentile | Payer ABC | Plan 1",
           "max allowed"
         )
@@ -874,37 +946,37 @@ describe("CsvValidator v3.0.0", () => {
     // then corresponding "Median", "10th percentile", and "90th percentile" must also be encoded. new in v3.0.0
     // Supersedes similar requirement from v2.2.0
     it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts, median, 10th percentile, and 90th percentile", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_percentage"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
         "85";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+      row["standard_charge | payer abc | plan 1 | methodology"] =
         "fee schedule";
-      row["count | Payer ABC | Plan 1"] = "35";
-      row["median_amount | Payer ABC | Plan 1"] = "370";
-      row["10th_percentile | Payer ABC | Plan 1"] = "250";
-      row["90th_percentile | Payer ABC | Plan 1"] = "505";
+      row["count | payer abc | plan 1"] = "35";
+      row["median_amount | payer abc | plan 1"] = "370";
+      row["10th_percentile | payer abc | plan 1"] = "250";
+      row["90th_percentile | payer abc | plan 1"] = "505";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
 
     it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts of 0 and additional notes", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_algorithm"] =
         "An Algorithm";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] =
+      row["standard_charge | payer xyz | plan 2 | methodology"] =
         "fee schedule";
-      row["count | Payer XYZ | Plan 2"] = "0";
-      row["additional_payer_notes | Payer XYZ | Plan 2"] =
+      row["count | payer xyz | plan 2"] = "0";
+      row["additional_payer_notes | payer xyz | plan 2"] =
         "sufficient explanation";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(0);
     });
 
     it("should return no errors when a payer-specific percentage or algorithm is encoded with count of allowed amounts of 0 and no additional notes", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_algorithm"] =
         "An Algorithm";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] =
+      row["standard_charge | payer xyz | plan 2 | methodology"] =
         "fee schedule";
-      row["count | Payer XYZ | Plan 2"] = "0";
-      row["additional_payer_notes | Payer XYZ | Plan 2"] = "";
+      row["count | payer xyz | plan 2"] = "0";
+      row["additional_payer_notes | payer xyz | plan 2"] = "";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
@@ -913,73 +985,73 @@ describe("CsvValidator v3.0.0", () => {
     });
 
     it("should return an error when a payer-specific percentage or algorithm is encoded without count of allowed amounts", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_percentage"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
         "85";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+      row["standard_charge | payer abc | plan 1 | methodology"] =
         "fee schedule";
-      row["median_amount | Payer ABC | Plan 1"] = "370";
-      row["10th_percentile | Payer ABC | Plan 1"] = "250";
-      row["90th_percentile | Payer ABC | Plan 1"] = "505";
+      row["median_amount | payer abc | plan 1"] = "370";
+      row["10th_percentile | payer abc | plan 1"] = "250";
+      row["90th_percentile | payer abc | plan 1"] = "505";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new PercentageAlgorithmCountError(
           validator.index,
-          normalizedColumns.indexOf("count | Payer ABC | Plan 1")
+          normalizedColumns.indexOf("count | payer abc | plan 1")
         )
       );
     });
 
     it("should return an error when a payer-specific percentage or algorithm is encoded with nonzero count and without median", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_algorithm"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_algorithm"] =
         "An Algorithm";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] =
+      row["standard_charge | payer xyz | plan 2 | methodology"] =
         "fee schedule";
-      row["count | Payer XYZ | Plan 2"] = "573";
-      row["10th_percentile | Payer XYZ | Plan 2"] = "250";
-      row["90th_percentile | Payer XYZ | Plan 2"] = "505";
+      row["count | payer xyz | plan 2"] = "573";
+      row["10th_percentile | payer xyz | plan 2"] = "250";
+      row["90th_percentile | payer xyz | plan 2"] = "505";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new PercentageAlgorithmMedianError(
           validator.index,
-          normalizedColumns.indexOf("median_amount | Payer XYZ | Plan 2")
+          normalizedColumns.indexOf("median_amount | payer xyz | plan 2")
         )
       );
     });
 
     it("should return an error when a payer-specific percentage or algorithm is encoded with nonzero count and without 10th percentile", () => {
-      row["standard_charge | Payer ABC | Plan 1 | negotiated_algorithm"] =
+      row["standard_charge | payer abc | plan 1 | negotiated_algorithm"] =
         "standard rate formula that we keep secret";
-      row["standard_charge | Payer ABC | Plan 1 | methodology"] =
+      row["standard_charge | payer abc | plan 1 | methodology"] =
         "fee schedule";
-      row["count | Payer ABC | Plan 1"] = "250";
-      row["median_amount | Payer ABC | Plan 1"] = "370";
-      row["90th_percentile | Payer ABC | Plan 1"] = "505";
+      row["count | payer abc | plan 1"] = "250";
+      row["median_amount | payer abc | plan 1"] = "370";
+      row["90th_percentile | payer abc | plan 1"] = "505";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new PercentageAlgorithm10thError(
           validator.index,
-          normalizedColumns.indexOf("10th_percentile | Payer ABC | Plan 1")
+          normalizedColumns.indexOf("10th_percentile | payer abc | plan 1")
         )
       );
     });
 
     it("should return an error when a payer-specific percentage or algorithm is encoded with nonzero count and without 90th percentile", () => {
-      row["standard_charge | Payer XYZ | Plan 2 | negotiated_percentage"] =
+      row["standard_charge | payer xyz | plan 2 | negotiated_percentage"] =
         "85";
-      row["standard_charge | Payer XYZ | Plan 2 | methodology"] =
+      row["standard_charge | payer xyz | plan 2 | methodology"] =
         "fee schedule";
-      row["count | Payer XYZ | Plan 2"] = "573";
-      row["median_amount | Payer XYZ | Plan 2"] = "505";
-      row["10th_percentile | Payer XYZ | Plan 2"] = "250";
+      row["count | payer xyz | plan 2"] = "573";
+      row["median_amount | payer xyz | plan 2"] = "505";
+      row["10th_percentile | payer xyz | plan 2"] = "250";
       const result = validator.validateDataRow(row);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         new PercentageAlgorithm90thError(
           validator.index,
-          normalizedColumns.indexOf("90th_percentile | Payer XYZ | Plan 2")
+          normalizedColumns.indexOf("90th_percentile | payer xyz | plan 2")
         )
       );
     });
