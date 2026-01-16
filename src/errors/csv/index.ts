@@ -19,5 +19,6 @@ export * from "./MinRowsError.js";
 export * from "./ModifierMissingInfoError.js";
 export * from "./NotesRequiredError.js";
 export * from "./PercentageAlgorithmEstimateError.js";
+export * from "./PlaceholderError.js";
 export * from "./ProblemsInHeaderError.js";
 export * from "./RequiredValueError.js";

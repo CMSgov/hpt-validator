@@ -11,6 +11,7 @@ import {
   PercentageAlgorithm90thError,
   PercentageAlgorithmCountError,
   PercentageAlgorithmMedianError,
+  PlaceholderError,
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
 import { ATTESTATION } from "../../src/validators/CsvHelpers.js";
@@ -452,6 +453,140 @@ describe("CsvValidator v3.0.0", () => {
       );
       expect(result).toContainEqual(
         new ColumnMissingError("count | payer abc | plan 1")
+      );
+    });
+
+    it("should return an error when there is an unreplaced code placeholder", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "code | [i]",
+        "code | [i] | Type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "count | Payer ABC | Plan 1",
+        "additional_generic_notes",
+      ]);
+      const result = validator.validateColumns(columns);
+      expect(result).toHaveLength(2);
+      expect(validator.isTall).toBe(false);
+      expect(validator.dataColumns).toEqual(columns);
+      expect(result).toContainEqual(
+        new PlaceholderError("code | [i]", columns.indexOf("code | [i]"))
+      );
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "code | [i] | Type",
+          columns.indexOf("code | [i] | Type")
+        )
+      );
+    });
+
+    it("should return an error when there is an unreplaced payer or plan placeholder", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "count | Payer ABC | Plan 1",
+        "standard_charge | [payer_name] | [plan_name] | negotiated_dollar",
+        "standard_charge | [payer_name] | [plan_name] | negotiated_percentage",
+        "standard_charge | [payer_name] | [plan_name] | negotiated_algorithm",
+        "standard_charge | [payer_name] | [plan_name] | methodology",
+        "median_amount |  [payer_name] | [plan_name]",
+        "10th_percentile |  [payer_name] | [plan_name]",
+        "90th_percentile |  [payer_name] | [plan_name]",
+        "additional_payer_notes | [payer_name] | [plan_name]",
+        "count | [payer_name] | [plan_name]",
+        "additional_generic_notes",
+      ]);
+      const result = validator.validateColumns(columns);
+      expect(result).toHaveLength(9);
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "standard_charge | [payer_name] | [plan_name] | negotiated_dollar",
+          columns.indexOf(
+            "standard_charge | [payer_name] | [plan_name] | negotiated_dollar"
+          )
+        )
+      );
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "standard_charge | [payer_name] | [plan_name] | negotiated_percentage",
+          columns.indexOf(
+            "standard_charge | [payer_name] | [plan_name] | negotiated_percentage"
+          )
+        )
+      );
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "standard_charge | [payer_name] | [plan_name] | negotiated_algorithm",
+          columns.indexOf(
+            "standard_charge | [payer_name] | [plan_name] | negotiated_algorithm"
+          )
+        )
+      );
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "standard_charge | [payer_name] | [plan_name] | methodology",
+          columns.indexOf(
+            "standard_charge | [payer_name] | [plan_name] | methodology"
+          )
+        )
+      );
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "median_amount |  [payer_name] | [plan_name]",
+          columns.indexOf("median_amount |  [payer_name] | [plan_name]")
+        )
+      );
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "10th_percentile |  [payer_name] | [plan_name]",
+          columns.indexOf("10th_percentile |  [payer_name] | [plan_name]")
+        )
+      );
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "90th_percentile |  [payer_name] | [plan_name]",
+          columns.indexOf("90th_percentile |  [payer_name] | [plan_name]")
+        )
+      );
+      expect(result).toContainEqual(
+        new PlaceholderError(
+          "count | [payer_name] | [plan_name]",
+          columns.indexOf("count | [payer_name] | [plan_name]")
+        )
       );
     });
   });
