@@ -1179,6 +1179,15 @@ export class CsvValidator extends BaseValidator {
     const errors: csvErr.CsvValidationError[] = [];
     if (semver.satisfies(this.version, ">=3.0.0")) {
       errors.push(...this.findPayersPlansPlaceholders(columns));
+      // because placeholders in payerPlans result in errors here,
+      // remove them from the list of payerPlans.
+      this.payersPlans = this.payersPlans.filter((payerPlan) => {
+        const splitPayerPlan = payerPlan.split(" | ");
+        return !(
+          matchesString(splitPayerPlan[0], "[payer_name]") ||
+          matchesString(splitPayerPlan[1], "[plan_name]")
+        );
+      });
     }
     this.dataColumns = [];
     this.normalizedColumns = [];
@@ -1459,8 +1468,8 @@ export class CsvValidator extends BaseValidator {
         if (
           matchesString(splitColumn[0], "standard_charge") &&
           chargePossibilities.some((p) => matchesString(p, splitColumn[3])) &&
-          matchesString(splitColumn[1], "[payer_name]") &&
-          matchesString(splitColumn[2], "[plan_name]")
+          (matchesString(splitColumn[1], "[payer_name]") ||
+            matchesString(splitColumn[2], "[plan_name]"))
         ) {
           errors.push(new csvErr.PlaceholderError(column, idx));
         }

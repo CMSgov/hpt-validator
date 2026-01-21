@@ -589,6 +589,80 @@ describe("CsvValidator v3.0.0", () => {
         )
       );
     });
+
+    it("should return an error when there is an unreplaced payer name placeholder, and not return errors for related missing columns", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "count | Payer ABC | Plan 1",
+        "standard_charge | [payer_name] | Plan 2 | negotiated_dollar",
+        "additional_generic_notes",
+      ]);
+      const result = validator.validateColumns(columns);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new PlaceholderError(
+          "standard_charge | [payer_name] | Plan 2 | negotiated_dollar",
+          columns.indexOf(
+            "standard_charge | [payer_name] | Plan 2 | negotiated_dollar"
+          )
+        )
+      );
+    });
+
+    it("should return an error when there is an unreplaced plan name placeholder, and not return errors for related missing columns", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "count | Payer ABC | Plan 1",
+        "standard_charge | Plan XYZ | [plan_name] | negotiated_dollar",
+        "additional_generic_notes",
+      ]);
+      const result = validator.validateColumns(columns);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new PlaceholderError(
+          "standard_charge | Plan XYZ | [plan_name] | negotiated_dollar",
+          columns.indexOf(
+            "standard_charge | Plan XYZ | [plan_name] | negotiated_dollar"
+          )
+        )
+      );
+    });
   });
 
   describe("#validateDataRow tall", () => {
