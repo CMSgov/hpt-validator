@@ -1176,13 +1176,29 @@ export class CsvValidator extends BaseValidator {
   validateColumns(columns: string[]): csvErr.CsvValidationError[] {
     this.isTall = this.areMyColumnsTall(columns);
     this.payersPlans = this.getPayersPlans(columns);
-    if (this.isTall === this.payersPlans.length > 0) {
-      return [new csvErr.AmbiguousFormatError()];
+    const errors: csvErr.CsvValidationError[] = [];
+    if (semver.satisfies(this.version, ">=3.0.0")) {
+      errors.push(...this.findPayersPlansPlaceholders(columns));
+      // because placeholders in payerPlans result in errors here,
+      // remove them from the list of payerPlans.
+      this.payersPlans = this.payersPlans.filter((payerPlan) => {
+        const splitPayerPlan = payerPlan.split(" | ");
+        return !(
+          matchesString(splitPayerPlan[0], "[payer_name]") ||
+          matchesString(splitPayerPlan[1], "[plan_name]")
+        );
+      });
     }
     this.dataColumns = [];
     this.normalizedColumns = [];
-    const errors: csvErr.CsvValidationError[] = [];
     this.codeCount = this.getCodeCount(columns);
+    if (semver.satisfies(this.version, ">=3.0.0")) {
+      errors.push(...this.findCodePlaceholders(columns));
+    }
+
+    if (this.isTall === this.payersPlans.length > 0) {
+      return [...errors, new csvErr.AmbiguousFormatError()];
+    }
     const expectedDataColumns = CsvValidator.getExpectedDataColumns(
       this.version,
       this.codeCount,
@@ -1240,9 +1256,32 @@ export class CsvValidator extends BaseValidator {
             matchesString(c[0], "code") &&
             (c.length === 2 || (c.length === 3 && matchesString(c[2], "type")))
         )
-        .map((c) => +c[1].replace(/\D/g, ""))
+        .map((c) => {
+          return +c[1].replace(/\D/g, "");
+        })
         .filter((v) => !isNaN(v))
     );
+  }
+
+  findCodePlaceholders(columns: string[]): csvErr.PlaceholderError[] {
+    const errors: csvErr.PlaceholderError[] = [];
+    columns.map((c, idx) => {
+      const splitColumn = c
+        .split("|")
+        .map((v) => v.trim())
+        .filter((v) => !!v);
+      if (
+        (splitColumn.length === 2 && matchesString(splitColumn[0], "code")) ||
+        (splitColumn.length === 3 &&
+          matchesString(splitColumn[0], "code") &&
+          matchesString(splitColumn[2], "type"))
+      ) {
+        if (matchesString(splitColumn[1], "[i]")) {
+          errors.push(new csvErr.PlaceholderError(c, idx));
+        }
+      }
+    });
+    return errors;
   }
 
   static getExpectedDataColumns(
@@ -1413,6 +1452,45 @@ export class CsvValidator extends BaseValidator {
       }
     });
     return Array.from(payersPlans);
+  }
+
+  findPayersPlansPlaceholders(columns: string[]): csvErr.PlaceholderError[] {
+    const errors: csvErr.PlaceholderError[] = [];
+    columns.forEach((column, idx) => {
+      const splitColumn = column.split("|").map((p) => p.trim());
+      if (splitColumn.length === 4) {
+        const chargePossibilities = [
+          "negotiated_dollar",
+          "negotiated_percentage",
+          "negotiated_algorithm",
+          "methodology",
+        ];
+        if (
+          matchesString(splitColumn[0], "standard_charge") &&
+          chargePossibilities.some((p) => matchesString(p, splitColumn[3])) &&
+          (matchesString(splitColumn[1], "[payer_name]") ||
+            matchesString(splitColumn[2], "[plan_name]"))
+        ) {
+          errors.push(new csvErr.PlaceholderError(column, idx));
+        }
+      } else if (splitColumn.length === 3) {
+        const otherPossibilities = [
+          "additional_payer_notes",
+          "median_amount",
+          "10th_percentile",
+          "90th_percentile",
+          "count",
+        ];
+        if (
+          otherPossibilities.some((p) => matchesString(p, splitColumn[0])) &&
+          matchesString(splitColumn[1], "[payer_name]") &&
+          matchesString(splitColumn[2], "[plan_name]")
+        ) {
+          errors.push(new csvErr.PlaceholderError(column, idx));
+        }
+      }
+    });
+    return errors;
   }
 
   applyValidators(
