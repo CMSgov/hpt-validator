@@ -14,6 +14,29 @@
               "not": {
                 "required": ["estimated_amount"],
                 "$message": "Estimated amount present in payers information object."
+              },
+              "properties": {
+                "median_amount": {
+                  "type": "number",
+                  "not": {
+                    "const": 999999999,
+                    "$message": "Nine 9s used for median amount."
+                  }
+                },
+                "10th_percentile": {
+                  "type": "number",
+                  "not": {
+                    "const": 999999999,
+                    "$message": "Nine 9s used for 10th percentile."
+                  }
+                },
+                "90th_percentile": {
+                  "type": "number",
+                  "not": {
+                    "const": 999999999,
+                    "$message": "Nine 9s used for 90th percentile."
+                  }
+                }
               }
             }
           }

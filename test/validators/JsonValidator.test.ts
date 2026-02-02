@@ -665,5 +665,33 @@ describe("JsonValidator", () => {
         })
       );
     });
+
+    it("should validate a file that uses nine 9s for allowed amounts", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "allowed-amounts-nine-9s.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(3);
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for median amount.",
+          path: "/standard_charge_information/1/standard_charges/0/payers_information/1/median_amount",
+        })
+      );
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for 10th percentile.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/1/10th_percentile",
+        })
+      );
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for 90th percentile.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/3/90th_percentile",
+        })
+      );
+    });
   });
 });

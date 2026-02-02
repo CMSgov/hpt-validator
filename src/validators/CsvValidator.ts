@@ -767,24 +767,51 @@ export class CsvValidator extends BaseValidator {
           return [];
         },
       });
-
-      // amount data element within the MRF and should instead encode an actual dollar amount. // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+      // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
+      // amount data element within the MRF and should instead encode an actual dollar amount.
       // new as of 2025/05/22, at which point v2.2.0 was in effect.
-      this.rowAlerters.push({
-        name: "discontinue encoding nine 9s for estimated amount",
-        applicableVersion: ">=2.2.0",
-        validator: (dataRow, row) => {
-          if (Number(dataRow.estimated_amount) === 999999999) {
-            return [
-              new CsvNineNinesAlert(
-                row,
-                this.normalizedColumns.indexOf("estimated_amount")
-              ),
-            ];
-          }
-          return [];
+      // additionally, hospitals should not encode nine 9s for any of the v3 allowed amount elements.
+      this.rowAlerters.push(
+        {
+          name: "discontinue encoding nine 9s for estimated amount",
+          applicableVersion: ">=2.2.0",
+          validator: (dataRow, row) => {
+            if (Number(dataRow.estimated_amount) === 999999999) {
+              return [
+                new CsvNineNinesAlert(
+                  row,
+                  this.normalizedColumns.indexOf("estimated_amount"),
+                  "estimated amount"
+                ),
+              ];
+            }
+            return [];
+          },
         },
-      });
+        {
+          name: "do not encode nine 9s for allowed amounts",
+          applicableVersion: ">=3.0.0",
+          validator: (dataRow, row) => {
+            return [
+              { field: "median_amount", friendly: "median amount" },
+              { field: "10th_percentile", friendly: "10th percentile" },
+              { field: "90th_percentile", friendly: "90th percentile" },
+            ]
+              .filter(
+                (allowedField) =>
+                  Number(dataRow[allowedField.field]) === 999999999
+              )
+              .map(
+                (allowedField) =>
+                  new CsvNineNinesAlert(
+                    row,
+                    this.normalizedColumns.indexOf(allowedField.field),
+                    allowedField.friendly
+                  )
+              );
+          },
+        }
+      );
     } else {
       // some checks diverge based on whether this is a modifier row
       // If a modifier is encoded without an item or service, then a description and one of the following
@@ -945,25 +972,60 @@ export class CsvValidator extends BaseValidator {
         // Hospitals should discontinue encoding 999999999 (nine 9s) in the estimated allowed
         // amount data element within the MRF and should instead encode an actual dollar amount.
         // new as of 2025/05/22, at which point v2.2.0 was in effect.
-        this.rowAlerters.push({
-          name: "discontinue encoding nine 9s for estimated amount",
-          applicableVersion: ">=2.2.0",
-          validator: (dataRow, row) => {
-            if (
-              Number(dataRow[`estimated_amount | ${payerPlan}`]) === 999999999
-            ) {
-              return [
-                new CsvNineNinesAlert(
-                  row,
-                  this.normalizedColumns.indexOf(
-                    `estimated_amount | ${payerPlan}`
-                  )
-                ),
-              ];
-            }
-            return [];
+        this.rowAlerters.push(
+          {
+            name: "discontinue encoding nine 9s for estimated amount",
+            applicableVersion: ">=2.2.0",
+            validator: (dataRow, row) => {
+              if (
+                Number(dataRow[`estimated_amount | ${payerPlan}`]) === 999999999
+              ) {
+                return [
+                  new CsvNineNinesAlert(
+                    row,
+                    this.normalizedColumns.indexOf(
+                      `estimated_amount | ${payerPlan}`
+                    ),
+                    "estimated amount"
+                  ),
+                ];
+              }
+              return [];
+            },
           },
-        });
+          {
+            name: "do not encode nine 9s for allowed amounts",
+            applicableVersion: ">=3.0.0",
+            validator: (dataRow, row) => {
+              return [
+                {
+                  field: `median_amount | ${payerPlan}`,
+                  friendly: "median amount",
+                },
+                {
+                  field: `10th_percentile | ${payerPlan}`,
+                  friendly: "10th percentile",
+                },
+                {
+                  field: `90th_percentile | ${payerPlan}`,
+                  friendly: "90th percentile",
+                },
+              ]
+                .filter(
+                  (allowedField) =>
+                    Number(dataRow[allowedField.field]) === 999999999
+                )
+                .map(
+                  (allowedField) =>
+                    new CsvNineNinesAlert(
+                      row,
+                      this.normalizedColumns.indexOf(allowedField.field),
+                      allowedField.friendly
+                    )
+                );
+            },
+          }
+        );
       });
     }
 
