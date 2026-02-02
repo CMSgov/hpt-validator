@@ -4,7 +4,7 @@ import { CsvValidationOptions, ValidationResult } from "../types.js";
 import { BaseValidator } from "./BaseValidator.js";
 import { addItemsWithLimit, removeBOM } from "../utils.js";
 import * as csvErr from "../errors/csv/index.js";
-import { CsvNineNinesAlert } from "../alerts/index.js";
+import { CsvNineNinesAlert, EstimatedAmountAlert } from "../alerts/index.js";
 import _ from "lodash";
 const { range, partial, bind } = _;
 import { BranchingValidator, CsvFileLevelValidator } from "./CsvFieldTypes.js";
@@ -1240,6 +1240,41 @@ export class CsvValidator extends BaseValidator {
     return errors;
   }
 
+  alertColumns(columns: string[]): csvErr.CsvValidationError[] {
+    const alerts: csvErr.CsvValidationError[] = [];
+    // currently, the only alert applies starting at v3.0.0
+    if (semver.satisfies(this.version, ">=3.0.0")) {
+      if (this.isTall) {
+        const estimatedAmountIndex = columns.findIndex((col) =>
+          matchesString(col, "estimated_amount")
+        );
+        if (estimatedAmountIndex > -1) {
+          alerts.push(
+            new EstimatedAmountAlert(
+              estimatedAmountIndex,
+              columns[estimatedAmountIndex]
+            )
+          );
+        }
+      } else {
+        this.payersPlans.forEach((payerPlan) => {
+          const estimatedAmountIndex = columns.findIndex((col) =>
+            sepColumnsEqual(col, `estimated_amount | ${payerPlan}`)
+          );
+          if (estimatedAmountIndex > -1) {
+            alerts.push(
+              new EstimatedAmountAlert(
+                estimatedAmountIndex,
+                columns[estimatedAmountIndex]
+              )
+            );
+          }
+        });
+      }
+    }
+    return alerts;
+  }
+
   getCodeCount(columns: string[]): number {
     return Math.max(
       0,
@@ -1589,6 +1624,7 @@ export class CsvValidator extends BaseValidator {
         });
         parser.abort();
       } else {
+        addItemsWithLimit(this.alertColumns(row), this.alerts, this.maxErrors);
         this.buildRowValidators();
         this.buildFileValidators();
       }

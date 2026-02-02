@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "standard_charges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "payers_information": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "not": {
+                "required": ["estimated_amount"],
+                "$message": "Estimated amount present in payers information object."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

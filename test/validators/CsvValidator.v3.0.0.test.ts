@@ -15,7 +15,10 @@ import {
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
 import { ATTESTATION } from "../../src/validators/CsvHelpers.js";
-import { CsvFalseAttestationAlert } from "../../src/alerts/FalseStatementAlert.js";
+import {
+  CsvFalseAttestationAlert,
+  EstimatedAmountAlert,
+} from "../../src/alerts/index.js";
 
 const { shuffle } = _;
 
@@ -660,6 +663,148 @@ describe("CsvValidator v3.0.0", () => {
           columns.indexOf(
             "standard_charge | Plan XYZ | [plan_name] | negotiated_dollar"
           )
+        )
+      );
+    });
+  });
+
+  describe("#alertColumns", () => {
+    it("should return no alerts when expected tall columns are provided", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+        "median_amount",
+        "10th_percentile",
+        "90th_percentile",
+        "count",
+      ]);
+
+      const errors = validator.validateColumns(columns);
+      expect(errors).toHaveLength(0);
+      const alerts = validator.alertColumns(columns);
+      expect(alerts).toHaveLength(0);
+    });
+
+    it("should return an alert when an estimated_amount column is provided", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+        "estimated_amount", // this column was removed, so we alert when it appears
+        "median_amount",
+        "10th_percentile",
+        "90th_percentile",
+        "count",
+      ]);
+
+      const errors = validator.validateColumns(columns);
+      expect(errors).toHaveLength(0);
+      const alerts = validator.alertColumns(columns);
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]).toEqual(
+        new EstimatedAmountAlert(
+          columns.indexOf("estimated_amount"),
+          "estimated_amount"
+        )
+      );
+    });
+
+    it("should return no alerts when expected wide columns are provided", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "count | Payer ABC | Plan 1",
+        "additional_generic_notes",
+      ]);
+
+      const errors = validator.validateColumns(columns);
+      expect(errors).toHaveLength(0);
+      const alerts = validator.alertColumns(columns);
+      expect(alerts).toHaveLength(0);
+    });
+
+    it("should return an alert when a payer-specific estimated_amount column is provided", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "estimated_amount | Payer ABC | Plan 1",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "count | Payer ABC | Plan 1",
+        "additional_generic_notes",
+      ]);
+
+      const errors = validator.validateColumns(columns);
+      expect(errors).toHaveLength(0);
+      const alerts = validator.alertColumns(columns);
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]).toEqual(
+        new EstimatedAmountAlert(
+          columns.indexOf("estimated_amount | Payer ABC | Plan 1"),
+          "estimated_amount | Payer ABC | Plan 1"
         )
       );
     });

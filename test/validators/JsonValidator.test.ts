@@ -649,5 +649,21 @@ describe("JsonValidator", () => {
         new JsonFalseAttestationAlert()
       );
     });
+
+    it("should validate a file that contains an estimated_amount element", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "estimated-amount.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Estimated amount present in payers information object.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
+        })
+      );
+    });
   });
 });
