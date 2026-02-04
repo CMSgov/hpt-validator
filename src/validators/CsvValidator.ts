@@ -793,6 +793,7 @@ export class CsvValidator extends BaseValidator {
           applicableVersion: ">=3.0.0",
           validator: (dataRow, row) => {
             return [
+              { field: "count", friendly: "count" },
               { field: "median_amount", friendly: "median amount" },
               { field: "10th_percentile", friendly: "10th percentile" },
               { field: "90th_percentile", friendly: "90th percentile" },
@@ -998,6 +999,10 @@ export class CsvValidator extends BaseValidator {
             applicableVersion: ">=3.0.0",
             validator: (dataRow, row) => {
               return [
+                {
+                  field: `count | ${payerPlan}`,
+                  friendly: "count",
+                },
                 {
                   field: `median_amount | ${payerPlan}`,
                   friendly: "median amount",

@@ -1114,6 +1114,22 @@ describe("CsvValidator v3.0.0", () => {
       );
     });
 
+    it("should return an alert when 999999999 is encoded for count", () => {
+      row.payer_name = "Payer Three";
+      row.plan_name = "Plan W";
+      row["standard_charge | negotiated_percentage"] = "85";
+      row["standard_charge | methodology"] = "fee schedule";
+      row.count = "999999999";
+      row.median_amount = "370";
+      row["10th_percentile"] = "250";
+      row["90th_percentile"] = "505";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(validator.index, 23, "count")
+      );
+    });
+
     it("should return an alert when 999999999 is encoded for 10th percentile", () => {
       row.payer_name = "Payer Three";
       row.plan_name = "Plan W";
@@ -1455,6 +1471,26 @@ describe("CsvValidator v3.0.0", () => {
         new PercentageAlgorithm90thError(
           validator.index,
           normalizedColumns.indexOf("90th_percentile | payer xyz | plan 2")
+        )
+      );
+    });
+
+    it("should return an alert when 999999999 is encoded for count", () => {
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
+        "85";
+      row["standard_charge | payer abc | plan 1 | methodology"] =
+        "fee schedule";
+      row["count | payer abc | plan 1"] = "999999999";
+      row["median_amount | payer abc | plan 1"] = "370";
+      row["10th_percentile | payer abc | plan 1"] = "250";
+      row["90th_percentile | payer abc | plan 1"] = "505";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(
+          validator.index,
+          normalizedColumns.indexOf("count | payer abc | plan 1"),
+          "count"
         )
       );
     });

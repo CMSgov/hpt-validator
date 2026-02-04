@@ -16,6 +16,13 @@
                 "$message": "Estimated amount present in payers information object."
               },
               "properties": {
+                "count": {
+                  "type": "string",
+                  "not": {
+                    "const": "999999999",
+                    "$message": "Nine 9s used for count."
+                  }
+                },
                 "median_amount": {
                   "type": "number",
                   "not": {

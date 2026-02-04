@@ -673,7 +673,13 @@ describe("JsonValidator", () => {
       const result = await validator.validate(input);
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
-      expect(result.alerts).toHaveLength(3);
+      expect(result.alerts).toHaveLength(4);
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for count.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/0/count",
+        })
+      );
       expect(result.alerts).toContainEqual<ValidationError>(
         expect.objectContaining({
           message: "Nine 9s used for median amount.",
