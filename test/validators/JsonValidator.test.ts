@@ -660,7 +660,8 @@ describe("JsonValidator", () => {
       expect(result.alerts).toHaveLength(1);
       expect(result.alerts).toContainEqual<ValidationError>(
         expect.objectContaining({
-          message: "Estimated amount present in payers information object.",
+          message:
+            "The 'estimated amount' is no longer a required data element as of January 1, 2026. It has been replaced by the 10th percentile, median, 90th percentile, and count of allowed amounts.",
           path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
         })
       );
