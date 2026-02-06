@@ -15,7 +15,11 @@ import {
   RequiredValueError,
 } from "../../src/errors/csv/index.js";
 import { ATTESTATION } from "../../src/validators/CsvHelpers.js";
-import { CsvFalseAttestationAlert } from "../../src/alerts/FalseStatementAlert.js";
+import {
+  CsvFalseAttestationAlert,
+  CsvNineNinesAlert,
+  EstimatedAmountAlert,
+} from "../../src/alerts/index.js";
 
 const { shuffle } = _;
 
@@ -665,6 +669,148 @@ describe("CsvValidator v3.0.0", () => {
     });
   });
 
+  describe("#alertColumns", () => {
+    it("should return no alerts when expected tall columns are provided", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+        "median_amount",
+        "10th_percentile",
+        "90th_percentile",
+        "count",
+      ]);
+
+      const errors = validator.validateColumns(columns);
+      expect(errors).toHaveLength(0);
+      const alerts = validator.alertColumns(columns);
+      expect(alerts).toHaveLength(0);
+    });
+
+    it("should return an alert when an estimated_amount column is provided", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge   | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "additional_generic_notes",
+        "payer_name",
+        "plan_name",
+        "standard_charge | negotiated_dollar",
+        "standard_charge | negotiated_percentage",
+        "standard_charge | negotiated_algorithm",
+        "standard_charge | methodology",
+        "estimated_amount", // this column was removed, so we alert when it appears
+        "median_amount",
+        "10th_percentile",
+        "90th_percentile",
+        "count",
+      ]);
+
+      const errors = validator.validateColumns(columns);
+      expect(errors).toHaveLength(0);
+      const alerts = validator.alertColumns(columns);
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]).toEqual(
+        new EstimatedAmountAlert(
+          columns.indexOf("estimated_amount"),
+          "estimated_amount"
+        )
+      );
+    });
+
+    it("should return no alerts when expected wide columns are provided", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "count | Payer ABC | Plan 1",
+        "additional_generic_notes",
+      ]);
+
+      const errors = validator.validateColumns(columns);
+      expect(errors).toHaveLength(0);
+      const alerts = validator.alertColumns(columns);
+      expect(alerts).toHaveLength(0);
+    });
+
+    it("should return an alert when a payer-specific estimated_amount column is provided", () => {
+      const columns = shuffle([
+        "description",
+        "code | 1",
+        "code | 1 | type",
+        "setting",
+        "drug_unit_of_measurement",
+        "drug_type_of_measurement",
+        "modifiers",
+        "standard_charge | gross",
+        "standard_charge | discounted_cash",
+        "standard_charge | min",
+        "standard_charge | max",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_dollar",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_percentage",
+        "standard_charge | Payer ABC | Plan 1 | negotiated_algorithm",
+        "standard_charge | Payer ABC | Plan 1 | methodology",
+        "estimated_amount | Payer ABC | Plan 1",
+        "median_amount |  Payer ABC | Plan 1",
+        "10th_percentile |  Payer ABC | Plan 1",
+        "90th_percentile |  Payer ABC | Plan 1",
+        "additional_payer_notes | Payer ABC | Plan 1",
+        "count | Payer ABC | Plan 1",
+        "additional_generic_notes",
+      ]);
+
+      const errors = validator.validateColumns(columns);
+      expect(errors).toHaveLength(0);
+      const alerts = validator.alertColumns(columns);
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]).toEqual(
+        new EstimatedAmountAlert(
+          columns.indexOf("estimated_amount | Payer ABC | Plan 1"),
+          "estimated_amount | Payer ABC | Plan 1"
+        )
+      );
+    });
+  });
+
   describe("#validateDataRow tall", () => {
     const columns = [
       "description",
@@ -967,6 +1113,70 @@ describe("CsvValidator v3.0.0", () => {
         new ChargeWithPayerPlanError(validator.index, 14)
       );
     });
+
+    it("should return an alert when 999999999 is encoded for count", () => {
+      row.payer_name = "Payer Three";
+      row.plan_name = "Plan W";
+      row["standard_charge | negotiated_percentage"] = "85";
+      row["standard_charge | methodology"] = "fee schedule";
+      row.count = "999999999";
+      row.median_amount = "370";
+      row["10th_percentile"] = "250";
+      row["90th_percentile"] = "505";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(validator.index, 23, "count")
+      );
+    });
+
+    it("should return an alert when 999999999 is encoded for 10th percentile", () => {
+      row.payer_name = "Payer Three";
+      row.plan_name = "Plan W";
+      row["standard_charge | negotiated_percentage"] = "85";
+      row["standard_charge | methodology"] = "fee schedule";
+      row.count = "1 through 10";
+      row.median_amount = "370";
+      row["10th_percentile"] = "999999999";
+      row["90th_percentile"] = "505";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(validator.index, 21, "10th percentile")
+      );
+    });
+
+    it("should return an alert when 999999999 is encoded for median amount", () => {
+      row.payer_name = "Payer Three";
+      row.plan_name = "Plan W";
+      row["standard_charge | negotiated_percentage"] = "85";
+      row["standard_charge | methodology"] = "fee schedule";
+      row.count = "1 through 10";
+      row.median_amount = "999999999";
+      row["10th_percentile"] = "250";
+      row["90th_percentile"] = "505";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(validator.index, 20, "median amount")
+      );
+    });
+
+    it("should return an alert when 999999999 is encoded for 90th percentile", () => {
+      row.payer_name = "Payer Three";
+      row.plan_name = "Plan W";
+      row["standard_charge | negotiated_percentage"] = "85";
+      row["standard_charge | methodology"] = "fee schedule";
+      row.count = "1 through 10";
+      row.median_amount = "370";
+      row["10th_percentile"] = "20";
+      row["90th_percentile"] = "999999999";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(validator.index, 22, "90th percentile")
+      );
+    });
   });
 
   describe("#validateDataRow wide", () => {
@@ -1261,6 +1471,86 @@ describe("CsvValidator v3.0.0", () => {
         new PercentageAlgorithm90thError(
           validator.index,
           normalizedColumns.indexOf("90th_percentile | payer xyz | plan 2")
+        )
+      );
+    });
+
+    it("should return an alert when 999999999 is encoded for count", () => {
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
+        "85";
+      row["standard_charge | payer abc | plan 1 | methodology"] =
+        "fee schedule";
+      row["count | payer abc | plan 1"] = "999999999";
+      row["median_amount | payer abc | plan 1"] = "370";
+      row["10th_percentile | payer abc | plan 1"] = "250";
+      row["90th_percentile | payer abc | plan 1"] = "505";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(
+          validator.index,
+          normalizedColumns.indexOf("count | payer abc | plan 1"),
+          "count"
+        )
+      );
+    });
+
+    it("should return an alert when 999999999 is encoded for 10th percentile", () => {
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
+        "85";
+      row["standard_charge | payer abc | plan 1 | methodology"] =
+        "fee schedule";
+      row["count | payer abc | plan 1"] = "35";
+      row["median_amount | payer abc | plan 1"] = "370";
+      row["10th_percentile | payer abc | plan 1"] = "999999999";
+      row["90th_percentile | payer abc | plan 1"] = "505";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(
+          validator.index,
+          normalizedColumns.indexOf("10th_percentile | payer abc | plan 1"),
+          "10th percentile"
+        )
+      );
+    });
+
+    it("should return an alert when 999999999 is encoded for median amount", () => {
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
+        "85";
+      row["standard_charge | payer abc | plan 1 | methodology"] =
+        "fee schedule";
+      row["count | payer abc | plan 1"] = "35";
+      row["median_amount | payer abc | plan 1"] = "999999999";
+      row["10th_percentile | payer abc | plan 1"] = "250";
+      row["90th_percentile | payer abc | plan 1"] = "505";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(
+          validator.index,
+          normalizedColumns.indexOf("median_amount | payer abc | plan 1"),
+          "median amount"
+        )
+      );
+    });
+
+    it("should return an alert when 999999999 is encoded for 90th percentile", () => {
+      row["standard_charge | payer abc | plan 1 | negotiated_percentage"] =
+        "85";
+      row["standard_charge | payer abc | plan 1 | methodology"] =
+        "fee schedule";
+      row["count | payer abc | plan 1"] = "35";
+      row["median_amount | payer abc | plan 1"] = "370";
+      row["10th_percentile | payer abc | plan 1"] = "250";
+      row["90th_percentile | payer abc | plan 1"] = "999999999";
+      const result = validator.alertDataRow(row);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(
+          validator.index,
+          normalizedColumns.indexOf("90th_percentile | payer abc | plan 1"),
+          "90th percentile"
         )
       );
     });

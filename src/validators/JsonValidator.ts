@@ -20,6 +20,7 @@ import v210schema from "../schemas/v2.1.0.json" with { type: "json" };
 import v220schema from "../schemas/v2.2.0.json" with { type: "json" };
 import v300schema from "../schemas/v3.0.0.json" with { type: "json" };
 import v220alerts from "../alert-schemas/v2.2.0.json" with { type: "json" };
+import v300alerts from "../alert-schemas/v3.0.0.json" with { type: "json" };
 import semver from "semver";
 import { JsonFileLevelValidator } from "./JsonFileLevelValidator.js";
 import {
@@ -59,6 +60,7 @@ export class JsonValidator extends BaseValidator {
           break;
         case "3.0.0":
           this.fullSchema = v300schema;
+          this.alertSchema = v300alerts;
           break;
         default:
           throw new Error("unrecognized version");

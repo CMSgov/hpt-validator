@@ -649,5 +649,56 @@ describe("JsonValidator", () => {
         new JsonFalseAttestationAlert()
       );
     });
+
+    it("should validate a file that contains an estimated_amount element", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "estimated-amount.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message:
+            "The 'estimated amount' is no longer a required data element as of January 1, 2026. It has been replaced by the 10th percentile, median, 90th percentile, and count of allowed amounts.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/3",
+        })
+      );
+    });
+
+    it("should validate a file that uses nine 9s for allowed amounts", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "allowed-amounts-nine-9s.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(4);
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for count.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/0/count",
+        })
+      );
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for median amount.",
+          path: "/standard_charge_information/1/standard_charges/0/payers_information/1/median_amount",
+        })
+      );
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for 10th percentile.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/1/10th_percentile",
+        })
+      );
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for 90th percentile.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/3/90th_percentile",
+        })
+      );
+    });
   });
 });

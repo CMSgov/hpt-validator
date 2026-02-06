@@ -1441,7 +1441,9 @@ describe("CsvValidator v2.2.0", () => {
       row.estimated_amount = "999999999";
       const result = validator.alertDataRow(row);
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual(new CsvNineNinesAlert(validator.index, 20));
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(validator.index, 20, "estimated amount")
+      );
     });
   });
 
@@ -1928,7 +1930,9 @@ describe("CsvValidator v2.2.0", () => {
       row["estimated_amount | payer abc | plan 1"] = "999999999";
       const result = validator.alertDataRow(row);
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual(new CsvNineNinesAlert(validator.index, 17));
+      expect(result[0]).toEqual(
+        new CsvNineNinesAlert(validator.index, 17, "estimated amount")
+      );
     });
   });
 });

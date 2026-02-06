@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "standard_charges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "payers_information": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "not": {
+                "required": ["estimated_amount"],
+                "$message": "The 'estimated amount' is no longer a required data element as of January 1, 2026. It has been replaced by the 10th percentile, median, 90th percentile, and count of allowed amounts."
+              },
+              "properties": {
+                "count": {
+                  "type": "string",
+                  "not": {
+                    "const": "999999999",
+                    "$message": "Nine 9s used for count."
+                  }
+                },
+                "median_amount": {
+                  "type": "number",
+                  "not": {
+                    "const": 999999999,
+                    "$message": "Nine 9s used for median amount."
+                  }
+                },
+                "10th_percentile": {
+                  "type": "number",
+                  "not": {
+                    "const": 999999999,
+                    "$message": "Nine 9s used for 10th percentile."
+                  }
+                },
+                "90th_percentile": {
+                  "type": "number",
+                  "not": {
+                    "const": 999999999,
+                    "$message": "Nine 9s used for 90th percentile."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
