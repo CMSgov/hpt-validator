@@ -19,6 +19,7 @@ import {
   CsvFalseAttestationAlert,
   CsvNineNinesAlert,
   EstimatedAmountAlert,
+  CsvVersionMismatchAlert,
 } from "../../src/alerts/index.js";
 
 const { shuffle } = _;
@@ -70,7 +71,7 @@ describe("CsvValidator v3.0.0", () => {
       const result = validator.validateHeaderRow([
         "name",
         "2022-01-01",
-        "1.0.0",
+        "3.0.0",
         "Woodlawn",
         "123 Address",
         "001 | MD",
@@ -137,7 +138,7 @@ describe("CsvValidator v3.0.0", () => {
       const result = validator.alertHeaderRow([
         "name",
         "2022-01-01",
-        "1.0.0",
+        "3.0.0",
         "Woodlawn",
         "123 Address",
         "001 | MD",
@@ -153,7 +154,7 @@ describe("CsvValidator v3.0.0", () => {
       const result = validator.alertHeaderRow([
         "name",
         "2022-01-01",
-        "1.0.0",
+        "3.0.0",
         "Woodlawn",
         "123 Address",
         "001 | MD",
@@ -181,7 +182,7 @@ describe("CsvValidator v3.0.0", () => {
       const result = validator.alertHeaderRow([
         "name",
         "2022-01-01",
-        "1.0.0",
+        "3.0.0",
         "Woodlawn",
         "",
         "123 Address",
@@ -191,6 +192,24 @@ describe("CsvValidator v3.0.0", () => {
         "1122334455",
       ]);
       expect(result).toHaveLength(0);
+    });
+
+    it("should return an alert when the version is anything other than 3.0.0", () => {
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "1.0.0",
+        "Woodlawn",
+        "123 Address",
+        "001 | MD",
+        "true",
+        "Alex Attester",
+        "1122334455",
+      ]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvVersionMismatchAlert(2, "1.0.0", ["3.0.0"])
+      );
     });
   });
 

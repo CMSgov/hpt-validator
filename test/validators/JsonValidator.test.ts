@@ -5,7 +5,8 @@ import { InvalidJsonError } from "../../src/errors/json/InvalidJsonError.js";
 import {
   JsonFalseAffirmationAlert,
   JsonFalseAttestationAlert,
-} from "../../src/alerts/FalseStatementAlert.js";
+  JsonVersionMismatchAlert,
+} from "../../src/alerts/index.js";
 import { JsonValidator } from "../../src/validators/JsonValidator.js";
 import { createFixtureStream } from "../testhelpers/createFixtureStream.js";
 
@@ -276,6 +277,17 @@ describe("JsonValidator", () => {
         })
       );
     });
+
+    it("should validate a file with an unexpected version", async () => {
+      const input = createFixtureStream("unexpected-version.json");
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual<ValidationError>(
+        new JsonVersionMismatchAlert("1.0.0", ["2.0.0", "2.1.0"])
+      );
+    });
   });
 
   describe("schema v2.2.0", () => {
@@ -423,6 +435,17 @@ describe("JsonValidator", () => {
           message: "Nine 9s used for estimated amount.",
           path: "/standard_charge_information/0/standard_charges/0/payers_information/2/estimated_amount",
         })
+      );
+    });
+
+    it("should validate a file with an unexpected version", async () => {
+      const input = createFixtureStream("unexpected-version.json");
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual<ValidationError>(
+        new JsonVersionMismatchAlert("1.0.0", ["2.0.0", "2.2.0", "2.2.1"])
       );
     });
   });
@@ -698,6 +721,19 @@ describe("JsonValidator", () => {
           message: "Nine 9s used for 90th percentile.",
           path: "/standard_charge_information/0/standard_charges/0/payers_information/3/90th_percentile",
         })
+      );
+    });
+
+    it("should validate a file with an unexpected version", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "unexpected-version.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.alerts).toHaveLength(1);
+      expect(result.alerts[0]).toEqual<ValidationError>(
+        new JsonVersionMismatchAlert("2.0.0", ["3.0.0"])
       );
     });
   });

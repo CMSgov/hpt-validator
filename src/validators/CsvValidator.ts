@@ -4,7 +4,11 @@ import { CsvValidationOptions, ValidationResult } from "../types.js";
 import { BaseValidator } from "./BaseValidator.js";
 import { addItemsWithLimit, removeBOM } from "../utils.js";
 import * as csvErr from "../errors/csv/index.js";
-import { CsvNineNinesAlert, EstimatedAmountAlert } from "../alerts/index.js";
+import {
+  CsvNineNinesAlert,
+  EstimatedAmountAlert,
+  CsvVersionMismatchAlert,
+} from "../alerts/index.js";
 import _ from "lodash";
 const { range, partial, bind } = _;
 import { BranchingValidator, CsvFileLevelValidator } from "./CsvFieldTypes.js";
@@ -1215,22 +1219,49 @@ export class CsvValidator extends BaseValidator {
   }
 
   alertHeaderRow(row: string[]): csvErr.CsvValidationError[] {
+    const alerts: csvErr.CsvValidationError[] = [];
+    // version should be one of the values we expect
+    let expectedVersions: string[] = [];
+    if (semver.satisfies(this.version, "3.0.*")) {
+      expectedVersions = ["3.0.0"];
+    } else if (semver.satisfies(this.version, "2.2.*")) {
+      expectedVersions = ["2.0.0"];
+    } else if (semver.satisfies(this.version, "2.1.*")) {
+      expectedVersions = ["2.0.0"];
+    }
+    const versionIndex = this.headerColumns.findIndex((headerCol) =>
+      matchesString(headerCol ?? "", "version")
+    );
+    if (
+      expectedVersions.length > 0 &&
+      versionIndex > -1 &&
+      !expectedVersions.includes(row[versionIndex])
+    ) {
+      alerts.push(
+        new CsvVersionMismatchAlert(
+          versionIndex,
+          row[versionIndex],
+          expectedVersions
+        )
+      );
+    }
+    // attestation should not be false
     if (semver.satisfies(this.version, ">=3.0.0")) {
       const statementIndex = this.headerColumns.findIndex((headerCol) =>
         matchesString(headerCol ?? "", ATTESTATION)
       );
       if (statementIndex > -1 && matchesString(row[statementIndex], "false")) {
-        return [new CsvFalseAttestationAlert(statementIndex)];
+        alerts.push(new CsvFalseAttestationAlert(statementIndex));
       }
     } else if (semver.satisfies(this.version, "2.*")) {
       const statementIndex = this.headerColumns.findIndex((headerCol) =>
         matchesString(headerCol ?? "", AFFIRMATION)
       );
       if (statementIndex > -1 && matchesString(row[statementIndex], "false")) {
-        return [new CsvFalseAffirmationAlert(statementIndex)];
+        alerts.push(new CsvFalseAffirmationAlert(statementIndex));
       }
     }
-    return [];
+    return alerts;
   }
 
   validateHeader(row: string[]): csvErr.CsvValidationError[] {
