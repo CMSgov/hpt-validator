@@ -186,8 +186,13 @@ export class JsonValidator extends BaseValidator {
           let newAlerts: ValidationError[] = [];
           if (alertValidator != null) {
             if (!alertValidator.validate(this.alertSchema, value)) {
+              // only keep things that have a $message: those are our alerts
               newAlerts =
-                alertValidator.errors?.map(errorObjectToValidationAlert) ?? [];
+                alertValidator.errors
+                  ?.filter(
+                    (errObj) => (errObj.schema as any)?.["$message"] != null
+                  )
+                  .map(errorObjectToValidationAlert) ?? [];
               newAlerts.forEach((error) => {
                 error.path = `/${pathPrefix}/${key}${error.path}`;
               });
