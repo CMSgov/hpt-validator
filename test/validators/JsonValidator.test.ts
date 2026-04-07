@@ -736,5 +736,39 @@ describe("JsonValidator", () => {
         new JsonVersionMismatchAlert("2.0.0", ["3.0.0"])
       );
     });
+
+    it("should not produce alerts for problems that are actually errors", async () => {
+      const input = createFixtureStream(
+        path.join("3.0", "alerts-with-errors.json")
+      );
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.alerts).toHaveLength(3);
+      expect(result.errors[0]).toEqual<ValidationError>(
+        expect.objectContaining({
+          message: "must be string",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/1/count",
+        })
+      );
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for count.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/0/count",
+        })
+      );
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for 10th percentile.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/1/10th_percentile",
+        })
+      );
+      expect(result.alerts).toContainEqual<ValidationError>(
+        expect.objectContaining({
+          message: "Nine 9s used for 90th percentile.",
+          path: "/standard_charge_information/0/standard_charges/0/payers_information/3/90th_percentile",
+        })
+      );
+    });
   });
 });
