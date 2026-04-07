@@ -18,6 +18,7 @@ import {
   BILLING_CODE_TYPES,
   AFFIRMATION,
 } from "../../src/validators/CsvHelpers.js";
+import { CsvVersionMismatchAlert } from "../../src/alerts/index.js";
 const { shuffle } = _;
 
 describe("CsvValidator v2.1.0", () => {
@@ -244,6 +245,53 @@ describe("CsvValidator v2.1.0", () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual<AllowedValuesError>(
         new AllowedValuesError(1, 6, AFFIRMATION, "yes", ["true", "false"])
+      );
+    });
+  });
+
+  describe("#alertHeaderRow", () => {
+    const headerColumns = [
+      "hospital_name",
+      "last_updated_on",
+      "version",
+      "hospital_location",
+      "hospital_address",
+      "license_number | MD",
+      AFFIRMATION,
+    ];
+
+    beforeEach(() => {
+      validator.headerColumns = [...headerColumns];
+    });
+
+    it("should return no alerts for expected header row values", () => {
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "2.0.0",
+        "Woodlawn",
+        "123 Address",
+        "001 | MD",
+        "true",
+      ]);
+      expect(result).toHaveLength(0);
+    });
+
+    it("should return an alert when the version is anything other than 2.0.0", () => {
+      const result = validator.alertHeaderRow([
+        "name",
+        "2022-01-01",
+        "1.0.0",
+        "Woodlawn",
+        "123 Address",
+        "001 | MD",
+        "true",
+        "Alex Attester",
+        "1122334455",
+      ]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        new CsvVersionMismatchAlert(2, "1.0.0", ["2.0.0"])
       );
     });
   });

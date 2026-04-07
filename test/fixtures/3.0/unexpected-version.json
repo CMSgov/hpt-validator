@@ -1,7 +1,7 @@
 {
   "hospital_name": "West Mercy Hospital",
   "last_updated_on": "2024-07-01",
-  "version": "3.0.0",
+  "version": "2.0.0",
   "location_name": ["West Mercy Hospital", "West Mercy Surgical Center"],
   "hospital_address": [
     "12 Main Street, Fullerton, CA  92832",
@@ -63,9 +63,11 @@
               "plan_name": "PPO",
               "standard_charge_dollar": 20000,
               "standard_charge_algorithm": "The adjusted base payment rate indicated in the standard_charge|negotiated_dollar data element may be further adjusted for additional factors including transfers and outliers.",
-              "count": "0",
-              "methodology": "case rate",
-              "additional_payer_notes": "additional notes explaining why the count is 0"
+              "median_amount": 22243.34,
+              "10th_percentile": 18500.08,
+              "90th_percentile": 25440.9,
+              "count": "1 through 10",
+              "methodology": "case rate"
             },
             {
               "payer_name": "Region Health Insurance",

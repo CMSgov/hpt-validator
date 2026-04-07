@@ -26,7 +26,8 @@ import { JsonFileLevelValidator } from "./JsonFileLevelValidator.js";
 import {
   JsonFalseAffirmationAlert,
   JsonFalseAttestationAlert,
-} from "../alerts/FalseStatementAlert.js";
+  JsonVersionMismatchAlert,
+} from "../alerts/index.js";
 
 export class JsonValidator extends BaseValidator {
   public fullSchema: any;
@@ -109,6 +110,59 @@ export class JsonValidator extends BaseValidator {
         fileCheck: (metadata) => {
           if ((metadata as any)?.attestation?.confirm_attestation === false) {
             return [new JsonFalseAttestationAlert()];
+          }
+          return [];
+        },
+      },
+      {
+        name: "version matches expected value",
+        applicableVersion: "2.1.*",
+        state: {},
+        fileCheck: (metadata: any) => {
+          if (
+            typeof metadata?.version == "string" &&
+            !["2.0.0", "2.1.0"].includes(metadata.version)
+          ) {
+            return [
+              new JsonVersionMismatchAlert(metadata.version, [
+                "2.0.0",
+                "2.1.0",
+              ]),
+            ];
+          }
+          return [];
+        },
+      },
+      {
+        name: "version matches expected value",
+        applicableVersion: "2.2.*",
+        state: {},
+        fileCheck: (metadata: any) => {
+          if (
+            typeof metadata?.version == "string" &&
+            !["2.0.0", "2.2.0", "2.2.1"].includes(metadata.version)
+          ) {
+            return [
+              new JsonVersionMismatchAlert(metadata.version, [
+                "2.0.0",
+                "2.2.0",
+                "2.2.1",
+              ]),
+            ];
+          }
+          return [];
+        },
+      },
+      {
+        name: "version matches expected value",
+        applicableVersion: "3.0.*",
+        state: {},
+        fileCheck: (metadata: any) => {
+          if (
+            typeof metadata?.version == "string" &&
+            metadata.version != "3.0.0"
+          ) {
+            return [new JsonVersionMismatchAlert(metadata.version, ["3.0.0"])];
           }
           return [];
         },
