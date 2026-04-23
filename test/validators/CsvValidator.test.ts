@@ -5,7 +5,7 @@ import {
   MinRowsError,
   ProblemsInHeaderError,
 } from "../../src/errors/csv/index.js";
-import { createFixtureStream } from "test/testhelpers/createFixtureStream.js";
+import { createFixtureStream } from "../testhelpers/createFixtureStream.js";
 
 describe("CsvValidator", () => {
   describe("constructor", () => {
@@ -37,6 +37,15 @@ describe("CsvValidator", () => {
     it("should validate a file with mixed line endings", async () => {
       const validator = new CsvValidator("v2.0.0");
       const input = createFixtureStream("sample-tall-mixed-line-endings.csv");
+      const results = await validator.validate(input);
+      expect(results.valid).toBe(true);
+      expect(results.errors).toHaveLength(0);
+      expect(results.alerts).toHaveLength(0);
+    });
+
+    it("should validate a file where some rows have fewer fields than expected", async () => {
+      const validator = new CsvValidator("v2.1.0");
+      const input = createFixtureStream("sample-tall-small-rows.csv");
       const results = await validator.validate(input);
       expect(results.valid).toBe(true);
       expect(results.errors).toHaveLength(0);
