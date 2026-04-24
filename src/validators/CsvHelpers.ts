@@ -117,7 +117,7 @@ export function objectFromKeysValues(
   const result: { [key: string]: string } = {};
   keys.forEach((key, index) => {
     if (key) {
-      result[key] = values[index];
+      result[key] = values[index] ?? "";
     }
   });
   return result;
