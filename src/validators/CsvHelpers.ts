@@ -335,7 +335,7 @@ export function dynaValidateRequiredField(
 export function getBillingCodesByVersion(version: string): string[] {
   const extraCodes: string[] = [];
   if (semver.satisfies(version, ">=3.0.0")) {
-    extraCodes.push("CMG");
+    extraCodes.push("CMG", "MS-LTC-DRG");
   }
   return [...BILLING_CODE_TYPES, ...extraCodes];
 }

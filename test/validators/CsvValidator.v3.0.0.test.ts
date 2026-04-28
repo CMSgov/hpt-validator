@@ -933,6 +933,13 @@ describe("CsvValidator v3.0.0", () => {
       expect(result).toHaveLength(0);
     });
 
+    // MS-LTC-DRG is a new allowed value for code type
+    it("should return no errors when a MS-LTC-DRG code is used", () => {
+      row["code | 1 | type"] = "MS-LTC-DRG";
+      const result = validator.validateDataRow(row);
+      expect(result).toHaveLength(0);
+    });
+
     // count of allowed amounts, median, 10th percentile, and 90th percentile are new numeric fields
     // count of allowed amounts, unlike other numeric fields, may have a value of 0
     it("should return an error when count of allowed amounts is present, but not 0 or a postive number", () => {
