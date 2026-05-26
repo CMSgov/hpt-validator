@@ -4,6 +4,9 @@ import {
   InvalidVersionError,
   MinRowsError,
   ProblemsInHeaderError,
+  ColumnMissingError,
+  InvalidDateError,
+  RequiredValueError,
 } from "../../src/errors/csv/index.js";
 import { createFixtureStream } from "../testhelpers/createFixtureStream.js";
 
@@ -79,12 +82,32 @@ describe("CsvValidator", () => {
       expect(results.errors[0]).toBeInstanceOf(MinRowsError);
     });
 
-    it("should stop validation when there are problems in the header", async () => {
+    it("should validate a file when there are errors in the general data headers or elements", async () => {
       const validator = new CsvValidator("v2.2.0");
       const input = createFixtureStream("sample-bad-header.csv");
       const results = await validator.validate(input);
       expect(results.valid).toBe(false);
       expect(results.errors).toHaveLength(2);
+      expect(results.errors[0]).toEqual(
+        new InvalidDateError(1, 1, "last_updated_on", "July 1 2024")
+      );
+      expect(results.errors[1]).toEqual(
+        new RequiredValueError(
+          9,
+          17,
+          "standard_charge|methodology",
+          " when a payer specific negotiated charge is encoded as a dollar amount, percentage, or algorithm"
+        )
+      );
+    });
+
+    it("should stop validating a file when there are errors in the item and service headers", async () => {
+      const validator = new CsvValidator("v2.2.0");
+      const input = createFixtureStream("sample-bad-item-header.csv");
+      const results = await validator.validate(input);
+      expect(results.valid).toBe(false);
+      expect(results.errors).toHaveLength(2);
+      expect(results.errors[0]).toEqual(new ColumnMissingError("description"));
       expect(results.errors[1]).toBeInstanceOf(ProblemsInHeaderError);
     });
 

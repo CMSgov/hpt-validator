@@ -5,7 +5,7 @@ export class ProblemsInHeaderError extends CsvValidationError {
     super(
       0,
       0,
-      "Errors were found in the headers or values in rows 1 through 3, so the remaining rows were not evaluated."
+      "Errors were found in the headers in row 3, so the remaining rows were not evaluated."
     );
   }
 }

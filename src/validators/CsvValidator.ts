@@ -1713,8 +1713,9 @@ export class CsvValidator extends BaseValidator {
         addItemsWithLimit(headerAlerts, this.alerts, this.maxErrors);
       }
     } else if (this.index === 2) {
-      addItemsWithLimit(this.validateColumns(row), this.errors, this.maxErrors);
-      if (this.errors.length > 0) {
+      const columnDefinitionErrors = this.validateColumns(row);
+      addItemsWithLimit(columnDefinitionErrors, this.errors, this.maxErrors);
+      if (columnDefinitionErrors.length > 0) {
         resolve({
           valid: false,
           errors: [...this.errors, new csvErr.ProblemsInHeaderError()],
