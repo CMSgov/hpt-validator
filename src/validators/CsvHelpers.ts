@@ -142,8 +142,9 @@ export function isValidDate(value: string) {
   const dateMatch2 = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
   if (dateMatch1 != null) {
-    // UTC methods are used because "date-only forms are interpreted as a UTC time",
-    // as per https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format
+    // Only the ISO YYYY-MM-DD form is parsed as UTC; the MM/DD/YYYY slash form is
+    // parsed in the runtime's local time zone. Build the date explicitly in UTC so
+    // the comparison below is independent of where the validator runs.
     // check that the parsed date matches the input, to guard against e.g. February 31
     const matchYear = dateMatch1[3];
     const matchMonth = dateMatch1[1];
@@ -151,7 +152,9 @@ export function isValidDate(value: string) {
     const expectedYear = parseInt(matchYear);
     const expectedMonth = parseInt(matchMonth) - 1;
     const expectedDate = parseInt(matchDate);
-    const parsedDate = new Date(value);
+    const parsedDate = new Date(
+      Date.UTC(expectedYear, expectedMonth, expectedDate)
+    );
     return (
       expectedYear === parsedDate.getUTCFullYear() &&
       expectedMonth === parsedDate.getUTCMonth() &&
