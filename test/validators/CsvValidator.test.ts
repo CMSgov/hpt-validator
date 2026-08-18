@@ -145,5 +145,14 @@ describe("CsvValidator", () => {
         new Set(["MS-DRG", "LOCAL", "CPT", "HCPCS", "RC"])
       );
     });
+
+    it("should validate a file while dropping blank headers", async () => {
+      const validator = new CsvValidator("v3.0.0");
+      const input = createFixtureStream("sample-wide-blank-headers.csv");
+      const results = await validator.validate(input);
+      expect(results.valid).toBe(true);
+      expect(results.errors).toHaveLength(0);
+      expect(results.alerts).toHaveLength(0);
+    });
   });
 });

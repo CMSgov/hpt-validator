@@ -1138,6 +1138,9 @@ export class CsvValidator extends BaseValidator {
     const discoveredColumns: string[] = [];
     const errors: csvErr.CsvValidationError[] = [];
     columns.forEach((column, index) => {
+      if (!column.trim()) {
+        return;
+      }
       const matchingColumnIndex = remainingColumns.findIndex(
         (requiredColumn) => {
           if (requiredColumn === "license_number | [state]") {
@@ -1303,6 +1306,9 @@ export class CsvValidator extends BaseValidator {
       this.payersPlans
     );
     columns.forEach((column, index) => {
+      if (!column.trim()) {
+        return;
+      }
       const matchingColumnIndex = expectedDataColumns.findIndex((expected) => {
         return sepColumnsEqual(column, expected.label);
       });
