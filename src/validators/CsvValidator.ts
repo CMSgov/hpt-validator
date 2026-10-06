@@ -748,15 +748,14 @@ export class CsvValidator extends BaseValidator {
           return [];
         },
       });
-      // if a payer name and plan name are encoded, a payer-specific charge must be encoded.
+      // If a payer name or plan name is encoded, a payer-specific charge must be encoded.
       // new as of v3.0.0
       nonModifierChecks.push({
-        name: "payer-specific charge when payer name and plan name are encoded",
+        name: "payer-specific charge when payer name or plan name is encoded",
         applicableVersion: ">=3.0.0",
         validator: (dataRow, row) => {
           if (
-            dataRow["payer_name"] &&
-            dataRow["plan_name"] &&
+            (dataRow["payer_name"] || dataRow["plan_name"]) &&
             !dataRow["standard_charge | negotiated_dollar"] &&
             !dataRow["standard_charge | negotiated_algorithm"] &&
             !dataRow["standard_charge | negotiated_percentage"]
@@ -764,7 +763,9 @@ export class CsvValidator extends BaseValidator {
             return [
               new csvErr.ChargeWithPayerPlanError(
                 row,
-                this.normalizedColumns.indexOf("payer_name")
+                this.normalizedColumns.indexOf(
+                  dataRow["payer_name"] ? "payer_name" : "plan_name"
+                )
               ),
             ];
           }

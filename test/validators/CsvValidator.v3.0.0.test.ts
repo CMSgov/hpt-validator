@@ -1140,6 +1140,18 @@ describe("CsvValidator v3.0.0", () => {
       );
     });
 
+    it.each(["payer_name", "plan_name"])(
+      "should require a payer-specific charge when only %s is encoded",
+      (field) => {
+        row[field] = "Payer or plan";
+        const result = validator.validateDataRow(row);
+        expect(result).toHaveLength(1);
+        expect(result[0]).toEqual(
+          new ChargeWithPayerPlanError(validator.index, columns.indexOf(field))
+        );
+      }
+    );
+
     it("should return an alert when 999999999 is encoded for count", () => {
       row.payer_name = "Payer Three";
       row.plan_name = "Plan W";
