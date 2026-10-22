@@ -9,7 +9,9 @@ export function addItemsWithLimit<T>(
   if (maxItems > 0 && mainList.length + newItems.length > maxItems) {
     newItems = newItems.slice(0, maxItems - mainList.length);
   }
-  mainList.push(...newItems);
+  newItems.forEach((newItem) => {
+    mainList.push(newItem);
+  });
   return mainList.length;
 }
 
