@@ -5,7 +5,7 @@ export class ChargeWithPayerPlanError extends CsvValidationError {
     super(
       row,
       column,
-      "If a payer name and plan name are encoded, a payer-specific charge must also be encoded."
+      "If a payer name or plan name is encoded, a payer-specific charge must also be encoded."
     );
   }
 }
