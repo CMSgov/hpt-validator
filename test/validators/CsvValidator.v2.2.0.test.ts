@@ -245,6 +245,20 @@ describe("CsvValidator v2.2.0", () => {
       });
     });
 
+    it("should not require a license number value when the license number column uses different capitalization", () => {
+      validator.headerColumns[5] = "License_Number | MD";
+      const result = validator.validateHeaderRow([
+        "name",
+        "2022-01-01",
+        "1.0.0",
+        "Woodlawn",
+        "123 Address",
+        "",
+        "true",
+      ]);
+      expect(result).toHaveLength(0);
+    });
+
     it("should return an InvalidDateError when the last_updated_on value is not a valid date", () => {
       const result = validator.validateHeaderRow([
         "name",
