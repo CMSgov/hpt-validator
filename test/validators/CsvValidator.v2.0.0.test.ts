@@ -30,8 +30,8 @@ describe("schema v2.0.0", () => {
   describe("#validateHeaderColumns", () => {
     it("should return no errors when valid header columns are provided", () => {
       const columns = shuffle([
-        "hospital_name",
-        "last_updated_on",
+        "Hospital_Name",
+        "last_updated_ON",
         "version",
         "hospital_location",
         "hospital_address",
@@ -151,7 +151,7 @@ describe("schema v2.0.0", () => {
       "version",
       "hospital_location",
       "hospital_address",
-      "license_number | MD",
+      "License_number | MD",
       AFFIRMATION,
     ];
 

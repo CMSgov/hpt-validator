@@ -62,10 +62,10 @@ describe("CsvValidator v2.2.0", () => {
       const columns = shuffle([
         "hospital_name",
         "last_updated_on",
-        "version",
-        "hospital_location",
+        "Version",
+        "HOSPITAL_LOCATION",
         "hospital_address",
-        "license_number | MD",
+        "license_Number |  MD",
         AFFIRMATION,
       ]);
       const result = validator.validateHeaderColumns(columns);
@@ -86,27 +86,27 @@ describe("CsvValidator v2.2.0", () => {
       const columns = [
         "hospital_name",
         "last_updated_on",
-        "version",
-        "hospital_location",
+        "Version",
+        "HOSPITAL_LOCATION",
         "hospital_address",
-        "hospital_location",
-        "license_number | MD",
+        "Hospital_Location",
+        "license_Number |  MD",
         AFFIRMATION,
       ];
       const result = validator.validateHeaderColumns(columns);
       expect(result).toHaveLength(1);
       expect(result[0]).toBeInstanceOf(DuplicateHeaderColumnError);
       expect((result[0] as DuplicateHeaderColumnError).columnName).toBe(
-        "hospital_location"
+        "Hospital_Location"
       );
       expect(validator.headerColumns).toEqual([
         "hospital_name",
         "last_updated_on",
-        "version",
-        "hospital_location",
+        "Version",
+        "HOSPITAL_LOCATION",
         "hospital_address",
         undefined,
-        "license_number | MD",
+        "license_Number |  MD",
         AFFIRMATION,
       ]);
     });
@@ -115,10 +115,10 @@ describe("CsvValidator v2.2.0", () => {
       const columns = [
         "hospital_name",
         "last_updated_on",
-        "version",
-        "hospital_location",
+        "Version",
+        "HOSPITAL_LOCATION",
         "hospital_address",
-        "license_number | XYZZY",
+        "license_Number |  XYZZY",
         AFFIRMATION,
       ];
       const result = validator.validateHeaderColumns(columns);
@@ -130,8 +130,8 @@ describe("CsvValidator v2.2.0", () => {
       expect(validator.headerColumns).toEqual([
         "hospital_name",
         "last_updated_on",
-        "version",
-        "hospital_location",
+        "Version",
+        "HOSPITAL_LOCATION",
         "hospital_address",
         undefined,
         AFFIRMATION,
@@ -160,10 +160,10 @@ describe("CsvValidator v2.2.0", () => {
     const headerColumns = [
       "hospital_name",
       "last_updated_on",
-      "version",
-      "hospital_location",
+      "Version",
+      "HOSPITAL_LOCATION",
       "hospital_address",
-      "license_number | MD",
+      "license_Number |  MD",
       AFFIRMATION,
     ];
 
@@ -231,8 +231,8 @@ describe("CsvValidator v2.2.0", () => {
       const requiredValueHeaderColumns = [
         "hospital_name",
         "last_updated_on",
-        "version",
-        "hospital_location",
+        "Version",
+        "HOSPITAL_LOCATION",
         "hospital_address",
         AFFIRMATION,
       ];
@@ -282,10 +282,10 @@ describe("CsvValidator v2.2.0", () => {
     const headerColumns = [
       "hospital_name",
       "last_updated_on",
-      "version",
-      "hospital_location",
+      "Version",
+      "HOSPITAL_LOCATION",
       "hospital_address",
-      "license_number | MD",
+      "license_Number |  MD",
       AFFIRMATION,
     ];
 

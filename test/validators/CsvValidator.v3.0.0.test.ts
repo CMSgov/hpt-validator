@@ -35,11 +35,11 @@ describe("CsvValidator v3.0.0", () => {
     it("should return no errors when valid header columns are provided", () => {
       const columns = shuffle([
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_updated_on",
+        "VERSION",
         "location_name",
         "hospital_address",
-        "license_number | MD",
+        "License_Number  |   MD",
         ATTESTATION,
         "attester_name",
         "type_2_npi",
@@ -53,11 +53,11 @@ describe("CsvValidator v3.0.0", () => {
   describe("#validateHeaderRow", () => {
     const headerColumns = [
       "hospital_name",
-      "last_updated_on",
-      "version",
+      "Last_updated_on",
+      "VERSION",
       "location_name",
       "hospital_address",
-      "license_number | MD",
+      "License_Number  |   MD",
       ATTESTATION,
       "attester_name",
       "type_2_npi",
@@ -99,8 +99,8 @@ describe("CsvValidator v3.0.0", () => {
       expect(result.every((csvErr) => csvErr instanceof RequiredValueError));
       const requiredValueHeaderColumns = [
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_updated_on",
+        "VERSION",
         "location_name",
         "hospital_address",
         ATTESTATION,
