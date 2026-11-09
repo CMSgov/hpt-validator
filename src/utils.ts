@@ -32,7 +32,7 @@ export function errorObjectToValidationAlert(
   ).withField(error.instancePath.split("/").pop() ?? "");
 }
 
-export function removeBOM(chunk: string | Buffer) {
+export function removeBOM<T extends string | Buffer>(chunk: T): T {
   // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
   if (typeof chunk == "string") {
     const dataBuffer = Buffer.from(chunk);
@@ -42,7 +42,7 @@ export function removeBOM(chunk: string | Buffer) {
       dataBuffer[1] === 0xbb &&
       dataBuffer[2] === 0xbf
     ) {
-      return chunk.trimStart();
+      return chunk.trimStart() as T;
     } else {
       return chunk;
     }
@@ -52,7 +52,7 @@ export function removeBOM(chunk: string | Buffer) {
     chunk[1] === 0xbb &&
     chunk[2] === 0xbf
   ) {
-    return chunk.subarray(3);
+    return chunk.subarray(3) as T;
   } else {
     return chunk;
   }
