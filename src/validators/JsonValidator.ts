@@ -215,7 +215,7 @@ export class JsonValidator extends BaseValidator {
       bind(this.metadataCallback, this);
     }
 
-    return new Promise(async (resolve) => {
+    return new Promise(async (resolve, reject) => {
       const errors = this.errors;
       const alerts = this.alerts;
       parser.onValue = ({ value, key, stack }) => {
@@ -372,7 +372,9 @@ export class JsonValidator extends BaseValidator {
         });
       };
 
-      parseJson(input, parser);
+      parseJson(input, parser).catch((reason: Error) => {
+        reject(reason);
+      });
     });
   }
 }
@@ -382,14 +384,16 @@ export async function parseJson(
   parser: JSONParser
 ): Promise<void> {
   if (jsonInput instanceof File) {
-    const stream = jsonInput.stream();
+    const stream: ReadableStream<Uint8Array<ArrayBuffer>> = jsonInput.stream();
     const reader = stream.getReader();
     const textDecoder = new TextDecoder("utf-8");
 
     function readChunk() {
       return reader.read().then(({ done, value }) => {
         if (done) {
-          parser.end();
+          if (!parser.isEnded) {
+            parser.end();
+          }
           return;
         }
 
@@ -400,19 +404,28 @@ export async function parseJson(
 
     readChunk();
   } else {
-    let firstChunk = true;
-    const jsonStream = jsonInput as NodeJS.ReadableStream;
-    jsonStream.on("end", () => parser.end());
-    jsonStream.on("error", (e) => {
-      throw e;
-    });
-    jsonStream.on("data", (data: string) => {
-      // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
-      if (firstChunk) {
-        data = removeBOM(data);
-        firstChunk = false;
-      }
-      parser.write(data);
+    return new Promise((resolve, reject) => {
+      let firstChunk = true;
+      const jsonStream = jsonInput as NodeJS.ReadableStream;
+      jsonStream.on("end", () => {
+        if (!parser.isEnded) {
+          parser.end();
+        }
+        resolve();
+      });
+      jsonStream.on("error", (e: Error) => {
+        reject(e);
+      });
+      jsonStream.on("data", (data: string | Buffer | any) => {
+        // strip utf-8 BOM: see https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8
+        if (firstChunk) {
+          if (Buffer.isBuffer(data) || typeof data == "string") {
+            data = removeBOM(data);
+            firstChunk = false;
+          }
+        }
+        parser.write(data);
+      });
     });
   }
 }

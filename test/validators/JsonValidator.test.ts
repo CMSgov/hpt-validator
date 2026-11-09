@@ -8,7 +8,11 @@ import {
   JsonVersionMismatchAlert,
 } from "../../src/alerts/index.js";
 import { JsonValidator } from "../../src/validators/JsonValidator.js";
-import { createFixtureStream } from "../testhelpers/createFixtureStream.js";
+import {
+  createFixtureBufferStream,
+  createFixtureStream,
+} from "../testhelpers/createFixtureStream.js";
+import { Readable } from "stream";
 
 describe("JsonValidator", () => {
   describe("constructor", () => {
@@ -135,6 +139,25 @@ describe("JsonValidator", () => {
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
     }, 10000);
+
+    it("should validate a file that starts with a byte-order mark when the input is a buffered stream", async () => {
+      const input = createFixtureBufferStream("sample-valid-bom.json");
+      const result = await validator.validate(input);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    }, 10000);
+
+    it("should reject the validate promise when the input stream is interrupted", async () => {
+      expect.assertions(1);
+      const input = new Readable({
+        read() {
+          this.destroy(new Error("stream interrupted!"));
+        },
+      });
+      await expect(validator.validate(input)).rejects.toThrow(
+        "stream interrupted!"
+      );
+    });
 
     it("should validate an empty json file", async () => {
       const input = createFixtureStream("sample-empty.json");
