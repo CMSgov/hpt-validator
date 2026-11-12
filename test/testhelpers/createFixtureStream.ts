@@ -10,3 +10,12 @@ export function createFixtureStream(fixture: string) {
     }
   );
 }
+
+export function createFixtureBufferStream(fixture: string) {
+  return fs.createReadStream(
+    new URL(path.join("..", "fixtures", fixture), import.meta.url),
+    {
+      highWaterMark: 1024,
+    }
+  );
+}
