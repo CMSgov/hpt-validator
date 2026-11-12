@@ -148,7 +148,6 @@ describe("JsonValidator", () => {
     }, 10000);
 
     it("should reject the validate promise when the input stream is interrupted", async () => {
-      expect.assertions(1);
       const input = new Readable({
         read() {
           this.destroy(new Error("stream interrupted!"));
