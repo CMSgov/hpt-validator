@@ -32,11 +32,11 @@ describe("CsvValidator v2.1.0", () => {
     it("should return no errors when valid header columns are provided", () => {
       const columns = shuffle([
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_Updated_On",
+        "Version",
         "hospital_location",
-        "hospital_address",
-        "license_number | MD",
+        "HOSPITAL_ADDRESs",
+        "License_Number  | MD",
         AFFIRMATION,
       ]);
       const result = validator.validateHeaderColumns(columns);
@@ -56,12 +56,12 @@ describe("CsvValidator v2.1.0", () => {
     it("should return errors and remove duplicates when a header column appears more than once", () => {
       const columns = [
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_Updated_On",
+        "Version",
         "hospital_location",
-        "hospital_address",
+        "HOSPITAL_ADDRESs",
         "hospital_location",
-        "license_number | MD",
+        "License_Number  | MD",
         AFFIRMATION,
       ];
       const result = validator.validateHeaderColumns(columns);
@@ -72,12 +72,12 @@ describe("CsvValidator v2.1.0", () => {
       );
       expect(validator.headerColumns).toEqual([
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_Updated_On",
+        "Version",
         "hospital_location",
-        "hospital_address",
+        "HOSPITAL_ADDRESs",
         undefined,
-        "license_number | MD",
+        "License_Number  | MD",
         AFFIRMATION,
       ]);
     });
@@ -85,11 +85,11 @@ describe("CsvValidator v2.1.0", () => {
     it("should return an error when the license number column contains an invalid state abbreviation", () => {
       const columns = [
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_Updated_On",
+        "Version",
         "hospital_location",
-        "hospital_address",
-        "license_number | XYZZY",
+        "HOSPITAL_ADDRESs",
+        "License_Number  | XYZZY",
         AFFIRMATION,
       ];
       const result = validator.validateHeaderColumns(columns);
@@ -100,10 +100,10 @@ describe("CsvValidator v2.1.0", () => {
       );
       expect(validator.headerColumns).toEqual([
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_Updated_On",
+        "Version",
         "hospital_location",
-        "hospital_address",
+        "HOSPITAL_ADDRESs",
         undefined,
         AFFIRMATION,
       ]);
@@ -112,11 +112,11 @@ describe("CsvValidator v2.1.0", () => {
     it("should return an error when the license number column has the first part incorrect", () => {
       const columns = shuffle([
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_Updated_On",
+        "Version",
         "hospital_location",
-        "hospital_address",
-        "licensing_number | MD",
+        "HOSPITAL_ADDRESs",
+        "Licensing_Number  | MD",
         AFFIRMATION,
       ]);
       const result = validator.validateHeaderColumns(columns);
@@ -130,11 +130,11 @@ describe("CsvValidator v2.1.0", () => {
   describe("#validateHeaderRow", () => {
     const headerColumns = [
       "hospital_name",
-      "last_updated_on",
-      "version",
+      "Last_Updated_On",
+      "Version",
       "hospital_location",
-      "hospital_address",
-      "license_number | MD",
+      "HOSPITAL_ADDRESs",
+      "License_Number  | MD",
       AFFIRMATION,
     ];
 
@@ -201,10 +201,10 @@ describe("CsvValidator v2.1.0", () => {
       expect(result.every((csvErr) => csvErr instanceof RequiredValueError));
       const requiredValueHeaderColumns = [
         "hospital_name",
-        "last_updated_on",
-        "version",
+        "Last_Updated_On",
+        "Version",
         "hospital_location",
-        "hospital_address",
+        "HOSPITAL_ADDRESs",
         AFFIRMATION,
       ];
       requiredValueHeaderColumns.forEach((headerColumn) => {
@@ -228,7 +228,7 @@ describe("CsvValidator v2.1.0", () => {
       ]);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual<InvalidDateError>(
-        new InvalidDateError(1, 1, "last_updated_on", "2022-14-01")
+        new InvalidDateError(1, 1, "Last_Updated_On", "2022-14-01")
       );
     });
 

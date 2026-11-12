@@ -1193,7 +1193,7 @@ export class CsvValidator extends BaseValidator {
   validateHeaderRow(row: string[]): csvErr.CsvValidationError[] {
     const errors: csvErr.CsvValidationError[] = [];
     this.headerColumns.forEach((header, index) => {
-      if (/^license_number\s*\|\s*.{2}$/.test(header)) {
+      if (/^license_number\s*\|\s*.{2}$/.test(header.toLowerCase())) {
         return;
       }
       if (header != null) {
